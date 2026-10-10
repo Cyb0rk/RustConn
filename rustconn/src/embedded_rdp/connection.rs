@@ -646,10 +646,11 @@ pub(super) struct RdpConnectionContext {
     /// Whether we already attempted a retry without GFX pipeline.
     /// Prevents infinite retry loops. (Issue #218)
     pub gfx_retry_attempted: Rc<RefCell<bool>>,
-    /// Whether we already attempted a retry over plain TLS (NLA/CredSSP off).
-    /// Prevents a loop when a server rejects the plain-TLS attempt too, so the
-    /// real authentication error surfaces on the second pass. (Issue #366)
-    pub plain_tls_retry_attempted: Rc<RefCell<bool>>,
+    /// Whether we already handed this connection to external FreeRDP pinned to
+    /// TLS for the KRdp/FreeRDP-3.32 HYBRID_EX regression. Fired once so a
+    /// server that rejects the TLS-only path too shows the real auth error with
+    /// the KRdp advice instead of looping. (Issue #366)
+    pub tls_only_fallback_attempted: Rc<RefCell<bool>>,
     /// Reconnect callback — triggers a fresh `connect()` with the (now-modified)
     /// stored config. Shared with the reconnect button.
     pub on_reconnect: Rc<RefCell<Option<Box<dyn Fn() + 'static>>>>,
@@ -1468,10 +1469,10 @@ impl super::EmbeddedRdpWidget {
         // fully torn down yet. (Issue #218)
         let gfx_retry_attempted = std::rc::Rc::new(std::cell::RefCell::new(false));
 
-        // Plain-TLS retry state: a server that negotiates HYBRID but then
-        // rejects CredSSP (a TLS-only KRdp / NLA-less xrdp — issue #366) is
-        // retried once with NLA off before the auth failure is believed.
-        let plain_tls_retry_attempted = std::rc::Rc::new(std::cell::RefCell::new(false));
+        // TLS-only external-fallback state: a server that negotiates HYBRID_EX
+        // but then rejects CredSSP (the KRdp / FreeRDP-3.32 regression —
+        // issue #366) is handed once to external FreeRDP pinned to /sec:tls.
+        let tls_only_fallback_attempted = std::rc::Rc::new(std::cell::RefCell::new(false));
 
         // Graphics pipeline shown in the status bar. Starts at the mode our
         // advertised capabilities imply and is corrected by
@@ -2229,7 +2230,7 @@ Open Settings → Connection → Media Codecs to re-download it.",
                         fallback_process: fallback_process.clone(),
                         clipboard_monitor: clipboard_monitor.clone(),
                         gfx_retry_attempted: gfx_retry_attempted.clone(),
-                        plain_tls_retry_attempted: plain_tls_retry_attempted.clone(),
+                        tls_only_fallback_attempted: tls_only_fallback_attempted.clone(),
                         on_reconnect: on_reconnect.clone(),
                         connection_generation: connection_generation.clone(),
                         generation,
@@ -2332,50 +2333,45 @@ Open Settings → Connection → Media Codecs to re-download it.",
             "[IronRDP] Failure classified"
         );
 
-        // A TLS-only server (KDE KRdp, NLA-less xrdp) completes the X.224
-        // negotiation, so IronRDP picks HYBRID and sends CredSSP, which the
-        // server rejects with InvalidToken / STATUS_LOGON_FAILURE — identical to
-        // a wrong password, so `classify_rdp_failure` calls it `Authentication`
-        // and would stop here (issue #366). The embedded IronRDP connector in
-        // the published crates cannot reliably redo the handshake as plain TLS
-        // against such a server — a second connect_begin against a KRdp that is
-        // still tearing down the rejected NLA attempt decodes garbage
-        // (`UnexpectedMessageType`) — so instead of an embedded retry we hand
-        // the session straight to external FreeRDP pinned to TLS without NLA
-        // (`/sec:tls` + `/sec:nla:off`), which is exactly how Remmina reaches
-        // KRdp. Guarded so a server that also rejects the plain-TLS path is not
-        // looped on: fire only when NLA was actually on this attempt and we have
-        // not already taken this route.
-        let nla_was_on = ctx
-            .fallback_config
-            .borrow()
-            .as_ref()
-            .is_none_or(|cfg| !cfg.force_plain_tls);
-        let should_route_plain_tls = nla_was_on
-            && !*ctx.plain_tls_retry_attempted.borrow()
-            && rustconn_core::rdp_client::warrants_plain_tls_retry(msg);
+        // A KRdp 6.6.x / FreeRDP-3.32 server advertises HYBRID_EX it cannot
+        // complete, so the embedded IronRDP client's CredSSP is rejected with
+        // STATUS_LOGON_FAILURE (0xc000006d) even with correct credentials — the
+        // #366 regression (FreeRDP #13567). Remmina reaches the same server by
+        // negotiating plain TLS, which never offers HYBRID_EX. So before
+        // believing the auth failure, hand the session once to external FreeRDP
+        // with the security layer pinned to TLS (`/sec:tls`), which drops
+        // HYBRID_EX exactly as Remmina does. Guarded to fire once: if the
+        // TLS-only path is rejected too, the real auth error (with the KRdp
+        // advice from `parse_ironrdp_error`) surfaces instead of looping.
+        let should_route_tls_only = !*ctx.tls_only_fallback_attempted.borrow()
+            && rustconn_core::rdp_client::warrants_tls_only_fallback(msg);
 
-        if should_route_plain_tls {
-            *ctx.plain_tls_retry_attempted.borrow_mut() = true;
+        if should_route_tls_only {
+            *ctx.tls_only_fallback_attempted.borrow_mut() = true;
             tracing::info!(
                 protocol = "rdp",
                 error = %msg,
-                "[IronRDP] CredSSP rejected by a server that may not speak NLA — \
-                 handing off to external FreeRDP with TLS-only (NLA off)"
+                "[IronRDP] CredSSP rejected (possible KRdp/FreeRDP-3.32 HYBRID_EX \
+                 regression) — handing off to external FreeRDP pinned to TLS (/sec:tls)"
             );
             if let Some(ref mut config) = *ctx.fallback_config.borrow_mut() {
-                // Mark it so a later failure on this same connection is not
-                // mistaken for another first-time NLA rejection, and pin the
-                // external client to the plain-TLS path.
-                config.force_plain_tls = true;
+                // Pin TLS only — this emits `/sec:tls`, which drops HYBRID/HYBRID_EX
+                // from the negotiation. Deliberately NOT `disable_nla`: `/sec:tls`
+                // already excludes NLA, and adding `/sec:nla:off` on top produced
+                // a conflicting negotiation that failed against KRdp.
                 config.security_layer = rustconn_core::models::RdpSecurityLayer::Tls;
-                config.disable_nla = true;
             }
             Self::prepare_freerdp_fallback(ctx);
             Self::launch_freerdp_fallback(ctx, msg);
             return;
         }
 
+        // A CredSSP/NLA rejection with STATUS_LOGON_FAILURE (0xc000006d) is
+        // reported to the user by `parse_ironrdp_error` below; `Authentication`
+        // does not warrant an external fallback (the external client fails the
+        // same CredSSP exchange) so it stops there with actionable advice. See
+        // issue #366 for the KRdp/FreeRDP-3.32 Ext-security server regression
+        // that produces this status with correct credentials.
         if !class.warrants_freerdp_fallback() {
             // The config borrow ends with this statement, before the error
             // callback runs: that callback may reconnect, which rewrites it.
@@ -2693,9 +2689,9 @@ Open Settings → Connection → Media Codecs to re-download it.",
         use rustconn_core::rdp_client::AuthFailureKind as Kind;
 
         match kind {
-            Kind::InvalidCredentials => {
-                i18n("Authentication failed: invalid username or password.")
-            }
+            Kind::InvalidCredentials => i18n(
+                "Authentication failed: invalid username or password. If the credentials are correct and the server is a Linux RDP host (KDE KRdp, xrdp), this can instead be the server's NLA regression with FreeRDP 3.32 — update KRdp to 6.7.90 or newer, or set ExtSecurity=0 on the server (FreeRDP issue #13567).",
+            ),
             // STATUS_ACCOUNT_RESTRICTION over NTLM is what an account in AD
             // "Protected Users" gets; Kerberos is the way in.
             Kind::AccountRestriction if !kerberos => i18n(
@@ -3278,9 +3274,6 @@ Open Settings → Connection → Media Codecs to re-download it.",
             // chance on user-initiated reconnect. If GFX fails again, the
             // automatic retry will re-enable Legacy mode. (Issue #218)
             config.force_legacy_graphics = false;
-            // Likewise reset the plain-TLS retry so a user-initiated reconnect
-            // negotiates with the profile's NLA setting again. (Issue #366)
-            config.force_plain_tls = false;
             self.connect(&config)
         } else {
             Err(EmbeddedRdpError::Connection(

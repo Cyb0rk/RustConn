@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: rustconn 0.12.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-10 17:43+0300\n"
+"POT-Creation-Date: 2026-10-10 23:40+0300\n"
 "PO-Revision-Date: 2026-04-25 10:46+0000\n"
 "Last-Translator: RustConn Team\n"
 "Language-Team: Polish\n"
@@ -38,8 +38,8 @@ msgstr "OK"
 #: rustconn/src/dialogs/settings/mod.rs:578
 #: rustconn/src/dialogs/settings/mod.rs:919
 #: rustconn/src/dialogs/settings/ssh_agent_tab.rs:448
-#: rustconn/src/dialogs/settings/terminal_tab.rs:814
-#: rustconn/src/dialogs/settings/terminal_tab.rs:873
+#: rustconn/src/dialogs/settings/terminal_tab.rs:812
+#: rustconn/src/dialogs/settings/terminal_tab.rs:871
 #: rustconn/src/dialogs/statistics.rs:86
 #: rustconn/src/dialogs/template_manager.rs:191
 #: rustconn/src/dialogs/tunnel.rs:727
@@ -77,7 +77,7 @@ msgstr "Nie zapisuj"
 #: rustconn/src/dialogs/connection/dialog/populate.rs:90
 #: rustconn/src/dialogs/connection/dialog/populate.rs:92
 #: rustconn/src/dialogs/connection_wizard/auth_page.rs:177
-#: rustconn/src/dialogs/settings/terminal_tab.rs:874
+#: rustconn/src/dialogs/settings/terminal_tab.rs:872
 #: rustconn/src/dialogs/smart_folder.rs:82
 #: rustconn/src/dialogs/smart_folder.rs:83 rustconn/src/dialogs/snippet.rs:420
 #: rustconn/src/dialogs/template.rs:2792
@@ -263,7 +263,7 @@ msgid "Enter Password Manually"
 msgstr "Wprowadź hasło ręcznie"
 
 #: rustconn/src/dialogs/backend_missing.rs:56
-#: rustconn/src/embedded_rdp/connection.rs:2165 rustconn/src/vault_ops.rs:66
+#: rustconn/src/embedded_rdp/connection.rs:2169 rustconn/src/vault_ops.rs:66
 #: rustconn/src/vault_ops.rs:316 rustconn/src/window/mod.rs:1047
 msgid "Open Settings"
 msgstr "Otwórz ustawienia"
@@ -276,7 +276,7 @@ msgstr "Nowy klaster"
 #: rustconn/src/dialogs/cluster.rs:70 rustconn/src/dialogs/cluster.rs:71
 #: rustconn/src/dialogs/connection/dialog/construction.rs:139
 #: rustconn/src/dialogs/connection/dialog/construction.rs:140
-#: rustconn/src/dialogs/settings/terminal_tab.rs:815
+#: rustconn/src/dialogs/settings/terminal_tab.rs:813
 #: rustconn/src/dialogs/smart_folder.rs:87
 #: rustconn/src/dialogs/smart_folder.rs:88 rustconn/src/dialogs/snippet.rs:87
 #: rustconn/src/dialogs/snippet.rs:88 rustconn/src/dialogs/template.rs:144
@@ -493,12 +493,12 @@ msgstr "Szybkie presety kolorów do identyfikacji środowiska"
 
 #: rustconn/src/dialogs/connection/advanced_tab.rs:121
 #: rustconn/src/dialogs/connection/advanced_tab.rs:957
-#: rustconn/src/dialogs/settings/terminal_tab.rs:897
+#: rustconn/src/dialogs/settings/terminal_tab.rs:895
 msgid "Background"
 msgstr "Tło"
 
 #: rustconn/src/dialogs/connection/advanced_tab.rs:129
-#: rustconn/src/dialogs/settings/terminal_tab.rs:898
+#: rustconn/src/dialogs/settings/terminal_tab.rs:896
 msgid "Foreground"
 msgstr "Pierwszy plan"
 
@@ -826,8 +826,8 @@ msgid "Pattern (regex)"
 msgstr "Wzorzec (regex)"
 
 #: rustconn/src/dialogs/connection/advanced_tab.rs:943
-#: rustconn/src/dialogs/settings/terminal_tab.rs:218
-#: rustconn/src/dialogs/settings/terminal_tab.rs:255
+#: rustconn/src/dialogs/settings/terminal_tab.rs:216
+#: rustconn/src/dialogs/settings/terminal_tab.rs:253
 msgid "Underline"
 msgstr "Podkreślenie"
 
@@ -1000,7 +1000,7 @@ msgstr "np. /ścieżka/do/skryptu.sh lub vpn-connect ${host}"
 #: rustconn/src/dialogs/connection/automation_tab.rs:517
 #: rustconn/src/dialogs/connection/general_tab.rs:370
 #: rustconn/src/dialogs/connection_wizard/connection_page.rs:233
-#: rustconn/src/dialogs/settings/terminal_tab.rs:492
+#: rustconn/src/dialogs/settings/terminal_tab.rs:490
 #: rustconn/src/dialogs/snippet.rs:273 rustconn/src/dialogs/template.rs:1930
 msgid "Command"
 msgstr "Polecenie"
@@ -1981,17 +1981,17 @@ msgid "Secret value (masked)"
 msgstr "Wartość sekretu (zamaskowana)"
 
 #: rustconn/src/dialogs/connection/dialog/rows.rs:1243
-#: rustconn/src/dialogs/variables.rs:285
+#: rustconn/src/dialogs/variables.rs:278
 msgid "Secret (mask value)"
 msgstr "Sekret (maskuj wartość)"
 
 #: rustconn/src/dialogs/connection/dialog/rows.rs:1250
-#: rustconn/src/dialogs/snippet.rs:374 rustconn/src/dialogs/variables.rs:292
+#: rustconn/src/dialogs/snippet.rs:374 rustconn/src/dialogs/variables.rs:285
 msgid "Description:"
 msgstr "Opis:"
 
 #: rustconn/src/dialogs/connection/dialog/rows.rs:1255
-#: rustconn/src/dialogs/snippet.rs:201 rustconn/src/dialogs/variables.rs:297
+#: rustconn/src/dialogs/snippet.rs:201 rustconn/src/dialogs/variables.rs:290
 msgid "Optional description"
 msgstr "Opcjonalny opis"
 
@@ -2182,7 +2182,7 @@ msgstr "Wartość"
 
 #: rustconn/src/dialogs/connection/general_tab.rs:301
 #: rustconn/src/dialogs/connection/general_tab.rs:305
-#: rustconn/src/dialogs/variables.rs:266 rustconn/src/dialogs/variables.rs:269
+#: rustconn/src/dialogs/variables.rs:260 rustconn/src/dialogs/variables.rs:263
 #: rustconn/src/window/connection_dialogs.rs:523
 #: rustconn/src/window/connection_dialogs.rs:527
 #: rustconn/src/window/edit_group.rs:289 rustconn/src/window/edit_group.rs:293
@@ -3303,8 +3303,8 @@ msgid "Auto"
 msgstr "Auto"
 
 #: rustconn/src/dialogs/connection/spice.rs:180
-#: rustconn/src/dialogs/settings/terminal_tab.rs:276
-#: rustconn/src/dialogs/settings/terminal_tab.rs:309
+#: rustconn/src/dialogs/settings/terminal_tab.rs:274
+#: rustconn/src/dialogs/settings/terminal_tab.rs:307
 #: rustconn/src/dialogs/template.rs:1258 rustconn/src/i18n_markers.rs:115
 msgid "Off"
 msgstr "Wył."
@@ -7947,218 +7947,218 @@ msgstr "Usuń z agenta"
 msgid "Remove key from SSH agent"
 msgstr "Usuń klucz z agenta SSH"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:43
+#: rustconn/src/dialogs/settings/terminal_tab.rs:41
 #: rustconn/src/dialogs/shortcuts.rs:150
 msgid "Terminal"
 msgstr "Terminal"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:48
+#: rustconn/src/dialogs/settings/terminal_tab.rs:46
 msgid "Font"
 msgstr "Czcionka"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:56
+#: rustconn/src/dialogs/settings/terminal_tab.rs:54
 msgid "Family"
 msgstr "Rodzina"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:64
+#: rustconn/src/dialogs/settings/terminal_tab.rs:62
 msgid "Size"
 msgstr "Rozmiar"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:76
-#: rustconn/src/dialogs/settings/terminal_tab.rs:902
+#: rustconn/src/dialogs/settings/terminal_tab.rs:74
+#: rustconn/src/dialogs/settings/terminal_tab.rs:900
 msgid "Colors"
 msgstr "Kolory"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:83
+#: rustconn/src/dialogs/settings/terminal_tab.rs:81
 #: rustconn/src/dialogs/settings/ui_tab.rs:139
 #: rustconn/src/dialogs/settings/ui_tab.rs:194
 msgid "Theme"
 msgstr "Motyw"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:99
-#: rustconn/src/dialogs/settings/terminal_tab.rs:102
+#: rustconn/src/dialogs/settings/terminal_tab.rs:97
+#: rustconn/src/dialogs/settings/terminal_tab.rs:100
 msgid "New custom theme"
 msgstr "Nowy własny motyw"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:106
-#: rustconn/src/dialogs/settings/terminal_tab.rs:111
+#: rustconn/src/dialogs/settings/terminal_tab.rs:104
+#: rustconn/src/dialogs/settings/terminal_tab.rs:109
 msgid "Edit custom theme"
 msgstr "Edytuj własny motyw"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:116
-#: rustconn/src/dialogs/settings/terminal_tab.rs:121
+#: rustconn/src/dialogs/settings/terminal_tab.rs:114
+#: rustconn/src/dialogs/settings/terminal_tab.rs:119
 msgid "Delete custom theme"
 msgstr "Usuń własny motyw"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:129
+#: rustconn/src/dialogs/settings/terminal_tab.rs:127
 msgid "Custom themes"
 msgstr "Własne motywy"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:209
-#: rustconn/src/dialogs/settings/terminal_tab.rs:899
+#: rustconn/src/dialogs/settings/terminal_tab.rs:207
+#: rustconn/src/dialogs/settings/terminal_tab.rs:897
 msgid "Cursor"
 msgstr "Kursor"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:216
-#: rustconn/src/dialogs/settings/terminal_tab.rs:245
+#: rustconn/src/dialogs/settings/terminal_tab.rs:214
+#: rustconn/src/dialogs/settings/terminal_tab.rs:243
 msgid "Block"
 msgstr "Blok"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:217
-#: rustconn/src/dialogs/settings/terminal_tab.rs:250
+#: rustconn/src/dialogs/settings/terminal_tab.rs:215
+#: rustconn/src/dialogs/settings/terminal_tab.rs:248
 msgid "IBeam"
 msgstr "Kursor tekstowy"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:227
-#: rustconn/src/dialogs/settings/terminal_tab.rs:264
+#: rustconn/src/dialogs/settings/terminal_tab.rs:225
+#: rustconn/src/dialogs/settings/terminal_tab.rs:262
 msgid "Shape"
 msgstr "Kształt"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:275
-#: rustconn/src/dialogs/settings/terminal_tab.rs:304
+#: rustconn/src/dialogs/settings/terminal_tab.rs:273
+#: rustconn/src/dialogs/settings/terminal_tab.rs:302
 msgid "On"
 msgstr "Wł."
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:277
-#: rustconn/src/dialogs/settings/terminal_tab.rs:314
+#: rustconn/src/dialogs/settings/terminal_tab.rs:275
+#: rustconn/src/dialogs/settings/terminal_tab.rs:312
 #: rustconn/src/dialogs/settings/ui_tab.rs:115
 #: rustconn/src/dialogs/settings/ui_tab.rs:156
 msgid "System"
 msgstr "System"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:286
-#: rustconn/src/dialogs/settings/terminal_tab.rs:323
+#: rustconn/src/dialogs/settings/terminal_tab.rs:284
+#: rustconn/src/dialogs/settings/terminal_tab.rs:321
 msgid "Blink"
 msgstr "Miganie"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:334
+#: rustconn/src/dialogs/settings/terminal_tab.rs:332
 msgid "Scrolling"
 msgstr "Przewijanie"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:340
+#: rustconn/src/dialogs/settings/terminal_tab.rs:338
 msgid "History"
 msgstr "Historia"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:341
+#: rustconn/src/dialogs/settings/terminal_tab.rs:339
 msgid "Number of lines to keep in scrollback"
 msgstr "Liczba wierszy w buforze przewijania"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:351
+#: rustconn/src/dialogs/settings/terminal_tab.rs:349
 msgid "Keep on reconnect"
 msgstr "Zachowaj przy ponownym połączeniu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:352
+#: rustconn/src/dialogs/settings/terminal_tab.rs:350
 msgid "Preserve terminal output when a session reconnects"
 msgstr "Zachowaj dane wyjściowe terminala przy ponownym połączeniu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:358
+#: rustconn/src/dialogs/settings/terminal_tab.rs:356
 msgid "On output"
 msgstr "Przy wyjściu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:359
+#: rustconn/src/dialogs/settings/terminal_tab.rs:357
 msgid "Scroll to bottom when new output appears"
 msgstr "Przewiń na dół przy nowym wyjściu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:365
+#: rustconn/src/dialogs/settings/terminal_tab.rs:363
 msgid "On keystroke"
 msgstr "Przy naciśnięciu klawisza"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:366
+#: rustconn/src/dialogs/settings/terminal_tab.rs:364
 msgid "Scroll to bottom when typing"
 msgstr "Przewiń na dół podczas pisania"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:373
+#: rustconn/src/dialogs/settings/terminal_tab.rs:371
 msgid "Scrollbar"
 msgstr "Pasek przewijania"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:374
+#: rustconn/src/dialogs/settings/terminal_tab.rs:372
 msgid "Show a scrollbar next to the terminal"
 msgstr "Pokaż pasek przewijania obok terminala"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:383
+#: rustconn/src/dialogs/settings/terminal_tab.rs:381
 msgid "Behavior"
 msgstr "Zachowanie"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:388
+#: rustconn/src/dialogs/settings/terminal_tab.rs:386
 msgid "Hyperlinks"
 msgstr "Hiperłącza"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:389
+#: rustconn/src/dialogs/settings/terminal_tab.rs:387
 msgid "Allow clickable URLs in terminal"
 msgstr "Zezwalaj na klikalne adresy URL w terminalu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:396
+#: rustconn/src/dialogs/settings/terminal_tab.rs:394
 msgid "Hide pointer"
 msgstr "Ukryj wskaźnik"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:397
+#: rustconn/src/dialogs/settings/terminal_tab.rs:395
 msgid "Hide mouse cursor when typing"
 msgstr "Ukryj kursor myszy podczas pisania"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:404
+#: rustconn/src/dialogs/settings/terminal_tab.rs:402
 msgid "Bell"
 msgstr "Dzwonek"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:405
+#: rustconn/src/dialogs/settings/terminal_tab.rs:403
 msgid "Play sound on terminal bell"
 msgstr "Odtwarzaj dźwięk przy dzwonku terminala"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:411
+#: rustconn/src/dialogs/settings/terminal_tab.rs:409
 msgid "SFTP via mc"
 msgstr "SFTP przez mc"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:412
-#: rustconn/src/dialogs/settings/terminal_tab.rs:421
+#: rustconn/src/dialogs/settings/terminal_tab.rs:410
+#: rustconn/src/dialogs/settings/terminal_tab.rs:419
 msgid "Open SFTP in Midnight Commander (local shell tab)"
 msgstr "Otwórz SFTP w Midnight Commander (lokalna karta powłoki)"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:424
+#: rustconn/src/dialogs/settings/terminal_tab.rs:422
 msgid "⚠ External file managers cannot access SSH agent in Flatpak sandbox"
 msgstr ""
 "⚠ Zewnętrzne menedżery plików nie mają dostępu do agenta SSH w piaskownicy "
 "Flatpak"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:434
+#: rustconn/src/dialogs/settings/terminal_tab.rs:432
 msgid "Copy on select"
 msgstr "Kopiuj przy zaznaczeniu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:435
+#: rustconn/src/dialogs/settings/terminal_tab.rs:433
 msgid "Automatically copy selected text to clipboard"
 msgstr "Automatycznie kopiuj zaznaczony tekst do schowka"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:443
+#: rustconn/src/dialogs/settings/terminal_tab.rs:441
 msgid "Remote clipboard (OSC 52)"
 msgstr "Zdalny schowek (OSC 52)"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:444
+#: rustconn/src/dialogs/settings/terminal_tab.rs:442
 msgid "Let a remote program put text on the local clipboard"
 msgstr "Zezwól zdalnemu programowi na umieszczanie tekstu w lokalnym schowku"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:450
+#: rustconn/src/dialogs/settings/terminal_tab.rs:448
 msgid "Right-click pastes"
 msgstr "Prawy przycisk wkleja"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:452
+#: rustconn/src/dialogs/settings/terminal_tab.rs:450
 msgid "Paste the clipboard on right-click instead of showing the menu"
 msgstr "Wklejaj schowek prawym przyciskiem zamiast pokazywać menu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:459
+#: rustconn/src/dialogs/settings/terminal_tab.rs:457
 msgid "Close tab on clean exit"
 msgstr "Zamknij kartę po czystym wyjściu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:461
+#: rustconn/src/dialogs/settings/terminal_tab.rs:459
 msgid "Automatically close the tab when the session exits normally"
 msgstr "Automatycznie zamknij kartę, gdy sesja zakończy się normalnie"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:468
+#: rustconn/src/dialogs/settings/terminal_tab.rs:466
 msgid "Option as Meta key"
 msgstr "Option jako klawisz Meta"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:470
+#: rustconn/src/dialogs/settings/terminal_tab.rs:468
 msgid "Send Escape prefix instead of composed characters (for vim/emacs)"
 msgstr "Wysyłaj prefiks Escape zamiast złożonych znaków (dla vim/emacs)"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:482
+#: rustconn/src/dialogs/settings/terminal_tab.rs:480
 #: rustconn/src/dialogs/settings/ui_tab.rs:488
 #: rustconn/src/dialogs/settings/ui_tab.rs:784
 #: rustconn/src/dialogs/shortcuts.rs:168
@@ -8167,103 +8167,103 @@ msgstr "Wysyłaj prefiks Escape zamiast złożonych znaków (dla vim/emacs)"
 msgid "Local Shell"
 msgstr "Lokalna powłoka"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:483
+#: rustconn/src/dialogs/settings/terminal_tab.rs:481
 msgid "Custom command for the local shell tab"
 msgstr "Własne polecenie dla karty lokalnej powłoki"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:487
+#: rustconn/src/dialogs/settings/terminal_tab.rs:485
 msgid "Default system shell"
 msgstr "Domyślna powłoka systemowa"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:493
+#: rustconn/src/dialogs/settings/terminal_tab.rs:491
 msgid "e.g. fish, bash --norc, neofetch &amp;&amp; bash"
 msgstr "np. fish, bash --norc, neofetch &amp;&amp; bash"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:784
+#: rustconn/src/dialogs/settings/terminal_tab.rs:782
 msgid "Follow System"
 msgstr "Zgodnie z systemem"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:808
+#: rustconn/src/dialogs/settings/terminal_tab.rs:806
 msgid "New Custom Theme"
 msgstr "Nowy własny motyw"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:809
+#: rustconn/src/dialogs/settings/terminal_tab.rs:807
 msgid "Enter a name for the new theme"
 msgstr "Wprowadź nazwę dla nowego motywu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:823
+#: rustconn/src/dialogs/settings/terminal_tab.rs:821
 msgid "Theme name"
 msgstr "Nazwa motywu"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:868
+#: rustconn/src/dialogs/settings/terminal_tab.rs:866
 msgid "{} — Theme Editor"
 msgstr "{} — Edytor motywów"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:910
+#: rustconn/src/dialogs/settings/terminal_tab.rs:908
 msgid "Palette"
 msgstr "Paleta"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:914
+#: rustconn/src/dialogs/settings/terminal_tab.rs:912
 msgid "Black"
 msgstr "Czarny"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:915
+#: rustconn/src/dialogs/settings/terminal_tab.rs:913
 msgid "Red"
 msgstr "Czerwony"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:916
+#: rustconn/src/dialogs/settings/terminal_tab.rs:914
 msgid "Green"
 msgstr "Zielony"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:917
+#: rustconn/src/dialogs/settings/terminal_tab.rs:915
 msgid "Yellow"
 msgstr "Żółty"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:918
+#: rustconn/src/dialogs/settings/terminal_tab.rs:916
 msgid "Blue"
 msgstr "Niebieski"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:919
+#: rustconn/src/dialogs/settings/terminal_tab.rs:917
 msgid "Magenta"
 msgstr "Magenta"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:920
+#: rustconn/src/dialogs/settings/terminal_tab.rs:918
 msgid "Cyan"
 msgstr "Cyjan"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:921
+#: rustconn/src/dialogs/settings/terminal_tab.rs:919
 msgid "White"
 msgstr "Biały"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:922
+#: rustconn/src/dialogs/settings/terminal_tab.rs:920
 msgid "Bright Black"
 msgstr "Jasny czarny"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:923
+#: rustconn/src/dialogs/settings/terminal_tab.rs:921
 msgid "Bright Red"
 msgstr "Jasny czerwony"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:924
+#: rustconn/src/dialogs/settings/terminal_tab.rs:922
 msgid "Bright Green"
 msgstr "Jasny zielony"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:925
+#: rustconn/src/dialogs/settings/terminal_tab.rs:923
 msgid "Bright Yellow"
 msgstr "Jasny żółty"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:926
+#: rustconn/src/dialogs/settings/terminal_tab.rs:924
 msgid "Bright Blue"
 msgstr "Jasny niebieski"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:927
+#: rustconn/src/dialogs/settings/terminal_tab.rs:925
 msgid "Bright Magenta"
 msgstr "Jasna magenta"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:928
+#: rustconn/src/dialogs/settings/terminal_tab.rs:926
 msgid "Bright Cyan"
 msgstr "Jasny cyjan"
 
-#: rustconn/src/dialogs/settings/terminal_tab.rs:929
+#: rustconn/src/dialogs/settings/terminal_tab.rs:927
 msgid "Bright White"
 msgstr "Jasny biały"
 
@@ -9779,33 +9779,21 @@ msgstr ""
 msgid "variable_name"
 msgstr "variable_name"
 
-#: rustconn/src/dialogs/variables.rs:252 rustconn/src/dialogs/variables.rs:623
+#: rustconn/src/dialogs/variables.rs:254 rustconn/src/dialogs/variables.rs:602
 #: rustconn/src/window/connection_dialogs.rs:509
 #: rustconn/src/window/edit_group.rs:275
 msgid "Password value"
 msgstr "Wartość hasła"
 
-#: rustconn/src/dialogs/variables.rs:258
-#: rustconn/src/window/connection_dialogs.rs:515
-#: rustconn/src/window/edit_group.rs:281
-msgid "Show/hide password"
-msgstr "Pokaż/ukryj hasło"
-
-#: rustconn/src/dialogs/variables.rs:261
-#: rustconn/src/window/connection_dialogs.rs:519
-#: rustconn/src/window/edit_group.rs:285
-msgid "Toggle password visibility"
-msgstr "Przełącz widoczność hasła"
-
-#: rustconn/src/dialogs/variables.rs:305
+#: rustconn/src/dialogs/variables.rs:298
 msgid "KeePass entry:"
 msgstr "Wpis KeePass:"
 
-#: rustconn/src/dialogs/variables.rs:310
+#: rustconn/src/dialogs/variables.rs:303
 msgid "e.g. Internet/MyRouter (optional)"
 msgstr "np. Internet/MyRouter (opcjonalnie)"
 
-#: rustconn/src/dialogs/variables.rs:312
+#: rustconn/src/dialogs/variables.rs:305
 msgid ""
 "Custom KeePass entry path. If set, the password is read from "
 "this                  existing entry instead of the default RustConn/"
@@ -9814,15 +9802,15 @@ msgstr ""
 "Własna ścieżka wpisu KeePass. Jeśli ustawiona, hasło jest odczytywane z tego "
 "istniejącego wpisu zamiast z domyślnej ścieżki RustConn/rustconn/var/."
 
-#: rustconn/src/dialogs/variables.rs:324
+#: rustconn/src/dialogs/variables.rs:317
 msgid "Vault entry:"
 msgstr "Wpis w sejfie:"
 
-#: rustconn/src/dialogs/variables.rs:329
+#: rustconn/src/dialogs/variables.rs:322
 msgid "e.g. AD Credentials (optional)"
 msgstr "np. AD Credentials (opcjonalnie)"
 
-#: rustconn/src/dialogs/variables.rs:331
+#: rustconn/src/dialogs/variables.rs:324
 msgid ""
 "Existing vault entry name. If set, the password is fetched from "
 "this                  entry at connection time — no need to enter a password "
@@ -9832,19 +9820,19 @@ msgstr ""
 "tego wpisu w momencie połączenia — nie trzeba wpisywać hasła powyżej. Nic "
 "nie jest zapisywane z powrotem do sejfu."
 
-#: rustconn/src/dialogs/variables.rs:379 rustconn/src/dialogs/variables.rs:669
+#: rustconn/src/dialogs/variables.rs:372 rustconn/src/dialogs/variables.rs:648
 msgid "New variable"
 msgstr "Nowa zmienna"
 
-#: rustconn/src/dialogs/variables.rs:526
+#: rustconn/src/dialogs/variables.rs:505
 msgid "Could not load secret"
 msgstr "Nie można załadować sekretu"
 
-#: rustconn/src/dialogs/variables.rs:528
+#: rustconn/src/dialogs/variables.rs:507
 msgid "Failed to load secret. Check secret backend in Settings."
 msgstr "Nie udało się załadować sekretu. Sprawdź backend w Ustawieniach."
 
-#: rustconn/src/dialogs/variables.rs:626
+#: rustconn/src/dialogs/variables.rs:605
 msgid "Fetched from vault at connect time"
 msgstr "Pobrano z sejfu w momencie połączenia"
 
@@ -10168,7 +10156,6 @@ msgid "Server certificate has changed since the last connection."
 msgstr "Certyfikat serwera zmienił się od ostatniego połączenia."
 
 #: rustconn/src/embedded_rdp/connection.rs:271
-#: rustconn/src/embedded_rdp/connection.rs:2643
 msgid "Authentication failed: invalid username or password."
 msgstr ""
 "Uwierzytelnianie nie powiodło się: nieprawidłowa nazwa użytkownika lub hasło."
@@ -10253,7 +10240,7 @@ msgstr ""
 "Zamiast niego zostanie użyty FreeRDP."
 
 #: rustconn/src/embedded_rdp/connection.rs:731
-#: rustconn/src/embedded_rdp/connection.rs:2437
+#: rustconn/src/embedded_rdp/connection.rs:2447
 msgid "Connection cancelled because the server requires legacy RDP security."
 msgstr ""
 "Połączenie anulowano, ponieważ serwer wymaga starszych zabezpieczeń RDP."
@@ -10267,7 +10254,7 @@ msgstr ""
 "Klient wbudowany ignoruje własne argumenty FreeRDP. Aby ich użyć, przełącz "
 "tryb klienta RDP na Zewnętrzny."
 
-#: rustconn/src/embedded_rdp/connection.rs:2142
+#: rustconn/src/embedded_rdp/connection.rs:2146
 msgid ""
 "H.264 is off — the installed OpenH264 isn't a Cisco build. Open Settings → "
 "Connection → Media Codecs to download it."
@@ -10275,7 +10262,7 @@ msgstr ""
 "H.264 wyłączone — zainstalowany OpenH264 nie jest kompilacją Cisco. Otwórz "
 "Ustawienia → Połączenie → Kodeki multimedialne, aby go pobrać."
 
-#: rustconn/src/embedded_rdp/connection.rs:2146
+#: rustconn/src/embedded_rdp/connection.rs:2150
 msgid ""
 "H.264 is off — no OpenH264 codec is installed. Open Settings → Connection → "
 "Media Codecs to download it."
@@ -10283,7 +10270,7 @@ msgstr ""
 "H.264 wyłączone — nie zainstalowano kodeka OpenH264. Otwórz Ustawienia → "
 "Połączenie → Kodeki multimedialne, aby go pobrać."
 
-#: rustconn/src/embedded_rdp/connection.rs:2150
+#: rustconn/src/embedded_rdp/connection.rs:2154
 msgid ""
 "H.264 is off — the OpenH264 codec could not be loaded. Open Settings → "
 "Connection → Media Codecs to re-download it."
@@ -10291,47 +10278,55 @@ msgstr ""
 "H.264 wyłączone — nie udało się załadować kodeka OpenH264. Otwórz Ustawienia "
 "→ Połączenie → Kodeki multimedialne, aby pobrać go ponownie."
 
-#: rustconn/src/embedded_rdp/connection.rs:2474
+#: rustconn/src/embedded_rdp/connection.rs:2484
 msgid "Could not prepare the external RDP compatibility client."
 msgstr ""
 "Nie udało się przygotować zewnętrznego klienta RDP do obsługi zgodności."
 
-#: rustconn/src/embedded_rdp/connection.rs:2485
+#: rustconn/src/embedded_rdp/connection.rs:2495
 msgid "Using external RDP client (server requires RDS licensing)"
 msgstr "Używanie zewnętrznego klienta RDP (serwer wymaga licencjonowania RDS)"
 
-#: rustconn/src/embedded_rdp/connection.rs:2487
+#: rustconn/src/embedded_rdp/connection.rs:2497
 msgid "Using external RDP client (server incompatible)"
 msgstr "Używanie zewnętrznego klienta RDP (serwer niekompatybilny)"
 
-#: rustconn/src/embedded_rdp/connection.rs:2505
-#: rustconn/src/embedded_rdp/connection.rs:3082
+#: rustconn/src/embedded_rdp/connection.rs:2515
+#: rustconn/src/embedded_rdp/connection.rs:3092
 msgid "The external RDP client could not be started."
 msgstr "Nie udało się uruchomić zewnętrznego klienta RDP."
 
-#: rustconn/src/embedded_rdp/connection.rs:2543
+#: rustconn/src/embedded_rdp/connection.rs:2553
 msgid ""
 "Could not start the external RDP client. Install FreeRDP 3 and try again."
 msgstr ""
 "Nie udało się uruchomić zewnętrznego klienta RDP. Zainstaluj FreeRDP 3 i "
 "spróbuj ponownie."
 
-#: rustconn/src/embedded_rdp/connection.rs:2616
+#: rustconn/src/embedded_rdp/connection.rs:2626
 msgid "TLS connection failed. The server may not support this security level."
 msgstr ""
 "Połączenie TLS nie powiodło się. Serwer może nie obsługiwać tego poziomu "
 "zabezpieczeń."
 
-#: rustconn/src/embedded_rdp/connection.rs:2620
+#: rustconn/src/embedded_rdp/connection.rs:2630
 msgid "Connection refused. Check host and port."
 msgstr "Połączenie odrzucone. Sprawdź host i port."
 
-#: rustconn/src/embedded_rdp/connection.rs:2623
+#: rustconn/src/embedded_rdp/connection.rs:2633
 #: rustconn/src/embedded_web/mod.rs:640
 msgid "Connection timed out. Check that the host is reachable."
 msgstr "Przekroczono limit czasu połączenia. Sprawdź, czy host jest osiągalny."
 
-#: rustconn/src/embedded_rdp/connection.rs:2648
+#: rustconn/src/embedded_rdp/connection.rs:2653
+msgid ""
+"Authentication failed: invalid username or password. If the credentials are "
+"correct and the server is a Linux RDP host (KDE KRdp, xrdp), this can "
+"instead be the server's NLA regression with FreeRDP 3.32 — update KRdp to "
+"6.7.90 or newer, or set ExtSecurity=0 on the server (FreeRDP issue #13567)."
+msgstr "Uwierzytelnianie nie powiodło się: nieprawidłowa nazwa użytkownika lub hasło. Jeśli dane logowania są poprawne, a serwer to host RDP z Linuksem (KDE KRdp, xrdp), może to być regresja NLA po stronie serwera z FreeRDP 3.32 — zaktualizuj KRdp do 6.7.90 lub nowszej albo ustaw ExtSecurity=0 na serwerze (FreeRDP issue #13567)."
+
+#: rustconn/src/embedded_rdp/connection.rs:2658
 msgid ""
 "Account restrictions refused this sign-in. Protected Users members cannot "
 "use NTLM: turn on Kerberos Authentication in the connection's RDP settings."
@@ -10340,47 +10335,47 @@ msgstr ""
 "mogą używać NTLM: włącz uwierzytelnianie Kerberos w ustawieniach RDP "
 "połączenia."
 
-#: rustconn/src/embedded_rdp/connection.rs:2651
+#: rustconn/src/embedded_rdp/connection.rs:2661
 msgid "Authentication failed: account restrictions prevent this login."
 msgstr ""
 "Uwierzytelnianie nie powiodło się: ograniczenia konta uniemożliwiają "
 "logowanie."
 
-#: rustconn/src/embedded_rdp/connection.rs:2654
+#: rustconn/src/embedded_rdp/connection.rs:2664
 msgid "Authentication failed: password must be changed before first login."
 msgstr ""
 "Uwierzytelnianie nie powiodło się: hasło musi zostać zmienione przed "
 "pierwszym logowaniem."
 
-#: rustconn/src/embedded_rdp/connection.rs:2656
+#: rustconn/src/embedded_rdp/connection.rs:2666
 msgid "Authentication failed: account is disabled."
 msgstr "Uwierzytelnianie nie powiodło się: konto jest wyłączone."
 
-#: rustconn/src/embedded_rdp/connection.rs:2657
+#: rustconn/src/embedded_rdp/connection.rs:2667
 msgid "Authentication failed: account is locked out."
 msgstr "Uwierzytelnianie nie powiodło się: konto jest zablokowane."
 
-#: rustconn/src/embedded_rdp/connection.rs:2658
+#: rustconn/src/embedded_rdp/connection.rs:2668
 msgid "Authentication failed: password has expired."
 msgstr "Uwierzytelnianie nie powiodło się: hasło wygasło."
 
-#: rustconn/src/embedded_rdp/connection.rs:2659
+#: rustconn/src/embedded_rdp/connection.rs:2669
 msgid "Authentication failed: account has expired."
 msgstr "Uwierzytelnianie nie powiodło się: konto wygasło."
 
-#: rustconn/src/embedded_rdp/connection.rs:2661
+#: rustconn/src/embedded_rdp/connection.rs:2671
 msgid "Authentication failed: account is disabled, locked out or expired."
 msgstr ""
 "Uwierzytelnianie nie powiodło się: konto jest wyłączone, zablokowane lub "
 "wygasło."
 
-#: rustconn/src/embedded_rdp/connection.rs:2664
+#: rustconn/src/embedded_rdp/connection.rs:2674
 msgid "Authentication failed: user is not allowed to log on to this computer."
 msgstr ""
 "Uwierzytelnianie nie powiodło się: użytkownik nie ma uprawnień do logowania "
 "na tym komputerze."
 
-#: rustconn/src/embedded_rdp/connection.rs:2668
+#: rustconn/src/embedded_rdp/connection.rs:2678
 msgid ""
 "No Kerberos KDC was found for the {} realm. Enter a KDC Address in the "
 "connection's RDP settings or add the realm to /etc/krb5.conf."
@@ -10388,8 +10383,8 @@ msgstr ""
 "Nie znaleziono serwera KDC Kerberos dla obszaru {}. Wprowadź adres KDC w "
 "ustawieniach RDP połączenia lub dodaj obszar do /etc/krb5.conf."
 
-#: rustconn/src/embedded_rdp/connection.rs:2672
-#: rustconn/src/embedded_rdp/connection.rs:2712
+#: rustconn/src/embedded_rdp/connection.rs:2682
+#: rustconn/src/embedded_rdp/connection.rs:2722
 msgid ""
 "Kerberos needs the DNS domain. Enter it in the Domain field, for example "
 "EXAMPLE.COM."
@@ -10397,7 +10392,7 @@ msgstr ""
 "Kerberos wymaga domeny DNS. Wprowadź ją w polu Domena, na przykład "
 "EXAMPLE.COM."
 
-#: rustconn/src/embedded_rdp/connection.rs:2676
+#: rustconn/src/embedded_rdp/connection.rs:2686
 msgid ""
 "Could not reach the Kerberos KDC. Enter a domain controller's name or IP "
 "address as the KDC Address in the connection's RDP settings."
@@ -10405,7 +10400,7 @@ msgstr ""
 "Nie można połączyć się z serwerem KDC Kerberos. Wprowadź nazwę lub adres IP "
 "kontrolera domeny jako adres KDC w ustawieniach RDP połączenia."
 
-#: rustconn/src/embedded_rdp/connection.rs:2679
+#: rustconn/src/embedded_rdp/connection.rs:2689
 msgid ""
 "Kerberos sign-in failed: this computer's clock differs from the domain's by "
 "more than five minutes. Synchronize the clock and try again."
@@ -10413,7 +10408,7 @@ msgstr ""
 "Logowanie Kerberos nie powiodło się: zegar tego komputera różni się od "
 "zegara domeny o ponad pięć minut. Zsynchronizuj zegar i spróbuj ponownie."
 
-#: rustconn/src/embedded_rdp/connection.rs:2682
+#: rustconn/src/embedded_rdp/connection.rs:2692
 msgid ""
 "The domain does not know this server by the name in Host. Connect by the "
 "server's DNS name, as registered in the domain."
@@ -10421,12 +10416,12 @@ msgstr ""
 "Domena nie rozpoznaje tego serwera pod nazwą podaną w polu Host. Połącz się "
 "przy użyciu nazwy DNS serwera zarejestrowanej w domenie."
 
-#: rustconn/src/embedded_rdp/connection.rs:2684
+#: rustconn/src/embedded_rdp/connection.rs:2694
 msgid "NLA authentication failed. Check username and password."
 msgstr ""
 "Uwierzytelnianie NLA nie powiodło się. Sprawdź nazwę użytkownika i hasło."
 
-#: rustconn/src/embedded_rdp/connection.rs:2706
+#: rustconn/src/embedded_rdp/connection.rs:2716
 msgid ""
 "Kerberos needs the server's DNS name. Connecting by IP address or through an "
 "SSH tunnel fails."
@@ -10434,7 +10429,7 @@ msgstr ""
 "Kerberos wymaga nazwy DNS serwera. Łączenie się przy użyciu adresu IP lub "
 "przez tunel SSH nie powiedzie się."
 
-#: rustconn/src/embedded_rdp/connection.rs:2709
+#: rustconn/src/embedded_rdp/connection.rs:2719
 msgid ""
 "Kerberos needs the DNS domain, for example EXAMPLE.COM, not the short domain "
 "name."
@@ -10442,11 +10437,11 @@ msgstr ""
 "Kerberos wymaga domeny DNS, na przykład EXAMPLE.COM, a nie krótkiej nazwy "
 "domeny."
 
-#: rustconn/src/embedded_rdp/connection.rs:3109
+#: rustconn/src/embedded_rdp/connection.rs:3119
 msgid "RDP session will open in an external window"
 msgstr "Sesja RDP otworzy się w zewnętrznym oknie"
 
-#: rustconn/src/embedded_rdp/connection.rs:3138
+#: rustconn/src/embedded_rdp/connection.rs:3148
 msgid "Failed to start FreeRDP: {}"
 msgstr "Nie udało się uruchomić FreeRDP: {}"
 
@@ -12178,6 +12173,16 @@ msgstr "Domyślne dane uwierzytelniające"
 #: rustconn/src/window/edit_group.rs:230
 msgid "Credentials inherited by connections in this group"
 msgstr "Dane uwierzytelniające dziedziczone przez połączenia w tej grupie"
+
+#: rustconn/src/window/connection_dialogs.rs:515
+#: rustconn/src/window/edit_group.rs:281
+msgid "Show/hide password"
+msgstr "Pokaż/ukryj hasło"
+
+#: rustconn/src/window/connection_dialogs.rs:519
+#: rustconn/src/window/edit_group.rs:285
+msgid "Toggle password visibility"
+msgstr "Przełącz widoczność hasła"
 
 #: rustconn/src/window/connection_dialogs.rs:573
 msgid "Enter group name first"

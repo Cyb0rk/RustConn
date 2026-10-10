@@ -234,16 +234,6 @@ pub struct RdpConfig {
     // multi-step cascade is ever needed (Avc444→H264→RemoteFx→Legacy→FreeRDP),
     // replace with a `GfxFallbackState` enum and a state machine.
     pub force_legacy_graphics: bool,
-    /// Marks that the TLS-only hand-off has already been taken for this
-    /// connection. Set to `true` when a server that completed the X.224
-    /// negotiation then rejected the CredSSP exchange IronRDP started because it
-    /// negotiated `HYBRID` (a TLS-only KDE `KRdp` / NLA-less xrdp — issue #366).
-    /// On that signal the session is handed to external FreeRDP pinned to TLS
-    /// without NLA; this flag is the one-shot guard that stops a second failure
-    /// on the same connection from being read as another first-time NLA
-    /// rejection. Internal retry state, not a user-facing choice — the
-    /// user-facing control is `security_layer`.
-    pub force_plain_tls: bool,
     /// Enable Multipath TCP for the embedded RDP connection.
     /// Uses multiple network paths for seamless mobility and bandwidth aggregation.
     /// Requires kernel MPTCP support (Linux 5.6+). Falls back to regular TCP.
@@ -316,7 +306,6 @@ impl Default for RdpConfig {
             remote_app_name: None,
             graphics_mode: GraphicsMode::Auto,
             force_legacy_graphics: false,
-            force_plain_tls: false,
             mptcp: false,
             fido2_enabled: false,
             kerberos_enabled: false,
