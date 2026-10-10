@@ -211,16 +211,19 @@ pub fn detect_ssh_client() -> ClientInfo {
 /// External FreeRDP clients in the order they are tried in a Wayland session.
 ///
 /// The SDL3 client first: FreeRDP upstream has deprecated the wlfreerdp client
-/// in favour of it (issue #340). The X11 clients come last and run through
-/// XWayland. `sdl-freerdp` and the unsuffixed names are what the Flatpak,
-/// upstream builds and FreeRDP 2 install.
+/// in favour of it (issue #340). The X11 clients (through XWayland) come next,
+/// and the deprecated `wlfreerdp` comes **last**: upstream no longer maintains
+/// it and it SIGSEGVs in `freerdp_disconnect` against KDE KRdp (issue #366),
+/// so a working XWayland client is preferred over it when SDL is not installed.
+/// `sdl-freerdp` and the unsuffixed names are what the Flatpak, upstream builds
+/// and FreeRDP 2 install.
 pub const FREERDP_WAYLAND_FIRST: &[&str] = &[
     "sdl-freerdp3",
     "sdl-freerdp",
-    "wlfreerdp3",
-    "wlfreerdp",
     "xfreerdp3",
     "xfreerdp",
+    "wlfreerdp3",
+    "wlfreerdp",
 ];
 
 /// External FreeRDP clients in the order they are tried in an X11 session.
@@ -299,7 +302,7 @@ fn freerdp_generation(binary: &str) -> (&'static str, &'static str) {
 ///
 /// Checks the FreeRDP clients in [`freerdp_launch_order`], then rdesktop, and
 /// extracts version information. In a Wayland session that is sdl-freerdp3 >
-/// sdl-freerdp > wlfreerdp3 > wlfreerdp > xfreerdp3 > xfreerdp; in an X11
+/// sdl-freerdp > xfreerdp3 > xfreerdp > wlfreerdp3 > wlfreerdp; in an X11
 /// session the X11 clients come first.
 #[must_use]
 pub fn detect_rdp_client() -> ClientInfo {
@@ -949,7 +952,9 @@ mod tests {
         let sdl = position(FREERDP_WAYLAND_FIRST, "sdl-freerdp3");
         let wl = position(FREERDP_WAYLAND_FIRST, "wlfreerdp3");
         let x11 = position(FREERDP_WAYLAND_FIRST, "xfreerdp3");
-        assert!(sdl < wl && wl < x11);
+        // SDL first (deprecation replacement), then XWayland, then the
+        // deprecated/crashing wlfreerdp last (issue #366).
+        assert!(sdl < x11 && x11 < wl);
         assert_eq!(FREERDP_X11_FIRST.first(), Some(&"xfreerdp3"));
 
         let mut wayland = FREERDP_WAYLAND_FIRST.to_vec();
