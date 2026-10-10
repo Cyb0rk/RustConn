@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.8
+Version:        0.23.9
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,13 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Sun Oct 11 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.9-0
+- Version bump to 0.23.9
+- Fixed RDP connecting to KRdp / NLA-less Linux hosts by handing the session once to external FreeRDP pinned to TLS (/sec:tls), matching Remmina (issue #366)
+- Fixed an RDP tab hanging on "Starting RDP..." / "running in external window" after the external client closes (issue #366)
+- Fixed the embedded Wayland FreeRDP fallback not honouring the security layer and NLA switches
+- Fixed the deprecated wlfreerdp client being tried before XWayland despite SIGSEGVing against KDE KRdp (issue #366)
+- Updated serde_json 1.0.151->1.0.152, proptest 1.11.0->1.12.0, bit-set 0.8.0->0.11.1, bit-vec 0.8.0->0.10.1, rand_xorshift 0.4.0->0.5.0
 * Sat Oct 10 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.8-0
 - Version bump to 0.23.8
 - Fixed recording, tunnel and SSH-key failures being swallowed; now surfaced in a dialog or status page

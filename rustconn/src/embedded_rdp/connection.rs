@@ -376,7 +376,7 @@ fn arm_external_exit_watchdog(
         }
         polls += 1;
 
-        let certificate_changed = {
+        let certificate_changed = polls <= CERT_WATCH_POLLS && {
             let lines = stdout_lines.lock().unwrap_or_else(|e| e.into_inner());
             reports_changed_certificate(&lines.join(" "))
         };
@@ -406,18 +406,80 @@ fn arm_external_exit_watchdog(
             None => return glib::ControlFlow::Break,
         };
 
+        // The external client sometimes does not exit when its window is closed
+        // or the session drops — the SDL client against KRdp logs
+        // `client_auto_reconnect_ex: Network disconnect!` / `CONNECT_CANCELLED`
+        // and keeps the process alive, so `try_wait` above never reports an exit
+        // and the tab stayed on "running in external window" forever (issue
+        // #366). We are only here because the session WAS established (the state
+        // guard above is Connected), so a disconnect line means the session has
+        // ended: kill the process and move the GUI to Disconnected. Only act
+        // after the early-exit window so a transient start-up line is not read
+        // as an established session dropping.
+        if EXIT_WATCH_POLLS < polls && exit_status.is_none() {
+            let disconnected = {
+                // Only the tail matters and the buffers are unbounded Vecs, so
+                // scan the last few lines instead of re-joining the whole thing
+                // every 500 ms for the life of the session.
+                let err = stderr_lines.lock().unwrap_or_else(|e| e.into_inner());
+                let out = stdout_lines.lock().unwrap_or_else(|e| e.into_inner());
+                let tail = |v: &[String]| -> bool {
+                    v.iter().rev().take(20).any(|l| {
+                        l.contains("Network disconnect")
+                            || l.contains("ERRCONNECT_CONNECT_CANCELLED")
+                    })
+                };
+                tail(&err) || tail(&out)
+            };
+            if disconnected {
+                tracing::info!(
+                    protocol = "rdp",
+                    %host,
+                    port,
+                    "[FreeRDP] External client reported a disconnect without exiting — \
+                     ending the session and freeing the tab"
+                );
+                if let Some(mut child) = process.borrow_mut().take() {
+                    let _ = child.kill();
+                    std::thread::spawn(move || {
+                        let _ = child.wait();
+                    });
+                }
+                *report.state.borrow_mut() = RdpConnectionState::Disconnected;
+                report.drawing_area.queue_draw();
+                let scb = report.on_state_changed.borrow_mut().take();
+                if let Some(ref cb) = scb {
+                    cb(RdpConnectionState::Disconnected);
+                }
+                *report.on_state_changed.borrow_mut() = scb;
+                return glib::ControlFlow::Break;
+            }
+        }
+
         if let Some(status) = exit_status {
             // Reap the dead child so disconnect() doesn't try to wait on it again.
             *process.borrow_mut() = None;
 
             if EXIT_WATCH_POLLS < polls {
-                // Outside the early-exit window this is a session ending, not a
-                // connection failing. Reap and stand down without reporting.
+                // Outside the early-exit window the connection had been
+                // established, so this is the session ending, not a connection
+                // failing — do not surface it as an error. But the GUI is still
+                // showing the external-connected state, so it must be moved to
+                // Disconnected or the tab hangs on "Starting RDP…" after the
+                // client window closes (issue #366: an SDL/xfreerdp session to
+                // KRdp that ends after the window closes left the tab stuck).
                 tracing::debug!(
                     protocol = "rdp",
                     status = %status,
-                    "[FreeRDP] External client exited after the early-failure window"
+                    "[FreeRDP] External client exited after the early-failure window — session ended"
                 );
+                *report.state.borrow_mut() = RdpConnectionState::Disconnected;
+                report.drawing_area.queue_draw();
+                let scb = report.on_state_changed.borrow_mut().take();
+                if let Some(ref cb) = scb {
+                    cb(RdpConnectionState::Disconnected);
+                }
+                *report.on_state_changed.borrow_mut() = scb;
                 return glib::ControlFlow::Break;
             }
 
@@ -434,11 +496,14 @@ fn arm_external_exit_watchdog(
             return glib::ControlFlow::Break;
         }
 
-        if CERT_WATCH_POLLS <= polls {
-            glib::ControlFlow::Break
-        } else {
-            glib::ControlFlow::Continue
-        }
+        // The exit and disconnect checks above must keep running for the whole
+        // session, so this loop continues as long as the state guard holds it
+        // Connected — it is `disconnect()` / a reported failure / a caught exit
+        // that ends it, not a fixed deadline (issue #366: a long session that
+        // outlived the old 30s cap left the tab stuck when its window closed).
+        // Only the certificate-stall check is time-bounded; once past its window
+        // the loop keeps polling for exit/disconnect at the slower cadence.
+        glib::ControlFlow::Continue
     });
 }
 
@@ -2360,6 +2425,25 @@ Open Settings → Connection → Media Codecs to re-download it.",
                 // already excludes NLA, and adding `/sec:nla:off` on top produced
                 // a conflicting negotiation that failed against KRdp.
                 config.security_layer = rustconn_core::models::RdpSecurityLayer::Tls;
+                // Drop an explicit colour depth: KRdp drives its own framebuffer
+                // and answers an explicit `/bpp:32` in the capabilities exchange
+                // with PDU_TYPE_DEACTIVATE_ALL (bisected live against a real KRdp
+                // — issue #366). None lets FreeRDP negotiate bpp with the server,
+                // which is what the working `xfreerdp … /sec:tls` command does.
+                config.color_depth = None;
+                // Open a resizable window instead of `/size:100%`. FitScreen
+                // emits `/size:100%`, which opens a fixed monitor-sized window
+                // the user cannot resize; this external fallback is a standalone
+                // window, so a Custom start size with `/smart-sizing` opens a
+                // smaller resizable window whose content scales to fit (issue
+                // #366 — confirmed against KRdp, where `/dynamic-resolution`
+                // left the content not fitting). smart_sizing and
+                // dynamic_resolution are mutually exclusive (#341).
+                config.external_display_mode = rustconn_core::models::RdpDisplayMode::Custom;
+                config.external_resolution =
+                    Some(rustconn_core::models::Resolution::new(1280, 800));
+                config.dynamic_resolution = false;
+                config.smart_sizing = true;
             }
             Self::prepare_freerdp_fallback(ctx);
             Self::launch_freerdp_fallback(ctx, msg);
@@ -2624,6 +2708,11 @@ Open Settings → Connection → Media Codecs to re-download it.",
     #[cfg(feature = "rdp-embedded")]
     fn notify_ironrdp_state(ctx: &RdpConnectionContext, state: RdpConnectionState) {
         *ctx.state.borrow_mut() = state;
+        // Repaint the placeholder: without this the Cairo surface keeps showing
+        // the previous state's text — e.g. the external-fallback path set
+        // Connected but the widget stayed on "Starting RDP…", and the later
+        // Disconnected on client exit never showed either (issue #366).
+        ctx.drawing_area.queue_draw();
         let callback = ctx.on_state_changed.borrow_mut().take();
         if let Some(ref callback) = callback {
             callback(state);
