@@ -461,7 +461,9 @@ mod tests {
     fn only_freerdp_2_installed_names_the_refused_version() {
         let clients = [("wlfreerdp", V2), ("xfreerdp", V2)];
         let selection = select_freerdp_client(FREERDP_WAYLAND_FIRST, installed(&clients));
-        assert_eq!(selection, unsupported("wlfreerdp", V2));
+        // xfreerdp now precedes the deprecated wlfreerdp in the Wayland order
+        // (issue #366), so it is the first-listed refused FreeRDP 2 client.
+        assert_eq!(selection, unsupported("xfreerdp", V2));
         assert_eq!(selection.unsupported_version(), V2);
         assert_eq!(selection.into_supported(), None);
     }

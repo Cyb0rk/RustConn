@@ -1070,6 +1070,22 @@ impl FreeRdpThread {
         } else {
             plain_args.push("/cert:tofu".to_string());
         }
+
+        // Security layer and NLA, mirroring `push_security_args` on the external
+        // path. Without this the embedded wlfreerdp subsurface always ran the
+        // FreeRDP default (Negotiate → NLA), so a TLS-only server such as KDE
+        // KRdp or an NLA-less xrdp was met with CredSSP and rejected it with
+        // ERRCONNECT_LOGON_FAILURE / exit 255 (issue #366) — exactly the servers
+        // this embedded fallback exists to reach. `Negotiate` emits nothing
+        // (FreeRDP's own default); `Tls`/`Rdp`/`Nla` pin `/sec:…`, and
+        // `disable_nla` adds `/sec:nla:off`.
+        if let Some(security) = config.security_layer.freerdp_arg() {
+            plain_args.push(security.to_string());
+        }
+        if config.disable_nla {
+            plain_args.push("/sec:nla:off".to_string());
+        }
+
         // Dynamic resolution is always requested here, unlike the external
         // client, which reads `config.dynamic_resolution` / `config.smart_sizing`
         // (issue #341). This is the embedded wlfreerdp widget: its size follows

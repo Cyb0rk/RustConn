@@ -247,6 +247,84 @@ fn is_authentication_failure_lower(lower: &str) -> bool {
         || AUTH_MARKERS.iter().any(|m| lower.contains(m))
 }
 
+/// Account-state `NTSTATUS` codes a TLS-only external retry can never fix.
+///
+/// These say *who* the account is, not *how* it signed in: a plain-TLS retry
+/// would hit the identical refusal, so it is pointless and would only double
+/// the delay before the real error is shown. `STATUS_LOGON_FAILURE`
+/// (`0xc000006d`), `STATUS_WRONG_PASSWORD` (`0xc000006a`) and `STATUS_NO_SUCH_USER`
+/// (`0xc0000064`) are deliberately **absent**: those are the exact statuses a
+/// KRdp/FreeRDP-3.32 server returns for its broken `HYBRID_EX` NTLM path even
+/// with correct credentials (issue [#366]), so they must stay retryable.
+///
+/// [#366]: https://github.com/totoshko88/RustConn/issues/366
+const TLS_ONLY_FALLBACK_BLOCKED_STATUSES: &[&str] = &[
+    "0xc000006e", // STATUS_ACCOUNT_RESTRICTION
+    "0xc000006f", // STATUS_INVALID_LOGON_HOURS
+    "0xc0000070", // STATUS_INVALID_WORKSTATION
+    "0xc0000071", // STATUS_PASSWORD_EXPIRED
+    "0xc0000072", // STATUS_ACCOUNT_DISABLED
+    "0xc000015b", // STATUS_LOGON_TYPE_NOT_GRANTED
+    "0xc0000193", // STATUS_ACCOUNT_EXPIRED
+    "0xc0000224", // STATUS_PASSWORD_MUST_CHANGE
+    "0xc0000234", // STATUS_ACCOUNT_LOCKED_OUT
+];
+
+/// Returns `true` when a CredSSP/NLA rejection is worth one external-FreeRDP
+/// retry pinned to **TLS only** (`/sec:tls`, which drops `HYBRID`/`HYBRID_EX`).
+///
+/// A KRdp 6.6.x server built on FreeRDP 3.32.x advertises `HYBRID_EX` ("Ext")
+/// security it cannot complete: the embedded IronRDP client (and the default
+/// FreeRDP negotiation) let the server pick `HYBRID_EX`, the server's NTLM/SAM
+/// path fails internally, and the client sees `STATUS_LOGON_FAILURE`
+/// (`0xc000006d`) even with correct credentials. This is byte-for-byte what a
+/// genuinely wrong password looks like, which is why issue [#366] was reported
+/// as "invalid username or password" (FreeRDP issue #13567; KRdp fixed it in
+/// 6.7.90). Remmina connects to the same server because it negotiates plain
+/// TLS, which never offers `HYBRID_EX` — confirmed live: with `/sec:tls` the
+/// FreeRDP negotiation drops to `nego_enable_ext: FALSE`.
+///
+/// So RustConn hands this one case to external FreeRDP with the security layer
+/// pinned to TLS (`/sec:tls`), matching Remmina. The retry is narrow:
+///
+/// * it fires **only** for the ambiguous `InvalidToken` CredSSP shape (a
+///   `credssp` message carrying `invalidtoken`, or the raw
+///   `0xc000006d`/`0xc000006a`/`0xc0000064` logon statuses), never for the
+///   account-state codes in [`TLS_ONLY_FALLBACK_BLOCKED_STATUSES`], which TLS
+///   cannot fix;
+/// * the caller fires it **once**, so a server that rejects the TLS-only path
+///   too surfaces the real auth error (with the KRdp advice) instead of looping.
+///
+/// Pure and unit-tested here so the GUI does not grow another `msg.contains(..)`
+/// chain that rots when an upstream error string changes (issues [#199], [#235]).
+///
+/// [#366]: https://github.com/totoshko88/RustConn/issues/366
+/// [#199]: https://github.com/totoshko88/RustConn/issues/199
+/// [#235]: https://github.com/totoshko88/RustConn/issues/235
+#[must_use]
+pub fn warrants_tls_only_fallback(msg: &str) -> bool {
+    let lower = msg.to_ascii_lowercase();
+
+    // An account-state refusal is unambiguous and TLS cannot change it.
+    if TLS_ONLY_FALLBACK_BLOCKED_STATUSES
+        .iter()
+        .any(|c| lower.contains(c))
+    {
+        return false;
+    }
+
+    // The CredSSP `InvalidToken` shape: either the sspi error type is named, or
+    // the server returned one of the "wrong credential" logon statuses that the
+    // KRdp HYBRID_EX regression also uses to turn the exchange away.
+    let is_invalid_token = lower.contains("credssp")
+        && (lower.contains("invalidtoken") || lower.contains("invalid_token"));
+    let is_logon_reject = lower.contains("0xc000006d") // STATUS_LOGON_FAILURE
+        || lower.contains("0xc000006a") // STATUS_WRONG_PASSWORD
+        || lower.contains("0xc0000064"); // STATUS_NO_SUCH_USER
+
+    is_invalid_token || is_logon_reject
+}
+
 /// What a rejected CredSSP/NLA sign-in was rejected for, as far as the message says.
 ///
 /// Finer than [`RdpFailureClass::Authentication`]: that class decides that no
@@ -461,6 +539,65 @@ mod tests {
         let class = classify_rdp_failure(CREDSSP_LOGON_FAILURE);
         assert_eq!(class, RdpFailureClass::Authentication);
         assert!(!class.warrants_freerdp_fallback());
+    }
+
+    #[test]
+    fn krdp_hybrid_ex_rejection_warrants_a_tls_only_fallback() {
+        // The verbatim shape issue #366 produces: KRdp (FreeRDP 3.32 Ext-security
+        // regression) rejects the CredSSP IronRDP sent because the server picked
+        // HYBRID_EX, with STATUS_LOGON_FAILURE — indistinguishable from a wrong
+        // password, so this must route to a /sec:tls external retry.
+        assert!(warrants_tls_only_fallback(CREDSSP_LOGON_FAILURE));
+        assert!(warrants_tls_only_fallback(
+            "CredSSP [kind: Credssp(Error { error_type: InvalidToken, description: \
+             \"CredSSP server returned an error status\", nstatus: Some(NStatusCode(0xc000006d)) })]"
+        ));
+        for msg in [
+            "nstatus: Some(NStatusCode(0xC000006D))",
+            "STATUS_WRONG_PASSWORD 0xc000006a",
+            "0xc0000064 no such user",
+        ] {
+            assert!(warrants_tls_only_fallback(msg), "message: {msg}");
+        }
+    }
+
+    #[test]
+    fn account_state_refusals_do_not_warrant_a_tls_only_fallback() {
+        // These say who the account is, not how it authenticated: a TLS-only
+        // retry cannot change them, so it must not fire and waste a round-trip.
+        for code in [
+            "0xc000006e", // ACCOUNT_RESTRICTION
+            "0xc000006f", // INVALID_LOGON_HOURS
+            "0xc0000070", // INVALID_WORKSTATION
+            "0xc0000071", // PASSWORD_EXPIRED
+            "0xc0000072", // ACCOUNT_DISABLED
+            "0xc000015b", // LOGON_TYPE_NOT_GRANTED
+            "0xc0000193", // ACCOUNT_EXPIRED
+            "0xc0000224", // PASSWORD_MUST_CHANGE
+            "0xc0000234", // ACCOUNT_LOCKED_OUT
+        ] {
+            let msg = format!(
+                "CredSSP [kind: Credssp(Error {{ error_type: InvalidToken, \
+                 nstatus: Some(NStatusCode({code})) }})]"
+            );
+            assert!(
+                !warrants_tls_only_fallback(&msg),
+                "account-state code wrongly retried: {code}"
+            );
+        }
+    }
+
+    #[test]
+    fn non_credssp_failures_do_not_warrant_a_tls_only_fallback() {
+        for msg in [
+            ISSUE_235,
+            ISSUE_351_NO_KDC_GUI,
+            "TLS handshake failed: invalid peer certificate",
+            "Failed to connect to host:3389: connection refused",
+            "Account restriction nstatus: Some(NStatusCode(0xc000006e))",
+        ] {
+            assert!(!warrants_tls_only_fallback(msg), "message: {msg}");
+        }
     }
 
     #[test]

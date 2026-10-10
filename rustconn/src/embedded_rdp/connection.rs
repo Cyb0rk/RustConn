@@ -376,7 +376,7 @@ fn arm_external_exit_watchdog(
         }
         polls += 1;
 
-        let certificate_changed = {
+        let certificate_changed = polls <= CERT_WATCH_POLLS && {
             let lines = stdout_lines.lock().unwrap_or_else(|e| e.into_inner());
             reports_changed_certificate(&lines.join(" "))
         };
@@ -406,18 +406,80 @@ fn arm_external_exit_watchdog(
             None => return glib::ControlFlow::Break,
         };
 
+        // The external client sometimes does not exit when its window is closed
+        // or the session drops — the SDL client against KRdp logs
+        // `client_auto_reconnect_ex: Network disconnect!` / `CONNECT_CANCELLED`
+        // and keeps the process alive, so `try_wait` above never reports an exit
+        // and the tab stayed on "running in external window" forever (issue
+        // #366). We are only here because the session WAS established (the state
+        // guard above is Connected), so a disconnect line means the session has
+        // ended: kill the process and move the GUI to Disconnected. Only act
+        // after the early-exit window so a transient start-up line is not read
+        // as an established session dropping.
+        if EXIT_WATCH_POLLS < polls && exit_status.is_none() {
+            let disconnected = {
+                // Only the tail matters and the buffers are unbounded Vecs, so
+                // scan the last few lines instead of re-joining the whole thing
+                // every 500 ms for the life of the session.
+                let err = stderr_lines.lock().unwrap_or_else(|e| e.into_inner());
+                let out = stdout_lines.lock().unwrap_or_else(|e| e.into_inner());
+                let tail = |v: &[String]| -> bool {
+                    v.iter().rev().take(20).any(|l| {
+                        l.contains("Network disconnect")
+                            || l.contains("ERRCONNECT_CONNECT_CANCELLED")
+                    })
+                };
+                tail(&err) || tail(&out)
+            };
+            if disconnected {
+                tracing::info!(
+                    protocol = "rdp",
+                    %host,
+                    port,
+                    "[FreeRDP] External client reported a disconnect without exiting — \
+                     ending the session and freeing the tab"
+                );
+                if let Some(mut child) = process.borrow_mut().take() {
+                    let _ = child.kill();
+                    std::thread::spawn(move || {
+                        let _ = child.wait();
+                    });
+                }
+                *report.state.borrow_mut() = RdpConnectionState::Disconnected;
+                report.drawing_area.queue_draw();
+                let scb = report.on_state_changed.borrow_mut().take();
+                if let Some(ref cb) = scb {
+                    cb(RdpConnectionState::Disconnected);
+                }
+                *report.on_state_changed.borrow_mut() = scb;
+                return glib::ControlFlow::Break;
+            }
+        }
+
         if let Some(status) = exit_status {
             // Reap the dead child so disconnect() doesn't try to wait on it again.
             *process.borrow_mut() = None;
 
             if EXIT_WATCH_POLLS < polls {
-                // Outside the early-exit window this is a session ending, not a
-                // connection failing. Reap and stand down without reporting.
+                // Outside the early-exit window the connection had been
+                // established, so this is the session ending, not a connection
+                // failing — do not surface it as an error. But the GUI is still
+                // showing the external-connected state, so it must be moved to
+                // Disconnected or the tab hangs on "Starting RDP…" after the
+                // client window closes (issue #366: an SDL/xfreerdp session to
+                // KRdp that ends after the window closes left the tab stuck).
                 tracing::debug!(
                     protocol = "rdp",
                     status = %status,
-                    "[FreeRDP] External client exited after the early-failure window"
+                    "[FreeRDP] External client exited after the early-failure window — session ended"
                 );
+                *report.state.borrow_mut() = RdpConnectionState::Disconnected;
+                report.drawing_area.queue_draw();
+                let scb = report.on_state_changed.borrow_mut().take();
+                if let Some(ref cb) = scb {
+                    cb(RdpConnectionState::Disconnected);
+                }
+                *report.on_state_changed.borrow_mut() = scb;
                 return glib::ControlFlow::Break;
             }
 
@@ -434,11 +496,14 @@ fn arm_external_exit_watchdog(
             return glib::ControlFlow::Break;
         }
 
-        if CERT_WATCH_POLLS <= polls {
-            glib::ControlFlow::Break
-        } else {
-            glib::ControlFlow::Continue
-        }
+        // The exit and disconnect checks above must keep running for the whole
+        // session, so this loop continues as long as the state guard holds it
+        // Connected — it is `disconnect()` / a reported failure / a caught exit
+        // that ends it, not a fixed deadline (issue #366: a long session that
+        // outlived the old 30s cap left the tab stuck when its window closed).
+        // Only the certificate-stall check is time-bounded; once past its window
+        // the loop keeps polling for exit/disconnect at the slower cadence.
+        glib::ControlFlow::Continue
     });
 }
 
@@ -646,6 +711,11 @@ pub(super) struct RdpConnectionContext {
     /// Whether we already attempted a retry without GFX pipeline.
     /// Prevents infinite retry loops. (Issue #218)
     pub gfx_retry_attempted: Rc<RefCell<bool>>,
+    /// Whether we already handed this connection to external FreeRDP pinned to
+    /// TLS for the KRdp/FreeRDP-3.32 HYBRID_EX regression. Fired once so a
+    /// server that rejects the TLS-only path too shows the real auth error with
+    /// the KRdp advice instead of looping. (Issue #366)
+    pub tls_only_fallback_attempted: Rc<RefCell<bool>>,
     /// Reconnect callback — triggers a fresh `connect()` with the (now-modified)
     /// stored config. Shared with the reconnect button.
     pub on_reconnect: Rc<RefCell<Option<Box<dyn Fn() + 'static>>>>,
@@ -1464,6 +1534,11 @@ impl super::EmbeddedRdpWidget {
         // fully torn down yet. (Issue #218)
         let gfx_retry_attempted = std::rc::Rc::new(std::cell::RefCell::new(false));
 
+        // TLS-only external-fallback state: a server that negotiates HYBRID_EX
+        // but then rejects CredSSP (the KRdp / FreeRDP-3.32 regression —
+        // issue #366) is handed once to external FreeRDP pinned to /sec:tls.
+        let tls_only_fallback_attempted = std::rc::Rc::new(std::cell::RefCell::new(false));
+
         // Graphics pipeline shown in the status bar. Starts at the mode our
         // advertised capabilities imply and is corrected by
         // `GraphicsModeActive` if the EGFX channel actually comes up — which
@@ -2220,6 +2295,7 @@ Open Settings → Connection → Media Codecs to re-download it.",
                         fallback_process: fallback_process.clone(),
                         clipboard_monitor: clipboard_monitor.clone(),
                         gfx_retry_attempted: gfx_retry_attempted.clone(),
+                        tls_only_fallback_attempted: tls_only_fallback_attempted.clone(),
                         on_reconnect: on_reconnect.clone(),
                         connection_generation: connection_generation.clone(),
                         generation,
@@ -2322,6 +2398,64 @@ Open Settings → Connection → Media Codecs to re-download it.",
             "[IronRDP] Failure classified"
         );
 
+        // A KRdp 6.6.x / FreeRDP-3.32 server advertises HYBRID_EX it cannot
+        // complete, so the embedded IronRDP client's CredSSP is rejected with
+        // STATUS_LOGON_FAILURE (0xc000006d) even with correct credentials — the
+        // #366 regression (FreeRDP #13567). Remmina reaches the same server by
+        // negotiating plain TLS, which never offers HYBRID_EX. So before
+        // believing the auth failure, hand the session once to external FreeRDP
+        // with the security layer pinned to TLS (`/sec:tls`), which drops
+        // HYBRID_EX exactly as Remmina does. Guarded to fire once: if the
+        // TLS-only path is rejected too, the real auth error (with the KRdp
+        // advice from `parse_ironrdp_error`) surfaces instead of looping.
+        let should_route_tls_only = !*ctx.tls_only_fallback_attempted.borrow()
+            && rustconn_core::rdp_client::warrants_tls_only_fallback(msg);
+
+        if should_route_tls_only {
+            *ctx.tls_only_fallback_attempted.borrow_mut() = true;
+            tracing::info!(
+                protocol = "rdp",
+                error = %msg,
+                "[IronRDP] CredSSP rejected (possible KRdp/FreeRDP-3.32 HYBRID_EX \
+                 regression) — handing off to external FreeRDP pinned to TLS (/sec:tls)"
+            );
+            if let Some(ref mut config) = *ctx.fallback_config.borrow_mut() {
+                // Pin TLS only — this emits `/sec:tls`, which drops HYBRID/HYBRID_EX
+                // from the negotiation. Deliberately NOT `disable_nla`: `/sec:tls`
+                // already excludes NLA, and adding `/sec:nla:off` on top produced
+                // a conflicting negotiation that failed against KRdp.
+                config.security_layer = rustconn_core::models::RdpSecurityLayer::Tls;
+                // Drop an explicit colour depth: KRdp drives its own framebuffer
+                // and answers an explicit `/bpp:32` in the capabilities exchange
+                // with PDU_TYPE_DEACTIVATE_ALL (bisected live against a real KRdp
+                // — issue #366). None lets FreeRDP negotiate bpp with the server,
+                // which is what the working `xfreerdp … /sec:tls` command does.
+                config.color_depth = None;
+                // Open a resizable window instead of `/size:100%`. FitScreen
+                // emits `/size:100%`, which opens a fixed monitor-sized window
+                // the user cannot resize; this external fallback is a standalone
+                // window, so a Custom start size with `/smart-sizing` opens a
+                // smaller resizable window whose content scales to fit (issue
+                // #366 — confirmed against KRdp, where `/dynamic-resolution`
+                // left the content not fitting). smart_sizing and
+                // dynamic_resolution are mutually exclusive (#341).
+                config.external_display_mode = rustconn_core::models::RdpDisplayMode::Custom;
+                config.external_resolution =
+                    Some(rustconn_core::models::Resolution::new(1280, 800));
+                config.dynamic_resolution = false;
+                config.smart_sizing = true;
+            }
+            Self::prepare_freerdp_fallback(ctx);
+            Self::launch_freerdp_fallback(ctx, msg);
+            return;
+        }
+
+        // A CredSSP/NLA rejection with STATUS_LOGON_FAILURE (0xc000006d) is
+        // reported to the user by `parse_ironrdp_error` below; `Authentication`
+        // does not warrant an external fallback (the external client fails the
+        // same CredSSP exchange) so it stops there with actionable advice. See
+        // issue #366 for the KRdp/FreeRDP-3.32 Ext-security server regression
+        // that produces this status with correct credentials.
         if !class.warrants_freerdp_fallback() {
             // The config borrow ends with this statement, before the error
             // callback runs: that callback may reconnect, which rewrites it.
@@ -2574,6 +2708,11 @@ Open Settings → Connection → Media Codecs to re-download it.",
     #[cfg(feature = "rdp-embedded")]
     fn notify_ironrdp_state(ctx: &RdpConnectionContext, state: RdpConnectionState) {
         *ctx.state.borrow_mut() = state;
+        // Repaint the placeholder: without this the Cairo surface keeps showing
+        // the previous state's text — e.g. the external-fallback path set
+        // Connected but the widget stayed on "Starting RDP…", and the later
+        // Disconnected on client exit never showed either (issue #366).
+        ctx.drawing_area.queue_draw();
         let callback = ctx.on_state_changed.borrow_mut().take();
         if let Some(ref callback) = callback {
             callback(state);
@@ -2639,9 +2778,9 @@ Open Settings → Connection → Media Codecs to re-download it.",
         use rustconn_core::rdp_client::AuthFailureKind as Kind;
 
         match kind {
-            Kind::InvalidCredentials => {
-                i18n("Authentication failed: invalid username or password.")
-            }
+            Kind::InvalidCredentials => i18n(
+                "Authentication failed: invalid username or password. If the credentials are correct and the server is a Linux RDP host (KDE KRdp, xrdp), this can instead be the server's NLA regression with FreeRDP 3.32 — update KRdp to 6.7.90 or newer, or set ExtSecurity=0 on the server (FreeRDP issue #13567).",
+            ),
             // STATUS_ACCOUNT_RESTRICTION over NTLM is what an account in AD
             // "Protected Users" gets; Kerberos is the way in.
             Kind::AccountRestriction if !kerberos => i18n(

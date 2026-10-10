@@ -1,4 +1,20 @@
 -------------------------------------------------------------------
+Sun Oct 11 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.9
+
+- Version bump to 0.23.9
+- Fixed: RDP now connects to KRdp / NLA-less Linux hosts that reject the
+  embedded client's CredSSP by handing the session once to external FreeRDP
+  pinned to TLS (/sec:tls), matching Remmina (issue #366)
+- Fixed: an RDP tab no longer hangs on "Starting RDP..." / "running in external
+  window" after the external client closes (issue #366)
+- Fixed: the embedded Wayland FreeRDP fallback now honours the security layer
+  and NLA switches
+- Fixed: the deprecated wlfreerdp client is now tried last in a Wayland session,
+  after XWayland, because it SIGSEGVs against KDE KRdp (issue #366)
+- Dependencies: serde_json 1.0.151->1.0.152, proptest 1.11.0->1.12.0,
+  bit-set 0.8.0->0.11.1, bit-vec 0.8.0->0.10.1, rand_xorshift 0.4.0->0.5.0
+
+-------------------------------------------------------------------
 Sat Oct 10 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.8
 
 - Version bump to 0.23.8
