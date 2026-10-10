@@ -1208,20 +1208,6 @@ impl super::EmbeddedRdpWidget {
                 .with_graphics_mode(rustconn_core::rdp_client::graphics::GraphicsMode::Legacy);
         }
 
-        // When the first attempt's CredSSP exchange was rejected by a server
-        // that may not speak NLA at all (a TLS-only KRdp / NLA-less xrdp —
-        // issue #366), retry once with NLA off so IronRDP negotiates plain TLS
-        // (Enhanced RDP Security, SSL only). This overrides the profile's NLA
-        // setting for the retry attempt only; the real auth error surfaces on
-        // the second pass if the server rejects the plain-TLS attempt too.
-        if config.force_plain_tls {
-            tracing::info!(
-                protocol = "rdp",
-                "Retrying with plain TLS (NLA/CredSSP disabled)"
-            );
-            client_config = client_config.with_nla(false);
-        }
-
         // Create and connect the IronRDP client
         let mut client = RdpClient::new(client_config);
         client
@@ -2350,49 +2336,43 @@ Open Settings → Connection → Media Codecs to re-download it.",
         // negotiation, so IronRDP picks HYBRID and sends CredSSP, which the
         // server rejects with InvalidToken / STATUS_LOGON_FAILURE — identical to
         // a wrong password, so `classify_rdp_failure` calls it `Authentication`
-        // and would stop here. IronRDP can speak plain TLS, so before believing
-        // the auth failure we retry once with NLA off (issue #366). Guarded so a
-        // server that also rejects the plain-TLS attempt surfaces the real error
-        // on the second pass: fire only when NLA was actually on this attempt and
-        // we have not already retried.
+        // and would stop here (issue #366). The embedded IronRDP connector in
+        // the published crates cannot reliably redo the handshake as plain TLS
+        // against such a server — a second connect_begin against a KRdp that is
+        // still tearing down the rejected NLA attempt decodes garbage
+        // (`UnexpectedMessageType`) — so instead of an embedded retry we hand
+        // the session straight to external FreeRDP pinned to TLS without NLA
+        // (`/sec:tls` + `/sec:nla:off`), which is exactly how Remmina reaches
+        // KRdp. Guarded so a server that also rejects the plain-TLS path is not
+        // looped on: fire only when NLA was actually on this attempt and we have
+        // not already taken this route.
         let nla_was_on = ctx
             .fallback_config
             .borrow()
             .as_ref()
             .is_none_or(|cfg| !cfg.force_plain_tls);
-        let should_retry_plain_tls = nla_was_on
+        let should_route_plain_tls = nla_was_on
             && !*ctx.plain_tls_retry_attempted.borrow()
             && rustconn_core::rdp_client::warrants_plain_tls_retry(msg);
 
-        if should_retry_plain_tls {
+        if should_route_plain_tls {
             *ctx.plain_tls_retry_attempted.borrow_mut() = true;
             tracing::info!(
                 protocol = "rdp",
                 error = %msg,
-                "[IronRDP] CredSSP rejected — retrying once with plain TLS (NLA off)"
+                "[IronRDP] CredSSP rejected by a server that may not speak NLA — \
+                 handing off to external FreeRDP with TLS-only (NLA off)"
             );
-            *ctx.ironrdp_tx.borrow_mut() = None;
-            if let Some(mut client) = ctx.client_ref.borrow_mut().take() {
-                client.disconnect();
-            }
             if let Some(ref mut config) = *ctx.fallback_config.borrow_mut() {
+                // Mark it so a later failure on this same connection is not
+                // mistaken for another first-time NLA rejection, and pin the
+                // external client to the plain-TLS path.
                 config.force_plain_tls = true;
+                config.security_layer = rustconn_core::models::RdpSecurityLayer::Tls;
+                config.disable_nla = true;
             }
-
-            // Give a single-session server a moment to tear down the rejected
-            // NLA attempt before reconnecting, as the GFX retry does.
-            let on_reconnect = ctx.on_reconnect.clone();
-            let state = ctx.state.clone();
-            let on_state_changed = ctx.on_state_changed.clone();
-            glib::timeout_add_local_once(std::time::Duration::from_secs(1), move || {
-                *state.borrow_mut() = RdpConnectionState::Connecting;
-                if let Some(ref callback) = *on_state_changed.borrow() {
-                    callback(RdpConnectionState::Connecting);
-                }
-                if let Some(ref callback) = *on_reconnect.borrow() {
-                    callback();
-                }
-            });
+            Self::prepare_freerdp_fallback(ctx);
+            Self::launch_freerdp_fallback(ctx, msg);
             return;
         }
 
