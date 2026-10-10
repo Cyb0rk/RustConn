@@ -96,7 +96,7 @@ pub use event::{
 };
 pub use failure::{
     AuthFailureKind, RdpFailureClass, classify_auth_failure, classify_rdp_failure,
-    is_authentication_failure, is_license_exchange_failure,
+    is_authentication_failure, is_license_exchange_failure, warrants_plain_tls_retry,
 };
 pub use gateway::{
     GatewayAuthMethod, GatewayConfig, GatewayError, GatewayState, resolve_gateway_user,

@@ -247,6 +247,86 @@ fn is_authentication_failure_lower(lower: &str) -> bool {
         || AUTH_MARKERS.iter().any(|m| lower.contains(m))
 }
 
+/// Account-state `NTSTATUS` codes a plain-TLS retry can never fix.
+///
+/// These say *who* the account is, not *how* it signed in: dropping NLA and
+/// trying again would hit the identical refusal, so a retry is pointless and
+/// would only double the delay before the real error is shown. A wrong
+/// password (`0xc000006d`/`0xc000006a`) and a missing user (`0xc0000064`) are
+/// deliberately **absent** — those are the ambiguous shape a TLS-only server
+/// (KDE `KRdp`, xrdp without NLA) returns when it rejects CredSSP it never
+/// offered, and that is exactly the case [`warrants_plain_tls_retry`] exists
+/// to rescue (issue [#366]).
+///
+/// [#366]: https://github.com/totoshko88/RustConn/issues/366
+const PLAIN_TLS_RETRY_BLOCKED_STATUSES: &[&str] = &[
+    "0xc000006e", // STATUS_ACCOUNT_RESTRICTION
+    "0xc000006f", // STATUS_INVALID_LOGON_HOURS
+    "0xc0000070", // STATUS_INVALID_WORKSTATION
+    "0xc0000071", // STATUS_PASSWORD_EXPIRED
+    "0xc0000072", // STATUS_ACCOUNT_DISABLED
+    "0xc000015b", // STATUS_LOGON_TYPE_NOT_GRANTED
+    "0xc0000193", // STATUS_ACCOUNT_EXPIRED
+    "0xc0000224", // STATUS_PASSWORD_MUST_CHANGE
+    "0xc0000234", // STATUS_ACCOUNT_LOCKED_OUT
+];
+
+/// Returns `true` when a CredSSP/NLA rejection is worth retrying once over
+/// plain TLS (Enhanced RDP Security without CredSSP).
+///
+/// A server that offers only TLS and no NLA — KDE Plasma's `KRdp`, an xrdp
+/// built without NLA — still completes the X.224 negotiation, so IronRDP picks
+/// `HYBRID`, sends CredSSP, and the server rejects it with
+/// `error_type: InvalidToken` and `STATUS_LOGON_FAILURE` (`0xc000006d`). That
+/// is byte-for-byte what a genuinely wrong password looks like, so the failure
+/// classifier cannot tell them apart and reports "invalid username or password"
+/// — which is what stranded issue [#366]: Remmina connected with the identical
+/// credentials the moment its security was set to TLS.
+///
+/// IronRDP *can* speak plain TLS (`enable_tls = true, enable_credssp = false`),
+/// so the embedded client is handed one automatic retry with NLA off before the
+/// failure is believed. The retry is deliberately narrow:
+///
+/// * it fires **only** for the `InvalidToken` CredSSP shape (a `credssp` message
+///   carrying `invalidtoken`, or the raw `0xc000006d`/`0xc000006a`/`0xc0000064`
+///   logon statuses), never for the account-state codes in
+///   [`PLAIN_TLS_RETRY_BLOCKED_STATUSES`], which TLS cannot fix;
+/// * the caller fires it **once** and only when NLA was actually on, so a server
+///   that rejects the plain-TLS attempt too surfaces the real auth error on the
+///   second pass instead of looping.
+///
+/// Pure and unit-tested here for the same reason the rest of this module is: the
+/// GUI must not grow another `msg.contains(..)` chain that silently rots when an
+/// upstream error string changes (issues [#199], [#234], [#235]).
+///
+/// [#366]: https://github.com/totoshko88/RustConn/issues/366
+/// [#199]: https://github.com/totoshko88/RustConn/issues/199
+/// [#234]: https://github.com/totoshko88/RustConn/issues/234
+/// [#235]: https://github.com/totoshko88/RustConn/issues/235
+#[must_use]
+pub fn warrants_plain_tls_retry(msg: &str) -> bool {
+    let lower = msg.to_ascii_lowercase();
+
+    // An account-state refusal is unambiguous and TLS cannot change it.
+    if PLAIN_TLS_RETRY_BLOCKED_STATUSES
+        .iter()
+        .any(|c| lower.contains(c))
+    {
+        return false;
+    }
+
+    // The CredSSP `InvalidToken` shape: either the sspi error type is named, or
+    // the server returned one of the "wrong credential" logon statuses that a
+    // non-NLA server also uses to turn CredSSP away.
+    let is_invalid_token = lower.contains("credssp")
+        && (lower.contains("invalidtoken") || lower.contains("invalid_token"));
+    let is_logon_reject = lower.contains("0xc000006d") // STATUS_LOGON_FAILURE
+        || lower.contains("0xc000006a") // STATUS_WRONG_PASSWORD
+        || lower.contains("0xc0000064"); // STATUS_NO_SUCH_USER
+
+    is_invalid_token || is_logon_reject
+}
+
 /// What a rejected CredSSP/NLA sign-in was rejected for, as far as the message says.
 ///
 /// Finer than [`RdpFailureClass::Authentication`]: that class decides that no
@@ -461,6 +541,67 @@ mod tests {
         let class = classify_rdp_failure(CREDSSP_LOGON_FAILURE);
         assert_eq!(class, RdpFailureClass::Authentication);
         assert!(!class.warrants_freerdp_fallback());
+    }
+
+    #[test]
+    fn tls_only_server_rejection_warrants_a_plain_tls_retry() {
+        // The verbatim shape issue #366 produces: KRdp (TLS-only) rejects the
+        // CredSSP IronRDP sent because it negotiated HYBRID.
+        assert!(warrants_plain_tls_retry(CREDSSP_LOGON_FAILURE));
+        assert!(warrants_plain_tls_retry(
+            "CredSSP [kind: Credssp(Error { error_type: InvalidToken, description: \
+             \"CredSSP server returned an error status\", nstatus: Some(NStatusCode(0xc000006d)) })]"
+        ));
+        // The raw logon statuses a non-NLA server also uses, with or without the
+        // CredSSP wrapper, and case-insensitively.
+        for msg in [
+            "nstatus: Some(NStatusCode(0xC000006D))",
+            "STATUS_WRONG_PASSWORD 0xc000006a",
+            "0xc0000064 no such user",
+        ] {
+            assert!(warrants_plain_tls_retry(msg), "message: {msg}");
+        }
+    }
+
+    #[test]
+    fn account_state_refusals_do_not_warrant_a_plain_tls_retry() {
+        // These say who the account is, not how it authenticated: dropping NLA
+        // cannot change them, so the retry must not fire and waste a round-trip.
+        for code in [
+            "0xc000006e", // ACCOUNT_RESTRICTION
+            "0xc000006f", // INVALID_LOGON_HOURS
+            "0xc0000070", // INVALID_WORKSTATION
+            "0xc0000071", // PASSWORD_EXPIRED
+            "0xc0000072", // ACCOUNT_DISABLED
+            "0xc000015b", // LOGON_TYPE_NOT_GRANTED
+            "0xc0000193", // ACCOUNT_EXPIRED
+            "0xc0000224", // PASSWORD_MUST_CHANGE
+            "0xc0000234", // ACCOUNT_LOCKED_OUT
+        ] {
+            let msg = format!(
+                "CredSSP [kind: Credssp(Error {{ error_type: InvalidToken, \
+                 nstatus: Some(NStatusCode({code})) }})]"
+            );
+            assert!(
+                !warrants_plain_tls_retry(&msg),
+                "account-state code wrongly retried: {code}"
+            );
+        }
+    }
+
+    #[test]
+    fn non_credssp_failures_do_not_warrant_a_plain_tls_retry() {
+        // A missing KDC, a TLS failure, or a transport error has nothing to do
+        // with NLA-vs-TLS and must not trigger the retry.
+        for msg in [
+            ISSUE_235,
+            ISSUE_351_NO_KDC_GUI,
+            "TLS handshake failed: invalid peer certificate",
+            "Failed to connect to host:3389: connection refused",
+            "Account restriction nstatus: Some(NStatusCode(0xc000006e))",
+        ] {
+            assert!(!warrants_plain_tls_retry(msg), "message: {msg}");
+        }
     }
 
     #[test]

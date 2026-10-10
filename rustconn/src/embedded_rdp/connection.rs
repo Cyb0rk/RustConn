@@ -646,6 +646,10 @@ pub(super) struct RdpConnectionContext {
     /// Whether we already attempted a retry without GFX pipeline.
     /// Prevents infinite retry loops. (Issue #218)
     pub gfx_retry_attempted: Rc<RefCell<bool>>,
+    /// Whether we already attempted a retry over plain TLS (NLA/CredSSP off).
+    /// Prevents a loop when a server rejects the plain-TLS attempt too, so the
+    /// real authentication error surfaces on the second pass. (Issue #366)
+    pub plain_tls_retry_attempted: Rc<RefCell<bool>>,
     /// Reconnect callback — triggers a fresh `connect()` with the (now-modified)
     /// stored config. Shared with the reconnect button.
     pub on_reconnect: Rc<RefCell<Option<Box<dyn Fn() + 'static>>>>,
@@ -1204,6 +1208,20 @@ impl super::EmbeddedRdpWidget {
                 .with_graphics_mode(rustconn_core::rdp_client::graphics::GraphicsMode::Legacy);
         }
 
+        // When the first attempt's CredSSP exchange was rejected by a server
+        // that may not speak NLA at all (a TLS-only KRdp / NLA-less xrdp —
+        // issue #366), retry once with NLA off so IronRDP negotiates plain TLS
+        // (Enhanced RDP Security, SSL only). This overrides the profile's NLA
+        // setting for the retry attempt only; the real auth error surfaces on
+        // the second pass if the server rejects the plain-TLS attempt too.
+        if config.force_plain_tls {
+            tracing::info!(
+                protocol = "rdp",
+                "Retrying with plain TLS (NLA/CredSSP disabled)"
+            );
+            client_config = client_config.with_nla(false);
+        }
+
         // Create and connect the IronRDP client
         let mut client = RdpClient::new(client_config);
         client
@@ -1463,6 +1481,11 @@ impl super::EmbeddedRdpWidget {
         // servers where FreeRDP fails with NLA because IronRDP's session hasn't
         // fully torn down yet. (Issue #218)
         let gfx_retry_attempted = std::rc::Rc::new(std::cell::RefCell::new(false));
+
+        // Plain-TLS retry state: a server that negotiates HYBRID but then
+        // rejects CredSSP (a TLS-only KRdp / NLA-less xrdp — issue #366) is
+        // retried once with NLA off before the auth failure is believed.
+        let plain_tls_retry_attempted = std::rc::Rc::new(std::cell::RefCell::new(false));
 
         // Graphics pipeline shown in the status bar. Starts at the mode our
         // advertised capabilities imply and is corrected by
@@ -2220,6 +2243,7 @@ Open Settings → Connection → Media Codecs to re-download it.",
                         fallback_process: fallback_process.clone(),
                         clipboard_monitor: clipboard_monitor.clone(),
                         gfx_retry_attempted: gfx_retry_attempted.clone(),
+                        plain_tls_retry_attempted: plain_tls_retry_attempted.clone(),
                         on_reconnect: on_reconnect.clone(),
                         connection_generation: connection_generation.clone(),
                         generation,
@@ -2321,6 +2345,56 @@ Open Settings → Connection → Media Codecs to re-download it.",
             failure_class = ?class,
             "[IronRDP] Failure classified"
         );
+
+        // A TLS-only server (KDE KRdp, NLA-less xrdp) completes the X.224
+        // negotiation, so IronRDP picks HYBRID and sends CredSSP, which the
+        // server rejects with InvalidToken / STATUS_LOGON_FAILURE — identical to
+        // a wrong password, so `classify_rdp_failure` calls it `Authentication`
+        // and would stop here. IronRDP can speak plain TLS, so before believing
+        // the auth failure we retry once with NLA off (issue #366). Guarded so a
+        // server that also rejects the plain-TLS attempt surfaces the real error
+        // on the second pass: fire only when NLA was actually on this attempt and
+        // we have not already retried.
+        let nla_was_on = ctx
+            .fallback_config
+            .borrow()
+            .as_ref()
+            .is_none_or(|cfg| !cfg.force_plain_tls);
+        let should_retry_plain_tls = nla_was_on
+            && !*ctx.plain_tls_retry_attempted.borrow()
+            && rustconn_core::rdp_client::warrants_plain_tls_retry(msg);
+
+        if should_retry_plain_tls {
+            *ctx.plain_tls_retry_attempted.borrow_mut() = true;
+            tracing::info!(
+                protocol = "rdp",
+                error = %msg,
+                "[IronRDP] CredSSP rejected — retrying once with plain TLS (NLA off)"
+            );
+            *ctx.ironrdp_tx.borrow_mut() = None;
+            if let Some(mut client) = ctx.client_ref.borrow_mut().take() {
+                client.disconnect();
+            }
+            if let Some(ref mut config) = *ctx.fallback_config.borrow_mut() {
+                config.force_plain_tls = true;
+            }
+
+            // Give a single-session server a moment to tear down the rejected
+            // NLA attempt before reconnecting, as the GFX retry does.
+            let on_reconnect = ctx.on_reconnect.clone();
+            let state = ctx.state.clone();
+            let on_state_changed = ctx.on_state_changed.clone();
+            glib::timeout_add_local_once(std::time::Duration::from_secs(1), move || {
+                *state.borrow_mut() = RdpConnectionState::Connecting;
+                if let Some(ref callback) = *on_state_changed.borrow() {
+                    callback(RdpConnectionState::Connecting);
+                }
+                if let Some(ref callback) = *on_reconnect.borrow() {
+                    callback();
+                }
+            });
+            return;
+        }
 
         if !class.warrants_freerdp_fallback() {
             // The config borrow ends with this statement, before the error
@@ -3224,6 +3298,9 @@ Open Settings → Connection → Media Codecs to re-download it.",
             // chance on user-initiated reconnect. If GFX fails again, the
             // automatic retry will re-enable Legacy mode. (Issue #218)
             config.force_legacy_graphics = false;
+            // Likewise reset the plain-TLS retry so a user-initiated reconnect
+            // negotiates with the profile's NLA setting again. (Issue #366)
+            config.force_plain_tls = false;
             self.connect(&config)
         } else {
             Err(EmbeddedRdpError::Connection(

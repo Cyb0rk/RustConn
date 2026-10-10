@@ -5,6 +5,11 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.9] - Unreleased
+
+### Fixed
+- **Embedded RDP now connects to TLS-only servers (KDE KRdp, NLA-less xrdp) instead of reporting a false "invalid username or password" (#366)** — a server that offers TLS but no Network Level Authentication still completes the X.224 negotiation, so the embedded IronRDP client picks `HYBRID`, sends CredSSP, and the server rejects it with `InvalidToken` / `STATUS_LOGON_FAILURE` (`0xc000006d`). That is byte-for-byte identical to a genuinely wrong password, so the failure classifier called it an authentication error and stopped — stranding users whose credentials were correct (reproduced in #366, where Remmina connected with the very same credentials the moment its security was set to TLS). IronRDP can speak plain TLS (`enable_tls = true, enable_credssp = false`), so the embedded client now performs **one automatic retry with NLA off** before the auth failure is believed. The retry is deliberately narrow: it fires only for the ambiguous `InvalidToken` / logon-failure shape (never for unambiguous account-state statuses — expired, locked, disabled, no-such-user — which plain TLS cannot fix), only when NLA was actually on for the attempt, and only once, so a server that rejects the plain-TLS attempt too surfaces the real authentication error on the second pass instead of looping. The retry decision lives as a pure, unit-tested `warrants_plain_tls_retry` in `rustconn-core::rdp_client::failure`, mirroring the existing GFX→Legacy retry wiring (`force_plain_tls` flag + reconnect), so it does not reintroduce a `msg.contains(..)` chain in the GUI. A user-initiated reconnect resets the flag and negotiates with the profile's NLA setting again. (`rustconn-core/src/rdp_client/failure.rs`, `rustconn/src/embedded_rdp/{types,connection}.rs`)
+
 ## [0.23.8] - 2026-10-10
 
 ### Fixed
