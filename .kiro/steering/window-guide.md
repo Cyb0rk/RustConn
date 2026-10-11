@@ -16,7 +16,13 @@ You are editing a file in `rustconn/src/window/`.
 
 ## Sidebar
 
-- Statuses: yellow = connecting, green = connected, red = failed, gray = disconnected
+- Row state is drawn with **color-independent shapes**, not colour alone (R6.1-6.5,
+  `sidebar/view.rs`): a check-mark icon = connected, a window emblem = external
+  viewer, a filled square = split membership. The three silhouettes stay
+  distinguishable in grayscale / high-contrast; colour, where present, only
+  reinforces a shape that already carries the meaning. Do NOT "add" a plain
+  colour-only status indicator — that is a HIG a11y regression, and an audit that
+  reads this line as "status is just a colour dot" is reading stale guidance.
 - Reconnect → reuse existing tab (don't create a new one)
 - Context menu → GNOME HIG order: primary action at top, destructive at bottom
 

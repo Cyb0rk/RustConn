@@ -3,7 +3,7 @@
 //! This module provides the `SnippetManager` which handles creating, reading,
 //! updating, and deleting command snippets with persistence through `ConfigManager`.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use uuid::Uuid;
 
@@ -335,17 +335,13 @@ impl SnippetManager {
     /// Panics if the internal regex pattern is invalid (should never happen).
     #[must_use]
     pub fn extract_variables(command: &str) -> Vec<String> {
-        let mut variables: HashSet<String> = HashSet::new();
-
-        for cap in VARIABLE_REGEX.captures_iter(command) {
-            if let Some(var_name) = cap.get(1) {
-                variables.insert(var_name.as_str().to_string());
-            }
-        }
-
-        let mut result: Vec<String> = variables.into_iter().collect();
-        result.sort(); // Sort for consistent ordering
-        result
+        // Delegate to the single canonical extractor so snippet execution, the
+        // GUI variable-prompt form and the CLI all agree on which names a
+        // template yields and in what order (first-seen / template order). This
+        // used to dedup via a HashSet and sort alphabetically; the sort was
+        // never relied on (the property tests compare as sets), and template
+        // order reads more naturally in the prompt form.
+        crate::variables::extract_variable_names(command)
     }
 
     /// Creates `SnippetVariable` objects from extracted variable names

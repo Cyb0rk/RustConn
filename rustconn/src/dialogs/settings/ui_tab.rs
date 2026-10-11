@@ -261,7 +261,7 @@ pub fn create_ui_page() -> (
     let reveal_toolbar_on_hover = adw::SwitchRow::builder()
         .title(i18n("Open session toolbar on hover"))
         .subtitle(i18n(
-            "Reveal the floating RDP/VNC toolbar when the pointer touches its handle. When off, the handle must be clicked",
+            "Reveal the floating viewer toolbar (RDP, VNC and the embedded browser) from its handle on the top edge of the pane when the pointer touches it. When off, the handle must be clicked. Does not affect terminal sessions, which have no floating toolbar",
         ))
         .build();
     appearance_group.add(&reveal_toolbar_on_hover);
@@ -377,7 +377,7 @@ pub fn create_ui_page() -> (
     let hide_split_pane_hover_controls = adw::SwitchRow::builder()
         .title(i18n("Hide hover controls in split panes"))
         .subtitle(i18n(
-            "Hide the top-right reveal arrow with close/detach buttons on split-view panes",
+            "Hide the reveal arrow with the close/detach/reconnect buttons at the middle of the right edge of every split-view pane (all protocols). Close and detach stay reachable from the pane menu (Shift+F10) and the sidebar",
         ))
         .build();
     window_group.add(&hide_split_pane_hover_controls);

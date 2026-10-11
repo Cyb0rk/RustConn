@@ -208,43 +208,15 @@ pub use rustconn_core::variables::VARIABLE_REGEX as VARIABLE_PATTERN;
 ///
 /// # Returns
 ///
-/// A vector of unique variable names found in the template.
+/// A vector of unique variable names in first-seen (template) order.
+///
+/// Thin re-export of [`rustconn_core::variables::extract_variable_names`] — the
+/// single canonical extractor the whole workspace shares, so this form and
+/// `SnippetManager::extract_variables` can never drift in which names they find
+/// or in what order.
 #[must_use]
 pub fn extract_variables(template: &str) -> Vec<String> {
-    let mut found: Vec<String> = Vec::new();
-
-    for cap in VARIABLE_PATTERN.captures_iter(template) {
-        if let Some(var_match) = cap.get(1) {
-            let var_name = var_match.as_str().to_string();
-            if !found.contains(&var_name) {
-                found.push(var_name);
-            }
-        }
-    }
-
-    found
-}
-
-/// Truncates a string to a maximum length, adding ellipsis if needed
-///
-/// # Arguments
-///
-/// * `s` - The string to truncate
-/// * `max_len` - Maximum length (including ellipsis)
-///
-/// # Returns
-///
-/// The truncated string with "…" appended if it was shortened.
-#[must_use]
-pub fn truncate_string(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else if max_len <= 1 {
-        "…".to_string()
-    } else {
-        let truncated: String = s.chars().take(max_len - 1).collect();
-        format!("{truncated}…")
-    }
+    rustconn_core::variables::extract_variable_names(template)
 }
 
 /// Formats a duration in a human-readable way
@@ -840,14 +812,6 @@ mod tests {
         let template = "No variables here";
         let vars = extract_variables(template);
         assert!(vars.is_empty());
-    }
-
-    #[test]
-    fn test_truncate_string() {
-        assert_eq!(truncate_string("hello", 10), "hello");
-        assert_eq!(truncate_string("hello world", 8), "hello w…");
-        assert_eq!(truncate_string("hi", 2), "hi");
-        assert_eq!(truncate_string("hi", 1), "…");
     }
 
     #[test]

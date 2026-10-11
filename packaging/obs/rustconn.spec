@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.9
+Version:        0.23.10
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,15 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Sun Oct 11 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.10-0
+- Version bump to 0.23.10
+- Added "Move to New Window" for a split-view pane, as a corner button and a context-menu item (Shift+F10)
+- Fixed the split-pane controls sitting on top of the RDP/VNC session toolbar by moving them to the vertical centre of the pane's right edge
+- Fixed snippet variable prompts to list fields in template order via one canonical extractor
+- Fixed the split-pane reveal arrow to meet the HIG 44x44 touch-target minimum
+- Fixed a session recording that fails to start to show an error toast instead of only logging
+- Fixed embedded RDP/VNC status to carry a shape (glyph), not colour alone, for accessibility
+- Changed the reveal handles to rest a little more transparently and clarified the two floating-control settings
 * Sun Oct 11 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.9-0
 - Version bump to 0.23.9
 - Fixed RDP connecting to KRdp / NLA-less Linux hosts by handing the session once to external FreeRDP pinned to TLS (/sec:tls), matching Remmina (issue #366)

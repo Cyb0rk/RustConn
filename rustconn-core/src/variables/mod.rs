@@ -151,6 +151,33 @@ pub fn variable_kdbx_lookup_key(var: &Variable) -> String {
     variable_secret_key(&var.name)
 }
 
+/// Extracts the unique `${name}` variable names from a template.
+///
+/// Returns each distinct name once, in **first-seen (template) order** — the
+/// order the user wrote them in. This is the single canonical extractor for the
+/// whole workspace: [`crate::snippet::SnippetManager::extract_variables`] and the
+/// GUI's `utils::extract_variables` both delegate here, so a template always
+/// yields the same ordered list regardless of which caller asked. Template order
+/// is deliberate: a variable-prompt form shows its fields in the order they
+/// appear in the command, which reads more naturally than an alphabetical sort.
+///
+/// # Returns
+///
+/// A vector of unique variable names in first-seen order (empty for plain text).
+#[must_use]
+pub fn extract_variable_names(template: &str) -> Vec<String> {
+    let mut found: Vec<String> = Vec::new();
+    for cap in VARIABLE_REGEX.captures_iter(template) {
+        if let Some(var_match) = cap.get(1) {
+            let name = var_match.as_str().to_string();
+            if !found.contains(&name) {
+                found.push(name);
+            }
+        }
+    }
+    found
+}
+
 /// Variable scope for resolution
 ///
 /// Variables are resolved in order from most specific to least specific:

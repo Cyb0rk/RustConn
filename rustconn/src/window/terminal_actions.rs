@@ -333,6 +333,7 @@ impl MainWindow {
         let notebook_clone = terminal_notebook.clone();
         let sidebar_clone = sidebar.clone();
         let state_clone = state.clone();
+        let window_weak = window.downgrade();
         start_recording_action.connect_activate(move |_, _| {
             if let Some(item) = sidebar_clone.get_selected_item() {
                 let id_str = item.id();
@@ -371,11 +372,27 @@ impl MainWindow {
                             });
                             (name, params)
                         };
-                        notebook_clone.start_recording(
+                        // start_recording returns false when the recordings
+                        // directory cannot be resolved or is not writable. That
+                        // path only logged a tracing::error! and the ●REC
+                        // indicator never appeared, leaving the user with no
+                        // feedback that their action failed — surface it as an
+                        // error toast (never swallow a failed user action).
+                        let started = notebook_clone.start_recording(
                             session.id,
                             &conn_name,
                             ssh_params,
                         );
+                        if !started && let Some(win) = window_weak.upgrade() {
+                            crate::toast::show_toast_on_window(
+                                &win,
+                                &crate::i18n::i18n_f(
+                                    "Could not start recording for '{}' — the recordings folder is missing or not writable",
+                                    &[&conn_name],
+                                ),
+                                crate::toast::ToastType::Error,
+                            );
+                        }
                     }
                 }
             }

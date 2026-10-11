@@ -1,3 +1,25 @@
+rustconn (0.23.10-1) unstable; urgency=medium
+
+  * Version bump to 0.23.10
+  * Added: "Move to New Window" for a split-view pane, as a corner button and a
+    context-menu item (Shift+F10), composing the existing Remove-from-Split and
+    detach-session paths
+  * Fixed: the split-pane controls no longer sit on top of the RDP/VNC session
+    toolbar - they moved to the vertical centre of the pane's right edge, and
+    the revealed buttons stack vertically
+  * Fixed: snippet variable prompts now list fields in template order via one
+    canonical extractor shared by the GUI and the snippet manager
+  * Fixed: the split-pane reveal arrow now meets the HIG 44x44 touch-target
+    minimum
+  * Fixed: a session recording that fails to start now shows an error toast
+    instead of only logging
+  * Fixed: embedded RDP/VNC status now carries a shape (glyph), not colour
+    alone, for grayscale and colour-vision accessibility
+  * Changed: the split-pane and session-toolbar reveal handles rest a little
+    more transparently; the two floating-control settings have clearer wording
+
+ -- Anton Isaiev <totoshko88@gmail.com>  Sun, 11 Oct 2026 22:50:00 +0300
+
 rustconn (0.23.9-1) unstable; urgency=medium
 
   * Version bump to 0.23.9

@@ -194,26 +194,6 @@ where
     })
 }
 
-/// Runs an async operation with a timeout.
-///
-/// # Arguments
-/// * `future` - The async task to run
-/// * `timeout` - Maximum time to wait
-///
-/// # Returns
-/// * `Ok(Some(T))` - The result if completed in time
-/// * `Ok(None)` - If the operation timed out
-/// * `Err(String)` - If the runtime couldn't be created
-pub fn block_on_async_with_timeout<F, T>(
-    future: F,
-    timeout: std::time::Duration,
-) -> Result<Option<T>, String>
-where
-    F: Future<Output = T>,
-{
-    block_on_async(async move { tokio::time::timeout(timeout, future).await.ok() })
-}
-
 /// Checks if we're on the GTK main thread.
 ///
 /// Useful for assertions in code that must run on the main thread.

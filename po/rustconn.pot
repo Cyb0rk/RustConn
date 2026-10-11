@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: rustconn 0.23.9\n"
+"Project-Id-Version: rustconn 0.23.10\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-10 23:40+0300\n"
+"POT-Creation-Date: 2026-10-11 22:15+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -47,7 +47,7 @@ msgstr ""
 #: rustconn/src/dialogs/variable_setup.rs:85
 #: rustconn/src/dialogs/workspace.rs:237 rustconn/src/dialogs/workspace.rs:291
 #: rustconn/src/embedded_rdp/autotype.rs:166
-#: rustconn/src/split_view/adapter.rs:1131
+#: rustconn/src/split_view/adapter.rs:1196
 #: rustconn/src/terminal/safe_paste.rs:166
 #: rustconn/src/terminal/tab_menu.rs:354 rustconn/src/terminal/tab_menu.rs:459
 #: rustconn/src/terminal/tab_menu.rs:688 rustconn/src/vault_ops.rs:315
@@ -247,7 +247,7 @@ msgid "Enter Password Manually"
 msgstr ""
 
 #: rustconn/src/dialogs/backend_missing.rs:56
-#: rustconn/src/embedded_rdp/connection.rs:2169 rustconn/src/vault_ops.rs:66
+#: rustconn/src/embedded_rdp/connection.rs:2240 rustconn/src/vault_ops.rs:66
 #: rustconn/src/vault_ops.rs:316 rustconn/src/window/mod.rs:1047
 msgid "Open Settings"
 msgstr ""
@@ -4437,7 +4437,7 @@ msgstr ""
 #: rustconn/src/dialogs/settings/cloud_sync_tab.rs:238
 #: rustconn/src/dialogs/tunnel_builder/mod.rs:618
 #: rustconn/src/dialogs/widgets.rs:608 rustconn/src/sidebar_ui.rs:465
-#: rustconn/src/split_view/adapter.rs:1132
+#: rustconn/src/split_view/adapter.rs:1197
 #: rustconn/src/terminal/tab_menu.rs:689 rustconn/src/vault_ops.rs:65
 #: rustconn/src/window/mod.rs:4337
 msgid "Close"
@@ -5518,7 +5518,7 @@ msgid "Log Content"
 msgstr ""
 
 #: rustconn/src/dialogs/log_viewer.rs:354
-#: rustconn/src/split_view/adapter.rs:1821
+#: rustconn/src/split_view/adapter.rs:1900
 msgid "Loading…"
 msgstr ""
 
@@ -7429,7 +7429,7 @@ msgid "Checking… touch your YubiKey when it blinks"
 msgstr ""
 
 #: rustconn/src/dialogs/settings/secrets_tab/mod.rs:2777
-#: rustconn/src/embedded_rdp/ui.rs:170 rustconn/src/embedded_vnc/ui.rs:342
+#: rustconn/src/embedded_rdp/ui.rs:176 rustconn/src/embedded_vnc/ui.rs:342
 #: rustconn/src/sidebar/view.rs:776
 msgid "Connected"
 msgstr ""
@@ -7820,7 +7820,7 @@ msgstr ""
 #: rustconn/src/dialogs/settings/ui_tab.rs:488
 #: rustconn/src/dialogs/settings/ui_tab.rs:784
 #: rustconn/src/dialogs/shortcuts.rs:168
-#: rustconn/src/split_view/adapter.rs:1751 rustconn/src/tray.rs:258
+#: rustconn/src/split_view/adapter.rs:1830 rustconn/src/tray.rs:258
 #: rustconn/src/tray.rs:648 rustconn/src/window/ui.rs:266
 msgid "Local Shell"
 msgstr ""
@@ -7986,8 +7986,10 @@ msgstr ""
 
 #: rustconn/src/dialogs/settings/ui_tab.rs:264
 msgid ""
-"Reveal the floating RDP/VNC toolbar when the pointer touches its handle. "
-"When off, the handle must be clicked"
+"Reveal the floating viewer toolbar (RDP, VNC and the embedded browser) from "
+"its handle on the top edge of the pane when the pointer touches it. When "
+"off, the handle must be clicked. Does not affect terminal sessions, which "
+"have no floating toolbar"
 msgstr ""
 
 #: rustconn/src/dialogs/settings/ui_tab.rs:284
@@ -8059,7 +8061,9 @@ msgstr ""
 
 #: rustconn/src/dialogs/settings/ui_tab.rs:380
 msgid ""
-"Hide the top-right reveal arrow with close/detach buttons on split-view panes"
+"Hide the reveal arrow with the close/detach/reconnect buttons at the middle "
+"of the right edge of every split-view pane (all protocols). Close and detach "
+"stay reachable from the pane menu (Shift+F10) and the sidebar"
 msgstr ""
 
 #: rustconn/src/dialogs/settings/ui_tab.rs:390
@@ -8359,15 +8363,15 @@ msgid "Close Pane"
 msgstr ""
 
 #: rustconn/src/dialogs/shortcuts.rs:191 rustconn/src/sidebar_ui.rs:456
-#: rustconn/src/split_view/adapter.rs:1082
-#: rustconn/src/split_view/adapter.rs:1592
-#: rustconn/src/split_view/adapter.rs:1657
+#: rustconn/src/split_view/adapter.rs:1129
+#: rustconn/src/split_view/adapter.rs:1669
+#: rustconn/src/split_view/adapter.rs:1735
 msgid "Remove from Split"
 msgstr ""
 
 #: rustconn/src/dialogs/shortcuts.rs:192
-#: rustconn/src/split_view/adapter.rs:1593
-#: rustconn/src/split_view/adapter.rs:1658
+#: rustconn/src/split_view/adapter.rs:1671
+#: rustconn/src/split_view/adapter.rs:1737
 #: rustconn/src/terminal/tab_menu.rs:1200
 msgid "Remove Split"
 msgstr ""
@@ -9704,17 +9708,17 @@ msgid "No text to type"
 msgstr ""
 
 #: rustconn/src/embedded_rdp/clipboard.rs:84
-#: rustconn/src/embedded_vnc/ui.rs:740
+#: rustconn/src/embedded_vnc/ui.rs:753
 msgid "Copied {} chars"
 msgstr ""
 
 #: rustconn/src/embedded_rdp/clipboard.rs:92
-#: rustconn/src/embedded_vnc/ui.rs:716
+#: rustconn/src/embedded_vnc/ui.rs:729
 msgid "No remote clipboard data"
 msgstr ""
 
 #: rustconn/src/embedded_rdp/clipboard.rs:198
-#: rustconn/src/embedded_vnc/ui.rs:783
+#: rustconn/src/embedded_vnc/ui.rs:800
 msgid "Pasted {} chars"
 msgstr ""
 
@@ -9766,107 +9770,107 @@ msgstr ""
 msgid "RDP connection failed ({}). Run with RUST_LOG=debug for details."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:542
+#: rustconn/src/embedded_rdp/connection.rs:607
 msgid "FreeRDP {} is not supported. Install FreeRDP 3."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:550
+#: rustconn/src/embedded_rdp/connection.rs:615
 msgid "RDP connection failed. Install FreeRDP 3 for external RDP sessions."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:606
+#: rustconn/src/embedded_rdp/connection.rs:671
 msgid ""
 "The embedded client does not support the legacy RDP security layer. Using "
 "FreeRDP instead."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:609
+#: rustconn/src/embedded_rdp/connection.rs:674
 msgid ""
 "The embedded client does not support TLS without NLA. Using FreeRDP instead."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:612
+#: rustconn/src/embedded_rdp/connection.rs:677
 msgid ""
 "The embedded client does not support TLS security levels below 2. Using "
 "FreeRDP instead."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:615
+#: rustconn/src/embedded_rdp/connection.rs:680
 msgid "The embedded client does not support RemoteApp. Using FreeRDP instead."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:618
+#: rustconn/src/embedded_rdp/connection.rs:683
 msgid ""
 "The embedded client does not support playing audio on the remote computer. "
 "Using FreeRDP instead."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:731
-#: rustconn/src/embedded_rdp/connection.rs:2447
+#: rustconn/src/embedded_rdp/connection.rs:801
+#: rustconn/src/embedded_rdp/connection.rs:2571
 msgid "Connection cancelled because the server requires legacy RDP security."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:835
+#: rustconn/src/embedded_rdp/connection.rs:905
 msgid ""
 "Custom FreeRDP arguments are ignored by the embedded "
 "client.                          Set the RDP client mode to External to "
 "apply them."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2146
+#: rustconn/src/embedded_rdp/connection.rs:2217
 msgid ""
 "H.264 is off — the installed OpenH264 isn't a Cisco build. Open Settings → "
 "Connection → Media Codecs to download it."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2150
+#: rustconn/src/embedded_rdp/connection.rs:2221
 msgid ""
 "H.264 is off — no OpenH264 codec is installed. Open Settings → Connection → "
 "Media Codecs to download it."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2154
+#: rustconn/src/embedded_rdp/connection.rs:2225
 msgid ""
 "H.264 is off — the OpenH264 codec could not be loaded. Open Settings → "
 "Connection → Media Codecs to re-download it."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2484
+#: rustconn/src/embedded_rdp/connection.rs:2608
 msgid "Could not prepare the external RDP compatibility client."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2495
+#: rustconn/src/embedded_rdp/connection.rs:2619
 msgid "Using external RDP client (server requires RDS licensing)"
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2497
+#: rustconn/src/embedded_rdp/connection.rs:2621
 msgid "Using external RDP client (server incompatible)"
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2515
-#: rustconn/src/embedded_rdp/connection.rs:3092
+#: rustconn/src/embedded_rdp/connection.rs:2639
+#: rustconn/src/embedded_rdp/connection.rs:3221
 msgid "The external RDP client could not be started."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2553
+#: rustconn/src/embedded_rdp/connection.rs:2677
 msgid ""
 "Could not start the external RDP client. Install FreeRDP 3 and try again."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2626
+#: rustconn/src/embedded_rdp/connection.rs:2755
 msgid "TLS connection failed. The server may not support this security level."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2630
+#: rustconn/src/embedded_rdp/connection.rs:2759
 msgid "Connection refused. Check host and port."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2633
+#: rustconn/src/embedded_rdp/connection.rs:2762
 #: rustconn/src/embedded_web/mod.rs:640
 msgid "Connection timed out. Check that the host is reachable."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2653
+#: rustconn/src/embedded_rdp/connection.rs:2782
 msgid ""
 "Authentication failed: invalid username or password. If the credentials are "
 "correct and the server is a Linux RDP host (KDE KRdp, xrdp), this can "
@@ -9874,96 +9878,96 @@ msgid ""
 "6.7.90 or newer, or set ExtSecurity=0 on the server (FreeRDP issue #13567)."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2658
+#: rustconn/src/embedded_rdp/connection.rs:2787
 msgid ""
 "Account restrictions refused this sign-in. Protected Users members cannot "
 "use NTLM: turn on Kerberos Authentication in the connection's RDP settings."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2661
+#: rustconn/src/embedded_rdp/connection.rs:2790
 msgid "Authentication failed: account restrictions prevent this login."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2664
+#: rustconn/src/embedded_rdp/connection.rs:2793
 msgid "Authentication failed: password must be changed before first login."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2666
+#: rustconn/src/embedded_rdp/connection.rs:2795
 msgid "Authentication failed: account is disabled."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2667
+#: rustconn/src/embedded_rdp/connection.rs:2796
 msgid "Authentication failed: account is locked out."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2668
+#: rustconn/src/embedded_rdp/connection.rs:2797
 msgid "Authentication failed: password has expired."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2669
+#: rustconn/src/embedded_rdp/connection.rs:2798
 msgid "Authentication failed: account has expired."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2671
+#: rustconn/src/embedded_rdp/connection.rs:2800
 msgid "Authentication failed: account is disabled, locked out or expired."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2674
+#: rustconn/src/embedded_rdp/connection.rs:2803
 msgid "Authentication failed: user is not allowed to log on to this computer."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2678
+#: rustconn/src/embedded_rdp/connection.rs:2807
 msgid ""
 "No Kerberos KDC was found for the {} realm. Enter a KDC Address in the "
 "connection's RDP settings or add the realm to /etc/krb5.conf."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2682
-#: rustconn/src/embedded_rdp/connection.rs:2722
+#: rustconn/src/embedded_rdp/connection.rs:2811
+#: rustconn/src/embedded_rdp/connection.rs:2851
 msgid ""
 "Kerberos needs the DNS domain. Enter it in the Domain field, for example "
 "EXAMPLE.COM."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2686
+#: rustconn/src/embedded_rdp/connection.rs:2815
 msgid ""
 "Could not reach the Kerberos KDC. Enter a domain controller's name or IP "
 "address as the KDC Address in the connection's RDP settings."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2689
+#: rustconn/src/embedded_rdp/connection.rs:2818
 msgid ""
 "Kerberos sign-in failed: this computer's clock differs from the domain's by "
 "more than five minutes. Synchronize the clock and try again."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2692
+#: rustconn/src/embedded_rdp/connection.rs:2821
 msgid ""
 "The domain does not know this server by the name in Host. Connect by the "
 "server's DNS name, as registered in the domain."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2694
+#: rustconn/src/embedded_rdp/connection.rs:2823
 msgid "NLA authentication failed. Check username and password."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2716
+#: rustconn/src/embedded_rdp/connection.rs:2845
 msgid ""
 "Kerberos needs the server's DNS name. Connecting by IP address or through an "
 "SSH tunnel fails."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:2719
+#: rustconn/src/embedded_rdp/connection.rs:2848
 msgid ""
 "Kerberos needs the DNS domain, for example EXAMPLE.COM, not the short domain "
 "name."
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:3119
+#: rustconn/src/embedded_rdp/connection.rs:3248
 msgid "RDP session will open in an external window"
 msgstr ""
 
-#: rustconn/src/embedded_rdp/connection.rs:3148
+#: rustconn/src/embedded_rdp/connection.rs:3277
 msgid "Failed to start FreeRDP: {}"
 msgstr ""
 
@@ -10080,8 +10084,8 @@ msgid "Save files from remote clipboard"
 msgstr ""
 
 #: rustconn/src/embedded_rdp/mod.rs:770 rustconn/src/embedded_vnc/ui.rs:149
-#: rustconn/src/split_view/adapter.rs:1591
-#: rustconn/src/split_view/adapter.rs:1656 rustconn/src/terminal/mod.rs:1402
+#: rustconn/src/split_view/adapter.rs:1668
+#: rustconn/src/split_view/adapter.rs:1734 rustconn/src/terminal/mod.rs:1402
 #: rustconn/src/terminal/session_lifecycle.rs:401
 #: rustconn/src/terminal/tab_menu.rs:1127
 msgid "Reconnect"
@@ -10195,28 +10199,28 @@ msgstr ""
 msgid "No connection"
 msgstr ""
 
-#: rustconn/src/embedded_rdp/ui.rs:154
+#: rustconn/src/embedded_rdp/ui.rs:160
 msgid "Session ended"
 msgstr ""
 
-#: rustconn/src/embedded_rdp/ui.rs:156
+#: rustconn/src/embedded_rdp/ui.rs:162
 msgid "No connection configured"
 msgstr ""
 
-#: rustconn/src/embedded_rdp/ui.rs:166
+#: rustconn/src/embedded_rdp/ui.rs:172
 msgid "Starting RDP…"
 msgstr ""
 
-#: rustconn/src/embedded_rdp/ui.rs:173
+#: rustconn/src/embedded_rdp/ui.rs:180
 msgid "RDP session running in external window"
 msgstr ""
 
-#: rustconn/src/embedded_rdp/ui.rs:178 rustconn/src/session/vnc.rs:342
+#: rustconn/src/embedded_rdp/ui.rs:185 rustconn/src/session/vnc.rs:342
 #: rustconn/src/sidebar/view.rs:787
 msgid "Connection failed"
 msgstr ""
 
-#: rustconn/src/embedded_rdp/ui.rs:191
+#: rustconn/src/embedded_rdp/ui.rs:199
 msgid "Switch to the external window to interact with the session"
 msgstr ""
 
@@ -10225,8 +10229,8 @@ msgstr ""
 msgid "More actions"
 msgstr ""
 
-#: rustconn/src/embedded_toolbar_overflow.rs:306
-#: rustconn/src/embedded_toolbar_overflow.rs:308
+#: rustconn/src/embedded_toolbar_overflow.rs:315
+#: rustconn/src/embedded_toolbar_overflow.rs:317
 msgid "Show session toolbar"
 msgstr ""
 
@@ -10718,7 +10722,10 @@ msgstr ""
 msgid "Open new session"
 msgstr ""
 
-#: rustconn/src/sidebar_ui.rs:461 rustconn/src/terminal/tab_menu.rs:1207
+#: rustconn/src/sidebar_ui.rs:461 rustconn/src/split_view/adapter.rs:1147
+#: rustconn/src/split_view/adapter.rs:1670
+#: rustconn/src/split_view/adapter.rs:1736
+#: rustconn/src/terminal/tab_menu.rs:1207
 msgid "Move to New Window"
 msgstr ""
 
@@ -10894,62 +10901,66 @@ msgstr ""
 msgid "Drag to move this session to another panel or tab"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:989
-#: rustconn/src/split_view/adapter.rs:991
+#: rustconn/src/split_view/adapter.rs:1031
+#: rustconn/src/split_view/adapter.rs:1033
 msgid "Show panel actions"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1075
+#: rustconn/src/split_view/adapter.rs:1122
 msgid "Remove this session from the split and show it in its own tab"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1094
-#: rustconn/src/split_view/adapter.rs:1099
+#: rustconn/src/split_view/adapter.rs:1141
+msgid "Move this session out of the split into its own window"
+msgstr ""
+
+#: rustconn/src/split_view/adapter.rs:1159
+#: rustconn/src/split_view/adapter.rs:1164
 msgid "Close session"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1126
+#: rustconn/src/split_view/adapter.rs:1191
 msgid "Close this pane?"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1128
+#: rustconn/src/split_view/adapter.rs:1193
 msgid "The session in this pane will be disconnected and closed."
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1351
+#: rustconn/src/split_view/adapter.rs:1416
 msgid "Terminal panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1594
-#: rustconn/src/split_view/adapter.rs:1659
+#: rustconn/src/split_view/adapter.rs:1672
+#: rustconn/src/split_view/adapter.rs:1738
 msgid "Close Connection"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1710
+#: rustconn/src/split_view/adapter.rs:1789
 msgid "Empty Panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1711
+#: rustconn/src/split_view/adapter.rs:1790
 msgid "Select an existing tab to display in this panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1721
+#: rustconn/src/split_view/adapter.rs:1800
 msgid "Select Tab…"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1722
+#: rustconn/src/split_view/adapter.rs:1801
 msgid "Choose an open tab to display in this panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1752
+#: rustconn/src/split_view/adapter.rs:1831
 msgid "Open a new local shell in this panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1779
+#: rustconn/src/split_view/adapter.rs:1858
 msgid "Close panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1790
+#: rustconn/src/split_view/adapter.rs:1869
 msgid "Close split view panel"
 msgstr ""
 
@@ -12949,14 +12960,14 @@ msgstr ""
 msgid "Cannot move a folder into one of its own subfolders"
 msgstr ""
 
-#: rustconn/src/window/split_view_actions.rs:462
+#: rustconn/src/window/split_view_actions.rs:463
 msgid ""
 "Tip: press Ctrl+Shift+B or use the Broadcast button to mirror keystrokes "
 "across split panels"
 msgstr ""
 
-#: rustconn/src/window/split_view_actions.rs:504
-#: rustconn/src/window/split_view_actions.rs:725
+#: rustconn/src/window/split_view_actions.rs:505
+#: rustconn/src/window/split_view_actions.rs:726
 msgid ""
 "Split view is not available for external-viewer sessions. Switch this "
 "connection to embedded mode to use split."
@@ -12982,7 +12993,13 @@ msgstr ""
 msgid "User: {}"
 msgstr ""
 
-#: rustconn/src/window/terminal_actions.rs:437
+#: rustconn/src/window/terminal_actions.rs:390
+msgid ""
+"Could not start recording for '{}' — the recordings folder is missing or not "
+"writable"
+msgstr ""
+
+#: rustconn/src/window/terminal_actions.rs:454
 msgid "This viewer runs independently and cannot be closed from RustConn"
 msgstr ""
 

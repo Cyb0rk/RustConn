@@ -301,6 +301,15 @@ impl ToolbarAutoHide {
         // The GNOME HIG minimum tap target, stated here rather than in CSS so
         // there is one number to find. The stylesheet only paints the handle.
         reveal_button.set_size_request(TOUCH_TARGET_PX, TOUCH_TARGET_PX);
+        // Top-CENTRE. The session toolbar reveals as a full-width strip across
+        // the top edge, so its handle belongs at the centre of that edge where
+        // users look for it. This is safe because the split adapter's pane
+        // controls (close / detach / reconnect) no longer share the top edge —
+        // they were moved to the vertical centre of the RIGHT edge (see
+        // `panel_corner_buttons_autohide` in split_view/adapter.rs) precisely so
+        // the top edge is the session toolbar's alone, in both split and
+        // fullscreen. Do NOT move the pane controls back to the top-right: that
+        // re-creates the pile-up on the toolbar's overflow menu.
         reveal_button.set_halign(gtk4::Align::Center);
         reveal_button.set_valign(gtk4::Align::Start);
         reveal_button.set_tooltip_text(Some(&i18n("Show session toolbar")));
