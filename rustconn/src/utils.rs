@@ -225,28 +225,6 @@ pub fn extract_variables(template: &str) -> Vec<String> {
     found
 }
 
-/// Truncates a string to a maximum length, adding ellipsis if needed
-///
-/// # Arguments
-///
-/// * `s` - The string to truncate
-/// * `max_len` - Maximum length (including ellipsis)
-///
-/// # Returns
-///
-/// The truncated string with "…" appended if it was shortened.
-#[must_use]
-pub fn truncate_string(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else if max_len <= 1 {
-        "…".to_string()
-    } else {
-        let truncated: String = s.chars().take(max_len - 1).collect();
-        format!("{truncated}…")
-    }
-}
-
 /// Formats a duration in a human-readable way
 ///
 /// # Arguments
@@ -840,14 +818,6 @@ mod tests {
         let template = "No variables here";
         let vars = extract_variables(template);
         assert!(vars.is_empty());
-    }
-
-    #[test]
-    fn test_truncate_string() {
-        assert_eq!(truncate_string("hello", 10), "hello");
-        assert_eq!(truncate_string("hello world", 8), "hello w…");
-        assert_eq!(truncate_string("hi", 2), "hi");
-        assert_eq!(truncate_string("hi", 1), "…");
     }
 
     #[test]
