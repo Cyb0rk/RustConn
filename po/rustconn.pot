@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: rustconn 0.23.9\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-11 20:56+0300\n"
+"POT-Creation-Date: 2026-10-11 21:10+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -47,7 +47,7 @@ msgstr ""
 #: rustconn/src/dialogs/variable_setup.rs:85
 #: rustconn/src/dialogs/workspace.rs:237 rustconn/src/dialogs/workspace.rs:291
 #: rustconn/src/embedded_rdp/autotype.rs:166
-#: rustconn/src/split_view/adapter.rs:1140
+#: rustconn/src/split_view/adapter.rs:1152
 #: rustconn/src/terminal/safe_paste.rs:166
 #: rustconn/src/terminal/tab_menu.rs:354 rustconn/src/terminal/tab_menu.rs:459
 #: rustconn/src/terminal/tab_menu.rs:688 rustconn/src/vault_ops.rs:315
@@ -4437,7 +4437,7 @@ msgstr ""
 #: rustconn/src/dialogs/settings/cloud_sync_tab.rs:238
 #: rustconn/src/dialogs/tunnel_builder/mod.rs:618
 #: rustconn/src/dialogs/widgets.rs:608 rustconn/src/sidebar_ui.rs:465
-#: rustconn/src/split_view/adapter.rs:1141
+#: rustconn/src/split_view/adapter.rs:1153
 #: rustconn/src/terminal/tab_menu.rs:689 rustconn/src/vault_ops.rs:65
 #: rustconn/src/window/mod.rs:4337
 msgid "Close"
@@ -5518,7 +5518,7 @@ msgid "Log Content"
 msgstr ""
 
 #: rustconn/src/dialogs/log_viewer.rs:354
-#: rustconn/src/split_view/adapter.rs:1830
+#: rustconn/src/split_view/adapter.rs:1842
 msgid "Loading…"
 msgstr ""
 
@@ -7820,7 +7820,7 @@ msgstr ""
 #: rustconn/src/dialogs/settings/ui_tab.rs:488
 #: rustconn/src/dialogs/settings/ui_tab.rs:784
 #: rustconn/src/dialogs/shortcuts.rs:168
-#: rustconn/src/split_view/adapter.rs:1760 rustconn/src/tray.rs:258
+#: rustconn/src/split_view/adapter.rs:1772 rustconn/src/tray.rs:258
 #: rustconn/src/tray.rs:648 rustconn/src/window/ui.rs:266
 msgid "Local Shell"
 msgstr ""
@@ -7987,7 +7987,7 @@ msgstr ""
 #: rustconn/src/dialogs/settings/ui_tab.rs:264
 msgid ""
 "Reveal the floating viewer toolbar (RDP, VNC and the embedded browser) from "
-"its handle in the pane's top-left corner when the pointer touches it. When "
+"its handle on the top edge of the pane when the pointer touches it. When "
 "off, the handle must be clicked. Does not affect terminal sessions, which "
 "have no floating toolbar"
 msgstr ""
@@ -8061,9 +8061,9 @@ msgstr ""
 
 #: rustconn/src/dialogs/settings/ui_tab.rs:380
 msgid ""
-"Hide the top-right reveal arrow with the close/detach/reconnect buttons on "
-"every split-view pane (all protocols). Close and detach stay reachable from "
-"the pane menu (Shift+F10) and the sidebar"
+"Hide the reveal arrow with the close/detach/reconnect buttons at the middle "
+"of the right edge of every split-view pane (all protocols). Close and detach "
+"stay reachable from the pane menu (Shift+F10) and the sidebar"
 msgstr ""
 
 #: rustconn/src/dialogs/settings/ui_tab.rs:390
@@ -8363,15 +8363,15 @@ msgid "Close Pane"
 msgstr ""
 
 #: rustconn/src/dialogs/shortcuts.rs:191 rustconn/src/sidebar_ui.rs:456
-#: rustconn/src/split_view/adapter.rs:1091
-#: rustconn/src/split_view/adapter.rs:1601
-#: rustconn/src/split_view/adapter.rs:1666
+#: rustconn/src/split_view/adapter.rs:1103
+#: rustconn/src/split_view/adapter.rs:1613
+#: rustconn/src/split_view/adapter.rs:1678
 msgid "Remove from Split"
 msgstr ""
 
 #: rustconn/src/dialogs/shortcuts.rs:192
-#: rustconn/src/split_view/adapter.rs:1602
-#: rustconn/src/split_view/adapter.rs:1667
+#: rustconn/src/split_view/adapter.rs:1614
+#: rustconn/src/split_view/adapter.rs:1679
 #: rustconn/src/terminal/tab_menu.rs:1200
 msgid "Remove Split"
 msgstr ""
@@ -10084,8 +10084,8 @@ msgid "Save files from remote clipboard"
 msgstr ""
 
 #: rustconn/src/embedded_rdp/mod.rs:770 rustconn/src/embedded_vnc/ui.rs:149
-#: rustconn/src/split_view/adapter.rs:1600
-#: rustconn/src/split_view/adapter.rs:1665 rustconn/src/terminal/mod.rs:1402
+#: rustconn/src/split_view/adapter.rs:1612
+#: rustconn/src/split_view/adapter.rs:1677 rustconn/src/terminal/mod.rs:1402
 #: rustconn/src/terminal/session_lifecycle.rs:401
 #: rustconn/src/terminal/tab_menu.rs:1127
 msgid "Reconnect"
@@ -10229,8 +10229,8 @@ msgstr ""
 msgid "More actions"
 msgstr ""
 
-#: rustconn/src/embedded_toolbar_overflow.rs:316
-#: rustconn/src/embedded_toolbar_overflow.rs:318
+#: rustconn/src/embedded_toolbar_overflow.rs:315
+#: rustconn/src/embedded_toolbar_overflow.rs:317
 msgid "Show session toolbar"
 msgstr ""
 
@@ -10898,62 +10898,62 @@ msgstr ""
 msgid "Drag to move this session to another panel or tab"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:998
-#: rustconn/src/split_view/adapter.rs:1000
+#: rustconn/src/split_view/adapter.rs:1010
+#: rustconn/src/split_view/adapter.rs:1012
 msgid "Show panel actions"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1084
+#: rustconn/src/split_view/adapter.rs:1096
 msgid "Remove this session from the split and show it in its own tab"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1103
-#: rustconn/src/split_view/adapter.rs:1108
+#: rustconn/src/split_view/adapter.rs:1115
+#: rustconn/src/split_view/adapter.rs:1120
 msgid "Close session"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1135
+#: rustconn/src/split_view/adapter.rs:1147
 msgid "Close this pane?"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1137
+#: rustconn/src/split_view/adapter.rs:1149
 msgid "The session in this pane will be disconnected and closed."
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1360
+#: rustconn/src/split_view/adapter.rs:1372
 msgid "Terminal panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1603
-#: rustconn/src/split_view/adapter.rs:1668
+#: rustconn/src/split_view/adapter.rs:1615
+#: rustconn/src/split_view/adapter.rs:1680
 msgid "Close Connection"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1719
+#: rustconn/src/split_view/adapter.rs:1731
 msgid "Empty Panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1720
+#: rustconn/src/split_view/adapter.rs:1732
 msgid "Select an existing tab to display in this panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1730
+#: rustconn/src/split_view/adapter.rs:1742
 msgid "Select Tab…"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1731
+#: rustconn/src/split_view/adapter.rs:1743
 msgid "Choose an open tab to display in this panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1761
+#: rustconn/src/split_view/adapter.rs:1773
 msgid "Open a new local shell in this panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1788
+#: rustconn/src/split_view/adapter.rs:1800
 msgid "Close panel"
 msgstr ""
 
-#: rustconn/src/split_view/adapter.rs:1799
+#: rustconn/src/split_view/adapter.rs:1811
 msgid "Close split view panel"
 msgstr ""
 

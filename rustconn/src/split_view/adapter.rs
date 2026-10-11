@@ -836,15 +836,15 @@ impl SplitViewAdapter {
             overlay.set_vexpand(true);
             overlay.set_child(Some(widget));
 
-            // Auto-hide corner buttons: a small reveal arrow at the top-RIGHT
-            // shows on hover; clicking or hovering it reveals the actual
-            // close/detach buttons. The right corner is a deliberate half of a
-            // two-corner contract: the viewer's own session-toolbar handle is
-            // anchored top-LEFT (see `ToolbarOverflow::attach` in
-            // embedded_toolbar_overflow.rs), so the two independent overlaid
-            // control sets never collide at any pane width. Do NOT move either
-            // handle back toward the centre — that re-creates the RDP
-            // floating-panel pile-up this split was fixed for.
+            // Auto-hide pane controls: a small reveal arrow at the vertical
+            // centre of the RIGHT edge shows on hover; clicking or hovering it
+            // reveals the actual close/detach buttons. The mid-right position
+            // keeps these controls off the top edge, which belongs to the
+            // viewer's session toolbar (and its right-end overflow menu) — see
+            // `panel_corner_buttons_autohide` and `ToolbarOverflow::attach`. Do
+            // NOT move either back to the top-right: that re-creates the RDP
+            // floating-panel pile-up on the toolbar's overflow menu, in split
+            // and fullscreen alike.
             let (reveal_container, _revealer) = self.panel_corner_buttons_autohide(panel_id);
             // Hover controls are shown unless the user turned them off (#374).
             // Independent of pane labels — both have their own setting.
@@ -968,14 +968,26 @@ impl SplitViewAdapter {
 
     /// Builds the auto-hide corner buttons for an occupied split panel.
     ///
-    /// Returns a container with a small reveal arrow (top-right) that shows
-    /// the actual close/detach buttons on hover. The buttons fade in/out to
-    /// avoid conflicting with session toolbars or window controls.
+    /// Returns a container with a small reveal arrow (vertical centre of the
+    /// right edge) that shows the actual close/detach buttons on hover. The
+    /// buttons fade in/out to avoid conflicting with the session toolbar that
+    /// owns the top edge, or with window controls.
     fn panel_corner_buttons_autohide(&self, panel_id: PanelId) -> (GtkBox, Revealer) {
-        // Outer container positioned at top-right
+        // Positioned at the RIGHT edge, vertically CENTRED — not the top-right
+        // corner. The top edge is owned by the viewer's session toolbar (RDP
+        // Copy/Paste/Autotype/Ctrl+Alt+Del and its "⋯" overflow menu), whose
+        // most important actions sit at its right end. A top-right placement
+        // put this reveal arrow directly on top of that overflow menu, in a
+        // split pane and — because every pane, including a lone fullscreen one,
+        // gets this overlay — in fullscreen too, making Ctrl+Alt+Del and the
+        // overflow menu nearly unclickable. Dropping to the vertical centre of
+        // the right edge takes these pane controls off the contested top edge
+        // entirely: the toolbar owns the top, the pane controls own the
+        // mid-right, and they no longer compete. (The name "corner" is kept for
+        // continuity; the controls are now a mid-right OSD island.)
         let container = GtkBox::new(Orientation::Horizontal, 0);
         container.set_halign(Align::End);
-        container.set_valign(Align::Start);
+        container.set_valign(Align::Center);
 
         // The actual action buttons inside a revealer
         let buttons = self.panel_corner_buttons(panel_id);
