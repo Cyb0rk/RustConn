@@ -1131,6 +1131,10 @@ togglebutton.broadcasting image {
     opacity: 0.4;
     background-color: alpha(@view_bg_color, 0.5);
     padding: 2px 8px;
+    /* Small inset so the left-anchored handle does not sit flush against the
+       pane edge, mirroring the breathing room the top-right panel-corner
+       controls have. */
+    margin: 4px;
     transition: opacity 150ms ease-in-out;
 }
 

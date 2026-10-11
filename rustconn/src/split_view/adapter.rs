@@ -836,10 +836,15 @@ impl SplitViewAdapter {
             overlay.set_vexpand(true);
             overlay.set_child(Some(widget));
 
-            // Auto-hide corner buttons: a small reveal arrow at the top-right
+            // Auto-hide corner buttons: a small reveal arrow at the top-RIGHT
             // shows on hover; clicking or hovering it reveals the actual
-            // close/detach buttons. This avoids blocking the session toolbar
-            // or other top-edge controls (issue with RDP floating panel).
+            // close/detach buttons. The right corner is a deliberate half of a
+            // two-corner contract: the viewer's own session-toolbar handle is
+            // anchored top-LEFT (see `ToolbarOverflow::attach` in
+            // embedded_toolbar_overflow.rs), so the two independent overlaid
+            // control sets never collide at any pane width. Do NOT move either
+            // handle back toward the centre — that re-creates the RDP
+            // floating-panel pile-up this split was fixed for.
             let (reveal_container, _revealer) = self.panel_corner_buttons_autohide(panel_id);
             // Hover controls are shown unless the user turned them off (#374).
             // Independent of pane labels — both have their own setting.

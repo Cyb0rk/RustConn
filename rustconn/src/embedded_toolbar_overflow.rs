@@ -301,7 +301,17 @@ impl ToolbarAutoHide {
         // The GNOME HIG minimum tap target, stated here rather than in CSS so
         // there is one number to find. The stylesheet only paints the handle.
         reveal_button.set_size_request(TOUCH_TARGET_PX, TOUCH_TARGET_PX);
-        reveal_button.set_halign(gtk4::Align::Center);
+        // Top-LEFT, not top-centre. On a split-view pane this overlay is nested
+        // inside the split adapter's own pane overlay, whose panel-corner
+        // controls (close / detach / reconnect) sit at the top-RIGHT. A
+        // top-centre session handle drifts toward that right corner as the pane
+        // narrows and the two reveal arrows collide into one unreadable cluster
+        // (the RDP floating-panel conflict). Anchoring the session handle to the
+        // left keeps the two OSD islands in opposite corners at every pane
+        // width — the panel-corner owns the right, the session toolbar owns the
+        // left — which is the GNOME HIG pattern for independent overlaid
+        // controls. The revealed toolbar itself still spans the top edge.
+        reveal_button.set_halign(gtk4::Align::Start);
         reveal_button.set_valign(gtk4::Align::Start);
         reveal_button.set_tooltip_text(Some(&i18n("Show session toolbar")));
         reveal_button.update_property(&[gtk4::accessible::Property::Label(&i18n(
