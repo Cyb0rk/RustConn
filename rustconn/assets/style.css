@@ -117,8 +117,11 @@
  * interfere with the session content or floating toolbar. */
 .panel-reveal-arrow {
     opacity: 0.3;
-    min-width: 28px;
-    min-height: 28px;
+    /* 44px is the GNOME HIG minimum touch target; kept in sync with the
+       set_size_request(44, 44) in split_view/adapter.rs so the visible and
+       clickable areas agree. The icon itself stays 16px. */
+    min-width: 44px;
+    min-height: 44px;
     padding: 2px;
     background-color: alpha(@view_bg_color, 0.4);
     transition: opacity 150ms ease-in-out;

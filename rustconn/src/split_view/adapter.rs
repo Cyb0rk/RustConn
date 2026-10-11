@@ -985,7 +985,11 @@ impl SplitViewAdapter {
         reveal_arrow.add_css_class("flat");
         reveal_arrow.add_css_class("circular");
         reveal_arrow.add_css_class("panel-reveal-arrow");
-        reveal_arrow.set_size_request(28, 28);
+        // 44px is the GNOME HIG minimum pointer/touch target (the sibling
+        // reveal handle in embedded_toolbar_overflow.rs uses the same floor via
+        // its TOUCH_TARGET_PX constant). The 16px symbolic icon stays visually
+        // small inside the circular button; only the clickable area grows.
+        reveal_arrow.set_size_request(44, 44);
         reveal_arrow.set_tooltip_text(Some(&i18n("Show panel actions")));
         reveal_arrow.update_property(&[gtk4::accessible::Property::Label(&i18n(
             "Show panel actions",
