@@ -1086,9 +1086,14 @@ impl SplitViewAdapter {
     /// focused pane, and a click on a button never reaches the panel's own
     /// focus gesture.
     fn panel_corner_buttons(&self, panel_id: PanelId) -> GtkBox {
-        let buttons = GtkBox::new(Orientation::Horizontal, 0);
+        // Stacked vertically, one under another, now that these controls live
+        // at the vertical centre of the right edge: a vertical strip hugs that
+        // edge instead of reaching across the top of the pane. HIG order is kept
+        // — the non-destructive action (Remove from Split) on top, the
+        // destructive Close at the bottom.
+        let buttons = GtkBox::new(Orientation::Vertical, 0);
         buttons.set_halign(Align::End);
-        buttons.set_valign(Align::Start);
+        buttons.set_valign(Align::Center);
 
         let pop_button = Button::builder()
             .icon_name("tab-new-symbolic")
