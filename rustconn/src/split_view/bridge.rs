@@ -2473,6 +2473,23 @@ impl SplitViewBridge {
         self.adapter.borrow().set_reconnect_panel_callback(handler);
     }
 
+    /// Sets up the "Move to New Window" callback for the panel button and menu.
+    ///
+    /// Same two steps as [`Self::setup_pop_panel_callback`], but activates
+    /// `win.detach-pane-to-window`, which removes the focused pane from the
+    /// split and lifts its session into its own detached window.
+    ///
+    /// # Arguments
+    ///
+    /// * `on_focus` - Callback to focus the panel, receives the pane UUID
+    pub fn setup_detach_panel_callback<F>(&self, on_focus: F)
+    where
+        F: Fn(Uuid) + Clone + 'static,
+    {
+        let handler = self.panel_action_handler("detach-pane-to-window", on_focus);
+        self.adapter.borrow().set_detach_panel_callback(handler);
+    }
+
     /// Builds the "focus this panel, then activate a window action" handler that
     /// every panel button and panel menu item shares.
     ///

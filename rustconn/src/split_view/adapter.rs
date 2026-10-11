@@ -107,6 +107,12 @@ pub struct SplitViewAdapter {
     /// Symmetric to `pop_panel_callback`: the bridge focuses the panel and then
     /// activates the window action that reconnects the focused pane's session.
     reconnect_panel_callback: Rc<RefCell<Option<PanelActionCallback>>>,
+    /// Callback for "Move to New Window" clicks on an occupied panel.
+    ///
+    /// Symmetric to `pop_panel_callback`: the bridge focuses the panel and then
+    /// activates the window action that removes the pane from the split and
+    /// lifts its session into its own detached window.
+    detach_panel_callback: Rc<RefCell<Option<PanelActionCallback>>>,
     /// Header widgets for each panel (connection name labels, issue #277).
     ///
     /// These are prepended to the panel container (above session content) and
@@ -142,6 +148,7 @@ impl std::fmt::Debug for SplitViewAdapter {
             .field("close_panel_callback", &"<callback>")
             .field("pop_panel_callback", &"<callback>")
             .field("reconnect_panel_callback", &"<callback>")
+            .field("detach_panel_callback", &"<callback>")
             .field("panel_headers", &self.panel_headers)
             .field("show_labels", &self.show_labels)
             .field("panel_reveal_containers", &self.panel_reveal_containers)
@@ -171,6 +178,7 @@ impl SplitViewAdapter {
             close_panel_callback: Rc::new(RefCell::new(None)),
             pop_panel_callback: Rc::new(RefCell::new(None)),
             reconnect_panel_callback: Rc::new(RefCell::new(None)),
+            detach_panel_callback: Rc::new(RefCell::new(None)),
             panel_headers: Rc::new(RefCell::new(HashMap::new())),
             show_labels: Rc::new(Cell::new(false)),
             panel_reveal_containers: Rc::new(RefCell::new(HashMap::new())),
@@ -201,6 +209,7 @@ impl SplitViewAdapter {
             close_panel_callback: Rc::new(RefCell::new(None)),
             pop_panel_callback: Rc::new(RefCell::new(None)),
             reconnect_panel_callback: Rc::new(RefCell::new(None)),
+            detach_panel_callback: Rc::new(RefCell::new(None)),
             panel_headers: Rc::new(RefCell::new(HashMap::new())),
             show_labels: Rc::new(Cell::new(false)),
             panel_reveal_containers: Rc::new(RefCell::new(HashMap::new())),
@@ -338,6 +347,18 @@ impl SplitViewAdapter {
         F: Fn(PanelId) + 'static,
     {
         *self.reconnect_panel_callback.borrow_mut() = Some(Rc::new(callback));
+    }
+
+    /// Sets the callback for the panel's "Move to New Window" action.
+    ///
+    /// # Arguments
+    ///
+    /// * `callback` - A closure that receives the `PanelId` when the item is activated
+    pub fn set_detach_panel_callback<F>(&self, callback: F)
+    where
+        F: Fn(PanelId) + 'static,
+    {
+        *self.detach_panel_callback.borrow_mut() = Some(Rc::new(callback));
     }
 
     /// Returns a reference to the underlying model.
@@ -1115,6 +1136,26 @@ impl SplitViewAdapter {
         });
         buttons.append(&pop_button);
 
+        let detach_button = Button::builder()
+            .icon_name("window-new-symbolic")
+            .tooltip_text(i18n(
+                "Move this session out of the split into its own window",
+            ))
+            .build();
+        detach_button.add_css_class("flat");
+        detach_button.add_css_class("circular");
+        detach_button.add_css_class("panel-close-button");
+        detach_button.update_property(&[gtk4::accessible::Property::Label(&i18n(
+            "Move to New Window",
+        ))]);
+        let detach_callback_ref = Rc::clone(&self.detach_panel_callback);
+        detach_button.connect_clicked(move |_| {
+            if let Some(ref callback) = *detach_callback_ref.borrow() {
+                callback(panel_id);
+            }
+        });
+        buttons.append(&detach_button);
+
         let close_button = Button::builder()
             .icon_name("window-close-symbolic")
             .tooltip_text(i18n("Close session"))
@@ -1578,6 +1619,18 @@ impl SplitViewAdapter {
         });
         action_group.add_action(&pop_action);
 
+        let detach_action = gio::SimpleAction::new("detach-to-window", None);
+        let detach_callback_ref = Rc::clone(&self.detach_panel_callback);
+        detach_action.connect_activate(move |_, _| {
+            tracing::debug!(
+                "Context menu: Move to New Window for panel {panel_id} with session {session_id}"
+            );
+            if let Some(ref callback) = *detach_callback_ref.borrow() {
+                callback(panel_id);
+            }
+        });
+        action_group.add_action(&detach_action);
+
         let reconnect_action = gio::SimpleAction::new("reconnect", None);
         let reconnect_callback_ref = Rc::clone(&self.reconnect_panel_callback);
         reconnect_action.connect_activate(move |_, _| {
@@ -1616,6 +1669,10 @@ impl SplitViewAdapter {
             let menu = gio::Menu::new();
             menu.append(Some(&i18n("Reconnect")), Some("panel.reconnect"));
             menu.append(Some(&i18n("Remove from Split")), Some("panel.move-to-tab"));
+            menu.append(
+                Some(&i18n("Move to New Window")),
+                Some("panel.detach-to-window"),
+            );
             menu.append(Some(&i18n("Remove Split")), Some("win.unsplit"));
             menu.append(Some(&i18n("Close Connection")), Some("panel.close"));
 
@@ -1681,6 +1738,10 @@ impl SplitViewAdapter {
             let menu = gio::Menu::new();
             menu.append(Some(&i18n("Reconnect")), Some("panel.reconnect"));
             menu.append(Some(&i18n("Remove from Split")), Some("panel.move-to-tab"));
+            menu.append(
+                Some(&i18n("Move to New Window")),
+                Some("panel.detach-to-window"),
+            );
             menu.append(Some(&i18n("Remove Split")), Some("win.unsplit"));
             menu.append(Some(&i18n("Close Connection")), Some("panel.close"));
 

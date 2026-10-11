@@ -52,6 +52,7 @@ pub(super) fn wire_panel_action_callbacks(bridge: &Rc<SplitViewBridge>) {
     };
     bridge.setup_close_panel_callback(focus_pane.clone());
     bridge.setup_pop_panel_callback(focus_pane.clone());
+    bridge.setup_detach_panel_callback(focus_pane.clone());
     bridge.setup_reconnect_panel_callback(focus_pane);
 }
 
@@ -1022,6 +1023,72 @@ impl MainWindow {
             refresh_broadcast_pop();
         });
         window.add_action(&pop_pane_action);
+
+        // Move the focused pane's session out of the split and into its own
+        // detached window (issue #209/#236 reuse). This is "Remove from Split"
+        // followed by "Move to New Window": the same pane teardown as
+        // `win.pop-pane-to-tab` runs first — the session goes back to a real
+        // tab with its widget, PTY and connection intact — and then
+        // `win.detach-session` lifts that tab into a window. Composing the two
+        // existing, tested actions avoids a second reparenting path: the
+        // detach action re-checks eligibility and explains a refusal with a
+        // toast exactly as it does from the tab menu and sidebar.
+        let detach_pane_action = gio::SimpleAction::new("detach-pane-to-window", None);
+        let teardown_detach = self.split_teardown();
+        let refresh_broadcast_detach = refresh_broadcast.clone();
+        let window_for_detach = window.downgrade();
+        detach_pane_action.connect_activate(move |_, _| {
+            let Some((owner, bridge)) = teardown_detach.active_split() else {
+                tracing::debug!("detach-pane-to-window: the active tab has no split layout");
+                return;
+            };
+            let Some(departing) = bridge.get_focused_session() else {
+                tracing::debug!("detach-pane-to-window: the focused pane holds no session");
+                return;
+            };
+
+            // The split owner hosts the layout and the single-pane case brings
+            // the whole split down — collapse to one tab first, then detach that
+            // tab. (Mirrors the pop-pane-to-tab guard; the session still ends up
+            // in a window via the detach activation below.)
+            if departing == owner || bridge.pane_count() <= 1 {
+                teardown_detach.collapse(owner, &bridge, None);
+            } else {
+                if let Err(e) = bridge.close_pane() {
+                    tracing::warn!(error = %e, "detach-pane-to-window: could not remove the focused pane");
+                    return;
+                }
+                teardown_detach.return_to_tab(departing);
+                teardown_detach.bridges.borrow_mut().remove(&departing);
+                bridge
+                    .broadcast_wired_sessions
+                    .borrow_mut()
+                    .remove(&departing);
+                if SplitTeardown::is_spent(&bridge, false) {
+                    teardown_detach.collapse(owner, &bridge, Some(departing));
+                } else {
+                    bridge.restore_panel_contents();
+                }
+            }
+
+            // The session now lives in its own tab; hand that tab to the window
+            // layer, which re-checks the detach verdict and surfaces a refusal
+            // with a toast rather than failing silently.
+            if let Some(window) = window_for_detach.upgrade() {
+                gtk4::prelude::ActionGroupExt::activate_action(
+                    &window,
+                    "detach-session",
+                    Some(&departing.to_string().to_variant()),
+                );
+            }
+            tracing::info!(
+                session = %departing,
+                owner = %owner,
+                "session removed from split and moved to a new window"
+            );
+            refresh_broadcast_detach();
+        });
+        window.add_action(&detach_pane_action);
 
         // Remove the whole split layout, returning every session in it to its own
         // tab. None of them are closed (issue #252).
