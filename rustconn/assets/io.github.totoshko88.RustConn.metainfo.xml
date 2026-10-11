@@ -140,6 +140,20 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.10" date="2026-10-11">
+      <description>
+        <p>Version 0.23.10 - split-view polish and accessibility:</p>
+        <ul>
+          <li>Added "Move to New Window" for a split-view pane, as a corner button and a context-menu item (Shift+F10)</li>
+          <li>The split-pane controls no longer sit on top of the RDP/VNC session toolbar - they moved to the vertical centre of the pane's right edge</li>
+          <li>Snippet variable prompts now list fields in template order</li>
+          <li>The split-pane reveal arrow now meets the 44x44 touch-target minimum</li>
+          <li>A session recording that fails to start now shows an error toast instead of only logging</li>
+          <li>Embedded RDP/VNC status now carries a shape (glyph), not colour alone, for grayscale and colour-vision accessibility</li>
+          <li>The reveal handles rest a little more transparently; the two floating-control settings have clearer wording</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.9" date="2026-10-11">
       <description>
         <p>Version 0.23.9 - RDP connectivity fixes for KDE KRdp and NLA-less Linux hosts (issue #366):</p>
