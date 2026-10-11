@@ -208,21 +208,15 @@ pub use rustconn_core::variables::VARIABLE_REGEX as VARIABLE_PATTERN;
 ///
 /// # Returns
 ///
-/// A vector of unique variable names found in the template.
+/// A vector of unique variable names in first-seen (template) order.
+///
+/// Thin re-export of [`rustconn_core::variables::extract_variable_names`] — the
+/// single canonical extractor the whole workspace shares, so this form and
+/// `SnippetManager::extract_variables` can never drift in which names they find
+/// or in what order.
 #[must_use]
 pub fn extract_variables(template: &str) -> Vec<String> {
-    let mut found: Vec<String> = Vec::new();
-
-    for cap in VARIABLE_PATTERN.captures_iter(template) {
-        if let Some(var_match) = cap.get(1) {
-            let var_name = var_match.as_str().to_string();
-            if !found.contains(&var_name) {
-                found.push(var_name);
-            }
-        }
-    }
-
-    found
+    rustconn_core::variables::extract_variable_names(template)
 }
 
 /// Formats a duration in a human-readable way
