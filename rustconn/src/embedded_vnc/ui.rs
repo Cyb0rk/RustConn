@@ -782,7 +782,11 @@ impl EmbeddedVncWidget {
                     None::<&gtk4::gio::Cancellable>,
                     move |result: Result<Option<glib::GString>, glib::Error>| {
                         if let Ok(Some(text)) = result {
-                            let char_count = text.len();
+                            // chars().count(), not len(): len() is the UTF-8
+                            // byte count, so the log said "chars" while
+                            // reporting bytes for any multibyte text. Matches
+                            // the Copy path above.
+                            let char_count = text.chars().count();
                             tracing::debug!("[VNC] Pasting {char_count} chars to remote");
 
                             // Send text as key presses via VNC client
