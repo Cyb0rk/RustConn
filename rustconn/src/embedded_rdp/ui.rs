@@ -148,12 +148,18 @@ pub fn draw_status_overlay(
 
     // Status message
     cr.set_font_size(13.0);
-    let (status_text, status_color) = match current_state {
+    // Each state carries a leading glyph as well as a colour, so the status is
+    // legible in grayscale / with colour-vision deficiency where the RGB tint
+    // alone would be ambiguous (HIG: status is never conveyed by colour alone).
+    // The glyph is a bare symbol, not a translatable string, so it is prefixed
+    // outside i18n(); extents are measured on the composed line, keeping the
+    // text centred.
+    let (status_glyph, status_text, status_color) = match current_state {
         RdpConnectionState::Disconnected => {
             if config_ref.is_some() {
-                (i18n("Session ended"), (0.8, 0.4, 0.4))
+                ("✕", i18n("Session ended"), (0.8, 0.4, 0.4))
             } else {
-                (i18n("No connection configured"), (0.5, 0.5, 0.5))
+                ("○", i18n("No connection configured"), (0.5, 0.5, 0.5))
             }
         }
         RdpConnectionState::Connecting => {
@@ -163,25 +169,27 @@ pub fn draw_status_overlay(
             // back from one to the other mid-connect. "Starting RDP…" describes
             // what is happening in terms of the protocol they picked.
             let _ = embedded;
-            (i18n("Starting RDP…"), (0.8, 0.8, 0.6))
+            ("…", i18n("Starting RDP…"), (0.8, 0.8, 0.6))
         }
         RdpConnectionState::Connected => {
             if embedded {
-                (i18n("Connected"), (0.6, 0.8, 0.6))
+                ("✓", i18n("Connected"), (0.6, 0.8, 0.6))
             } else {
                 (
+                    "✓",
                     i18n("RDP session running in external window"),
                     (0.6, 0.8, 0.6),
                 )
             }
         }
-        RdpConnectionState::Error => (i18n("Connection failed"), (0.8, 0.4, 0.4)),
+        RdpConnectionState::Error => ("⚠", i18n("Connection failed"), (0.8, 0.4, 0.4)),
     };
+    let status_line = format!("{status_glyph}  {status_text}");
 
     cr.set_source_rgb(status_color.0, status_color.1, status_color.2);
-    if let Ok(extents) = cr.text_extents(&status_text) {
+    if let Ok(extents) = cr.text_extents(&status_line) {
         cr.move_to((f64::from(width) - extents.width()) / 2.0, center_y + 100.0);
-        let _ = cr.show_text(&status_text);
+        let _ = cr.show_text(&status_line);
     }
 
     // Hint for external mode

@@ -5,6 +5,11 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.10] - 2026-10-11
+
+### Fixed
+- **Embedded RDP/VNC status now carries a shape, not colour alone (GNOME HIG, a11y)** — the "connecting / connected / failed / disconnected" line on the embedded RDP and VNC placeholder screens was distinguished only by its text colour (green / yellow / red / grey). Colour alone is ambiguous in grayscale, under a high-contrast theme, and for users with colour-vision deficiency — a direct HIG violation, and the one accessibility gap a 0.23.10 code audit found (the sidebar already uses colour-independent silhouettes, R6.1–6.5). Each state now prefixes a distinct glyph to the status line — `✓` connected, `…` connecting, `⚠` failed, `○`/`✕` disconnected/ended — so the state reads with no colour at all; the accent colour stays as reinforcement. The glyph is a bare symbol composed outside `i18n()`, so no translatable strings changed. (`rustconn/src/embedded_rdp/ui.rs`, `rustconn/src/embedded_vnc/ui.rs`)
+
 ## [0.23.9] - 2026-10-11
 
 ### Fixed

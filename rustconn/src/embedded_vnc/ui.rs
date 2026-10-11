@@ -343,6 +343,19 @@ impl EmbeddedVncWidget {
                         VncConnectionState::Error => i18n("Connection error"),
                     };
 
+                    // A leading glyph co-indicates the state so it reads in
+                    // grayscale / with colour-vision deficiency, where the RGB
+                    // tint alone would be ambiguous (HIG: status is never
+                    // conveyed by colour alone). The glyph is a bare symbol,
+                    // not translatable, so it is composed outside i18n().
+                    let status_glyph = match current_state {
+                        VncConnectionState::Connected => "✓",
+                        VncConnectionState::Connecting => "…",
+                        VncConnectionState::Error => "⚠",
+                        VncConnectionState::Disconnected => "○",
+                    };
+                    let status_line = format!("{status_glyph}  {status_text}");
+
                     let color = match current_state {
                         VncConnectionState::Connected => (0.6, 0.8, 0.6),
                         VncConnectionState::Connecting => (0.8, 0.8, 0.6),
@@ -351,9 +364,9 @@ impl EmbeddedVncWidget {
                     };
                     cr.set_source_rgb(color.0, color.1, color.2);
 
-                    if let Ok(extents) = cr.text_extents(&status_text) {
+                    if let Ok(extents) = cr.text_extents(&status_line) {
                         cr.move_to((f64::from(width) - extents.width()) / 2.0, center_y + 100.0);
-                        let _ = cr.show_text(&status_text);
+                        let _ = cr.show_text(&status_line);
                     }
                 }
             });
