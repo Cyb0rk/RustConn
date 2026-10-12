@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: rustconn 0.23.11\n"
+"Project-Id-Version: rustconn 0.23.12\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 19:23+0300\n"
+"POT-Creation-Date: 2026-10-12 20:57+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -33,7 +33,7 @@ msgstr ""
 #: rustconn/src/dialogs/portable_passphrase_change.rs:93
 #: rustconn/src/dialogs/portable_unlock.rs:93
 #: rustconn/src/dialogs/recording.rs:523 rustconn/src/dialogs/recording.rs:599
-#: rustconn/src/dialogs/settings/clients_tab.rs:347
+#: rustconn/src/dialogs/settings/clients_tab.rs:351
 #: rustconn/src/dialogs/settings/keybindings_tab.rs:174
 #: rustconn/src/dialogs/settings/mod.rs:584
 #: rustconn/src/dialogs/settings/mod.rs:927
@@ -43,7 +43,7 @@ msgstr ""
 #: rustconn/src/dialogs/statistics.rs:86
 #: rustconn/src/dialogs/template_manager.rs:191
 #: rustconn/src/dialogs/tunnel.rs:727
-#: rustconn/src/dialogs/tunnel_builder/mod.rs:559
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:571
 #: rustconn/src/dialogs/variable_setup.rs:85
 #: rustconn/src/dialogs/workspace.rs:237 rustconn/src/dialogs/workspace.rs:291
 #: rustconn/src/embedded_rdp/autotype.rs:166
@@ -324,7 +324,7 @@ msgid "Select at least one connection or set an auto-membership pattern"
 msgstr ""
 
 #: rustconn/src/dialogs/cluster.rs:297
-#: rustconn/src/dialogs/settings/ui_tab.rs:468
+#: rustconn/src/dialogs/settings/ui_tab.rs:470
 #: rustconn/src/dialogs/shortcuts.rs:148 rustconn/src/sidebar_ui.rs:1218
 msgid "Connections"
 msgstr ""
@@ -435,7 +435,7 @@ msgid "Override terminal colors for this connection"
 msgstr ""
 
 #: rustconn/src/dialogs/connection/advanced_tab.rs:91
-#: rustconn/src/dialogs/settings/ui_tab.rs:505
+#: rustconn/src/dialogs/settings/ui_tab.rs:507
 msgid "Custom"
 msgstr ""
 
@@ -770,7 +770,7 @@ msgstr ""
 
 #: rustconn/src/dialogs/connection/advanced_tab.rs:822
 #: rustconn/src/dialogs/connection/dialog/rows.rs:450
-#: rustconn/src/dialogs/settings/ui_tab.rs:619
+#: rustconn/src/dialogs/settings/ui_tab.rs:621
 #: rustconn/src/window/edit_group.rs:2221
 msgid "Enabled"
 msgstr ""
@@ -1438,14 +1438,13 @@ msgstr ""
 #: rustconn/src/dialogs/export.rs:389 rustconn/src/dialogs/template.rs:549
 #: rustconn/src/dialogs/template.rs:1781 rustconn/src/split_view/bridge.rs:1611
 #: rustconn/src/window/copy_field_actions.rs:79
-#: rustconn/src/window/edit_dialogs.rs:819
+#: rustconn/src/window/edit_dialogs.rs:817
 msgid "Host"
 msgstr ""
 
 #: rustconn/src/dialogs/connection/dialog/construction.rs:319
 #: rustconn/src/dialogs/connection/general_tab.rs:150
 #: rustconn/src/dialogs/template.rs:1813
-#: rustconn/src/window/edit_dialogs.rs:815
 msgid "hostname or IP"
 msgstr ""
 
@@ -1964,7 +1963,7 @@ msgstr ""
 #: rustconn/src/dialogs/connection_wizard/auth_page.rs:78
 #: rustconn/src/dialogs/connection_wizard/connection_page.rs:113
 #: rustconn/src/dialogs/export.rs:395 rustconn/src/dialogs/template.rs:558
-#: rustconn/src/dialogs/wol.rs:93 rustconn/src/window/edit_dialogs.rs:831
+#: rustconn/src/dialogs/wol.rs:93 rustconn/src/window/edit_dialogs.rs:828
 msgid "Port"
 msgstr ""
 
@@ -2001,7 +2000,7 @@ msgstr ""
 #: rustconn/src/split_view/bridge.rs:1619
 #: rustconn/src/window/connection_dialogs.rs:484
 #: rustconn/src/window/copy_field_actions.rs:82
-#: rustconn/src/window/edit_dialogs.rs:841
+#: rustconn/src/window/edit_dialogs.rs:837
 #: rustconn/src/window/edit_group.rs:241
 msgid "Username"
 msgstr ""
@@ -2061,7 +2060,7 @@ msgid "Inherit"
 msgstr ""
 
 #: rustconn/src/dialogs/connection/general_tab.rs:276
-#: rustconn/src/dialogs/tunnel_builder/mod.rs:427
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:439
 #: rustconn/src/dialogs/tunnel_builder/step_review.rs:276
 #: rustconn/src/window/connection_dialogs.rs:493
 #: rustconn/src/window/edit_group.rs:252 rustconn/src/window/edit_group.rs:656
@@ -2798,7 +2797,7 @@ msgstr ""
 #: rustconn/src/dialogs/flatpak_components.rs:325
 #: rustconn/src/dialogs/flatpak_components.rs:361
 #: rustconn/src/dialogs/flatpak_components.rs:501
-#: rustconn/src/dialogs/settings/clients_tab.rs:288
+#: rustconn/src/dialogs/settings/clients_tab.rs:292
 msgid "Remove"
 msgstr ""
 
@@ -3315,7 +3314,7 @@ msgstr ""
 #: rustconn/src/dialogs/template.rs:631
 #: rustconn/src/window/connection_dialogs.rs:503
 #: rustconn/src/window/copy_field_actions.rs:83
-#: rustconn/src/window/edit_dialogs.rs:852
+#: rustconn/src/window/edit_dialogs.rs:844
 #: rustconn/src/window/edit_group.rs:269 rustconn/src/window/edit_group.rs:657
 #: rustconn/src/window/edit_group.rs:680
 msgid "Password"
@@ -4435,7 +4434,7 @@ msgstr ""
 #: rustconn/src/dialogs/portable_passphrase_change.rs:376
 #: rustconn/src/dialogs/recording.rs:831 rustconn/src/dialogs/recording.rs:843
 #: rustconn/src/dialogs/settings/cloud_sync_tab.rs:238
-#: rustconn/src/dialogs/tunnel_builder/mod.rs:618
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:640
 #: rustconn/src/dialogs/widgets.rs:608 rustconn/src/sidebar_ui.rs:465
 #: rustconn/src/split_view/adapter.rs:1199
 #: rustconn/src/terminal/tab_menu.rs:689 rustconn/src/vault_ops.rs:65
@@ -4831,8 +4830,8 @@ msgstr ""
 #: rustconn/src/dialogs/flatpak_components.rs:274
 #: rustconn/src/dialogs/flatpak_components.rs:489
 #: rustconn/src/dialogs/flatpak_components.rs:491
-#: rustconn/src/dialogs/settings/clients_tab.rs:475
-#: rustconn/src/dialogs/settings/clients_tab.rs:480
+#: rustconn/src/dialogs/settings/clients_tab.rs:479
+#: rustconn/src/dialogs/settings/clients_tab.rs:484
 msgid "Installed"
 msgstr ""
 
@@ -5555,8 +5554,7 @@ msgstr ""
 msgid "Domain:"
 msgstr ""
 
-#: rustconn/src/dialogs/password.rs:157 rustconn/src/window/edit_dialogs.rs:837
-#: rustconn/src/window/edit_dialogs.rs:848
+#: rustconn/src/dialogs/password.rs:157
 msgid "(optional)"
 msgstr ""
 
@@ -6074,7 +6072,11 @@ msgid ""
 "Decode H.264 in RDP GFX sessions with the Cisco codec when it is installed."
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:204
+#: rustconn/src/dialogs/settings/clients_tab.rs:140
+msgid "Could not save the hardware acceleration setting: {}"
+msgstr ""
+
+#: rustconn/src/dialogs/settings/clients_tab.rs:208
 #: rustconn/src/dialogs/settings/secrets_tab/detection.rs:77
 #: rustconn/src/dialogs/settings/secrets_tab/mod.rs:753
 #: rustconn/src/dialogs/settings/secrets_tab/mod.rs:997
@@ -6084,31 +6086,31 @@ msgstr ""
 msgid "Checking…"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:234
+#: rustconn/src/dialogs/settings/clients_tab.rs:238
 msgid "H.264 codec (Cisco OpenH264)"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:236
+#: rustconn/src/dialogs/settings/clients_tab.rs:240
 msgid ""
 "Enables H.264 in RDP graphics (GFX) sessions. Fetched on demand from "
 "openh264.org under Cisco's binary licence."
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:251
-#: rustconn/src/dialogs/settings/clients_tab.rs:399
+#: rustconn/src/dialogs/settings/clients_tab.rs:255
+#: rustconn/src/dialogs/settings/clients_tab.rs:403
 msgid "Installed ✓"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:266
-#: rustconn/src/dialogs/settings/clients_tab.rs:348
+#: rustconn/src/dialogs/settings/clients_tab.rs:270
+#: rustconn/src/dialogs/settings/clients_tab.rs:352
 msgid "Download"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:311
+#: rustconn/src/dialogs/settings/clients_tab.rs:315
 msgid "Remove failed"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:339
+#: rustconn/src/dialogs/settings/clients_tab.rs:343
 msgid ""
 "This downloads the OpenH264 Video Codec provided by Cisco Systems, Inc. "
 "from:\n"
@@ -6124,42 +6126,42 @@ msgid ""
 "Download it?"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:346
+#: rustconn/src/dialogs/settings/clients_tab.rs:350
 msgid "Download H.264 codec?"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:377
+#: rustconn/src/dialogs/settings/clients_tab.rs:381
 #: rustconn/src/embedded_rdp/mod.rs:1593
 msgid "Downloading…"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:401
+#: rustconn/src/dialogs/settings/clients_tab.rs:405
 msgid ""
 "H.264 is active for new RDP connections. Open sessions keep their current "
 "path until reconnected."
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:409
+#: rustconn/src/dialogs/settings/clients_tab.rs:413
 msgid "Download failed"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:420
+#: rustconn/src/dialogs/settings/clients_tab.rs:424
 msgid "Download failed: {}"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:450
+#: rustconn/src/dialogs/settings/clients_tab.rs:454
 msgid "Using embedded {} (external not found)"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:477
+#: rustconn/src/dialogs/settings/clients_tab.rs:481
 msgid "Using embedded client"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:482
+#: rustconn/src/dialogs/settings/clients_tab.rs:486
 msgid "Not found"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/clients_tab.rs:507
+#: rustconn/src/dialogs/settings/clients_tab.rs:511
 msgid "Embedded"
 msgstr ""
 
@@ -7817,8 +7819,8 @@ msgid "Send Escape prefix instead of composed characters (for vim/emacs)"
 msgstr ""
 
 #: rustconn/src/dialogs/settings/terminal_tab.rs:480
-#: rustconn/src/dialogs/settings/ui_tab.rs:555
-#: rustconn/src/dialogs/settings/ui_tab.rs:872
+#: rustconn/src/dialogs/settings/ui_tab.rs:557
+#: rustconn/src/dialogs/settings/ui_tab.rs:874
 #: rustconn/src/dialogs/shortcuts.rs:168
 #: rustconn/src/split_view/adapter.rs:1838 rustconn/src/tray.rs:258
 #: rustconn/src/tray.rs:648 rustconn/src/window/ui.rs:266
@@ -8010,222 +8012,222 @@ msgstr ""
 msgid "Sidebar text size"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:333
+#: rustconn/src/dialogs/settings/ui_tab.rs:334
 msgid "Font size of the connection names in the sidebar. Applied instantly"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:377
+#: rustconn/src/dialogs/settings/ui_tab.rs:379
 msgid "Send terminal control shortcuts to the session"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:379
+#: rustconn/src/dialogs/settings/ui_tab.rs:381
 msgid ""
 "While a terminal or remote viewer is focused, let Ctrl+F/P/N and similar "
 "chords reach the session instead of the app"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:388
+#: rustconn/src/dialogs/settings/ui_tab.rs:390
 msgid "Remember keyboard passthrough"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:390
+#: rustconn/src/dialogs/settings/ui_tab.rs:392
 msgid "Restore the passthrough state (Ctrl+Shift+Backspace) on the next start"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:399
+#: rustconn/src/dialogs/settings/ui_tab.rs:401
 msgid "Window"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:403
+#: rustconn/src/dialogs/settings/ui_tab.rs:405
 msgid "Remember size"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:404
+#: rustconn/src/dialogs/settings/ui_tab.rs:406
 msgid "Restore window geometry on startup"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:412
+#: rustconn/src/dialogs/settings/ui_tab.rs:414
 msgid "Show connection in window title"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:414
+#: rustconn/src/dialogs/settings/ui_tab.rs:416
 msgid ""
 "Append the active connection name to the window title, so time-tracking "
 "tools can identify it"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:420
+#: rustconn/src/dialogs/settings/ui_tab.rs:422
 msgid "Show hierarchy path in header"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:422
+#: rustconn/src/dialogs/settings/ui_tab.rs:424
 msgid ""
 "Show the groups that contain the active connection below the window title"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:432
+#: rustconn/src/dialogs/settings/ui_tab.rs:434
 msgid "Show connection name in split panes"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:434
+#: rustconn/src/dialogs/settings/ui_tab.rs:436
 msgid ""
 "Display a compact header with the connection name at the top of each split-"
 "view pane"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:445
+#: rustconn/src/dialogs/settings/ui_tab.rs:447
 msgid "Hide hover controls in split panes"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:447
+#: rustconn/src/dialogs/settings/ui_tab.rs:449
 msgid ""
 "Hide the reveal arrow with the close/detach/reconnect buttons at the middle "
 "of the right edge of every split-view pane (all protocols). Close and detach "
 "stay reachable from the pane menu (Shift+F10) and the sidebar"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:457
+#: rustconn/src/dialogs/settings/ui_tab.rs:459
 msgid "Show directional tab-close items"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:459
+#: rustconn/src/dialogs/settings/ui_tab.rs:461
 msgid ""
 "Add \"Close to the Left\" and \"Close to the Right\" to the tab menu's close "
 "options"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:469
+#: rustconn/src/dialogs/settings/ui_tab.rs:471
 msgid "Behavior when opening a connection from the sidebar"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:475
+#: rustconn/src/dialogs/settings/ui_tab.rs:477
 msgid "Open a new session on every double-click"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:477
+#: rustconn/src/dialogs/settings/ui_tab.rs:479
 msgid ""
 "Double-clicking a connection always starts another session instead of "
 "focusing the one already open"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:484
+#: rustconn/src/dialogs/settings/ui_tab.rs:486
 msgid "Open tunnelled browser in the embedded browser"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:486
+#: rustconn/src/dialogs/settings/ui_tab.rs:488
 msgid ""
 "‘Open Browser via Tunnel’ uses the in-app browser; turn off to launch an "
 "external Chromium browser in incognito mode instead"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:495
+#: rustconn/src/dialogs/settings/ui_tab.rs:497
 msgid "Tunnelled browser start page"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:502
+#: rustconn/src/dialogs/settings/ui_tab.rs:504
 msgid "Google"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:503
+#: rustconn/src/dialogs/settings/ui_tab.rs:505
 msgid "DuckDuckGo"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:504
+#: rustconn/src/dialogs/settings/ui_tab.rs:506
 msgid "ifconfig.me (show exit IP)"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:512
+#: rustconn/src/dialogs/settings/ui_tab.rs:514
 msgid "Fill in a common start page, or Custom to type your own"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:533
+#: rustconn/src/dialogs/settings/ui_tab.rs:535
 msgid "External browser command (tunnelled)"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:537
+#: rustconn/src/dialogs/settings/ui_tab.rs:539
 msgid ""
 "Command or path to a Chromium-based browser for the external tunnelled "
 "browser (e.g. chromium, brave-browser). Leave empty to auto-detect."
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:545
+#: rustconn/src/dialogs/settings/ui_tab.rs:547
 msgid "Startup"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:546
+#: rustconn/src/dialogs/settings/ui_tab.rs:548
 msgid "Action to perform when the application starts"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:551
+#: rustconn/src/dialogs/settings/ui_tab.rs:553
 msgid "On startup"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:552
+#: rustconn/src/dialogs/settings/ui_tab.rs:554
 msgid "Open session automatically"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:554
-#: rustconn/src/dialogs/settings/ui_tab.rs:872
+#: rustconn/src/dialogs/settings/ui_tab.rs:556
+#: rustconn/src/dialogs/settings/ui_tab.rs:874
 msgid "Do Nothing"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:572
+#: rustconn/src/dialogs/settings/ui_tab.rs:574
 msgid "Show Welcome tab"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:573
+#: rustconn/src/dialogs/settings/ui_tab.rs:575
 msgid "Display Welcome tab when no session opens at startup"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:583
+#: rustconn/src/dialogs/settings/ui_tab.rs:585
 msgid "System Tray"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:584
+#: rustconn/src/dialogs/settings/ui_tab.rs:586
 msgid "Requires desktop environment with tray support"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:589
+#: rustconn/src/dialogs/settings/ui_tab.rs:591
 msgid "Show icon"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:590
+#: rustconn/src/dialogs/settings/ui_tab.rs:592
 msgid "Display icon in system tray"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:595
+#: rustconn/src/dialogs/settings/ui_tab.rs:597
 msgid "Minimize to tray"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:596
+#: rustconn/src/dialogs/settings/ui_tab.rs:598
 msgid "Hide window instead of closing"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:613
+#: rustconn/src/dialogs/settings/ui_tab.rs:615
 msgid "Session Restore"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:614
+#: rustconn/src/dialogs/settings/ui_tab.rs:616
 msgid "Restore previous connections on startup"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:620
+#: rustconn/src/dialogs/settings/ui_tab.rs:622
 msgid "Reconnect to previous sessions on startup"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:625
+#: rustconn/src/dialogs/settings/ui_tab.rs:627
 msgid "Ask first"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:626
+#: rustconn/src/dialogs/settings/ui_tab.rs:628
 msgid "Prompt before restoring sessions"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:631
+#: rustconn/src/dialogs/settings/ui_tab.rs:633
 msgid "Max age"
 msgstr ""
 
-#: rustconn/src/dialogs/settings/ui_tab.rs:632
+#: rustconn/src/dialogs/settings/ui_tab.rs:634
 msgid "Hours before sessions expire"
 msgstr ""
 
@@ -9201,26 +9203,36 @@ msgstr ""
 msgid "New Tunnel"
 msgstr ""
 
-#: rustconn/src/dialogs/tunnel_builder/mod.rs:553
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:363
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:612
+msgid "Could Not Save Tunnel"
+msgstr ""
+
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:365
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:614
+msgid "Saving the tunnel failed and your changes may be lost: {}"
+msgstr ""
+
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:565
 msgid "Tunnel is Running"
 msgstr ""
 
-#: rustconn/src/dialogs/tunnel_builder/mod.rs:555
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:567
 msgid ""
 "This tunnel is currently running. Saving changes will not restart it "
 "automatically. You may need to stop and restart the tunnel for changes to "
 "take effect."
 msgstr ""
 
-#: rustconn/src/dialogs/tunnel_builder/mod.rs:560
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:572
 msgid "Save Anyway"
 msgstr ""
 
-#: rustconn/src/dialogs/tunnel_builder/mod.rs:612
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:634
 msgid "Connection Not Found"
 msgstr ""
 
-#: rustconn/src/dialogs/tunnel_builder/mod.rs:614
+#: rustconn/src/dialogs/tunnel_builder/mod.rs:636
 msgid ""
 "The SSH connection referenced by this tunnel no longer exists. Select a "
 "different connection."
@@ -12044,7 +12056,7 @@ msgstr ""
 msgid "Template"
 msgstr ""
 
-#: rustconn/src/window/edit_dialogs.rs:860
+#: rustconn/src/window/edit_dialogs.rs:853
 msgid "Recent"
 msgstr ""
 
@@ -12917,7 +12929,7 @@ msgstr ""
 msgid "Could not save preference"
 msgstr ""
 
-#: rustconn/src/window/snippets.rs:239 rustconn/src/window/snippets.rs:621
+#: rustconn/src/window/snippets.rs:239 rustconn/src/window/snippets.rs:630
 msgid "Search snippets…"
 msgstr ""
 
@@ -12945,27 +12957,35 @@ msgstr ""
 msgid "Are you sure you want to delete this snippet?"
 msgstr ""
 
-#: rustconn/src/window/snippets.rs:607
+#: rustconn/src/window/snippets.rs:515
+msgid "Could Not Delete Snippet"
+msgstr ""
+
+#: rustconn/src/window/snippets.rs:516
+msgid "Deleting the snippet failed: {}"
+msgstr ""
+
+#: rustconn/src/window/snippets.rs:616
 msgid "Execute Snippet"
 msgstr ""
 
-#: rustconn/src/window/snippets.rs:637
+#: rustconn/src/window/snippets.rs:646
 msgid "No snippets available"
 msgstr ""
 
-#: rustconn/src/window/snippets.rs:638
+#: rustconn/src/window/snippets.rs:647
 msgid "Create snippets in the Manage Snippets dialog"
 msgstr ""
 
-#: rustconn/src/window/snippets.rs:701
+#: rustconn/src/window/snippets.rs:710
 msgid "No Active Terminal"
 msgstr ""
 
-#: rustconn/src/window/snippets.rs:702
+#: rustconn/src/window/snippets.rs:711
 msgid "Open a terminal session first before executing a snippet."
 msgstr ""
 
-#: rustconn/src/window/snippets.rs:753
+#: rustconn/src/window/snippets.rs:762
 msgid "Enter Variable Values"
 msgstr ""
 

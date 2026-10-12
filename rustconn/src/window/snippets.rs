@@ -504,10 +504,19 @@ fn populate_snippets_manager_list(
                 true,
                 move |confirmed| {
                     if confirmed && let Ok(mut state_mut) = state_inner.try_borrow_mut() {
-                        if let Err(e) = state_mut.delete_snippet(snippet_id) {
+                        let delete_result = state_mut.delete_snippet(snippet_id);
+                        if let Err(ref e) = delete_result {
                             tracing::warn!(?e, "Failed to delete snippet");
                         }
                         drop(state_mut);
+                        if let Err(e) = delete_result {
+                            crate::alert::show_error(
+                                &manager_inner,
+                                &i18n("Could Not Delete Snippet"),
+                                &i18n_f("Deleting the snippet failed: {}", &[e.as_str()]),
+                            );
+                            return;
+                        }
                         notebook_inner.rebuild_snippet_menu(&state_inner);
                         populate_snippets_manager_list(
                             &state_inner,

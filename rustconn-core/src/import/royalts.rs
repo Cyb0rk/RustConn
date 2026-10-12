@@ -759,7 +759,11 @@ impl RoyalTsImporter {
                 continue;
             }
             let size = entry.size();
-            let extension = std::path::Path::new(entry.name())
+            // zip 9 changed `name()` to return `Result<Cow<str>, ZipError>`
+            // (a non-UTF-8 name is now surfaced instead of lossily decoded); an
+            // undecodable name simply has no usable extension here.
+            let entry_name = entry.name().unwrap_or_default();
+            let extension = std::path::Path::new(entry_name.as_ref())
                 .extension()
                 .and_then(std::ffi::OsStr::to_str)
                 .unwrap_or_default();

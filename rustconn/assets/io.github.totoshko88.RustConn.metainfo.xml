@@ -140,6 +140,20 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.12" date="2026-10-13">
+      <description>
+        <p>Version 0.23.12 - sidebar density controls, Quick Connect polish, and fixes:</p>
+        <ul>
+          <li>Added adjustable Sidebar row spacing and text size, independent of Compact interface (issue #379)</li>
+          <li>Quick Connect now uses idiomatic Adwaita rows and is keyboard-first: the Host field is focused on open and Enter connects from any field</li>
+          <li>Fixed split-pane colour 1 (green) and 5 (pink) to match across the panel border, tab stripe and sidebar marker</li>
+          <li>Fixed the sidebar connecting-status icon to a single, correct colour</li>
+          <li>Fixed the Monitoring activity-timer spins to grey out when the mode does not use them</li>
+          <li>Fixed three user actions that failed silently (saving a tunnel, deleting a snippet, toggling hardware video acceleration) to report the failure</li>
+          <li>Updated zip to 9.0.2 and refreshed several compatible dependencies</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.11" date="2026-10-12">
       <description>
         <p>Version 0.23.11 - a split-view crash fix, documentation, and dependency updates:</p>

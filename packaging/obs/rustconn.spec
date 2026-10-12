@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.11
+Version:        0.23.12
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,17 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Tue Oct 13 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.12-0
+- Version bump to 0.23.12
+- Added adjustable Sidebar row spacing and text size, independent of Compact interface (issue #379)
+- Changed Quick Connect to use idiomatic Adwaita rows
+- Fixed Quick Connect keyboard flow: the Host field is focused on open and Enter connects from any field
+- Fixed split-pane colour 1 (green) and 5 (pink) to match across the panel border, tab stripe and sidebar marker
+- Fixed the sidebar connecting-status icon to a single, correct colour
+- Fixed the Monitoring activity-timer spins to grey out when the mode does not use them
+- Fixed three user actions that failed silently (saving a tunnel, deleting a snippet, toggling hardware video acceleration) to report the failure
+- Updated zip 8.6.0->9.0.2 plus semver-compatible aws-lc-rs, aws-lc-sys, libz-sys and syn bumps
+
 * Mon Oct 12 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.11-0
 - Version bump to 0.23.11
 - Fixed opening a Local Shell as the second pane of a fresh RDP split crashing, by deferring the host-tab restore and focus grab to the next idle so GTK finishes reparenting the new VTE before focus is touched

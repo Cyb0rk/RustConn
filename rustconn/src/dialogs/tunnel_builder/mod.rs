@@ -23,7 +23,7 @@ pub use step_forwards::StepForwardsPage;
 pub use step_review::StepReviewPage;
 use uuid::Uuid;
 
-use crate::i18n::i18n;
+use crate::i18n::{i18n, i18n_f};
 use crate::state::{SharedAppState, with_state, with_state_mut};
 use crate::window::SharedTunnelManager;
 
@@ -349,7 +349,7 @@ impl TunnelBuilderDialog {
         let editing_id = ws.editing_id;
         drop(ws);
 
-        Self::save_tunnel_to_state(
+        if let Err(ref err) = Self::save_tunnel_to_state(
             &self.state,
             editing_id,
             &name,
@@ -357,7 +357,17 @@ impl TunnelBuilderDialog {
             &forwards,
             auto_start,
             auto_reconnect,
-        );
+        ) {
+            crate::alert::show_error(
+                &self.dialog,
+                &i18n("Could Not Save Tunnel"),
+                &i18n_f(
+                    "Saving the tunnel failed and your changes may be lost: {}",
+                    &[err],
+                ),
+            );
+            return;
+        }
 
         // Call on_save callback
         if let Some(ref cb) = *self.on_save.borrow() {
@@ -377,7 +387,7 @@ impl TunnelBuilderDialog {
         forwards: &[PortForward],
         auto_start: bool,
         auto_reconnect: bool,
-    ) {
+    ) -> Result<(), String> {
         with_state_mut(state, |s| {
             if let Some(id) = editing_id {
                 // Update existing tunnel (preserve UUID)
@@ -404,8 +414,10 @@ impl TunnelBuilderDialog {
 
             if let Err(e) = s.save_settings() {
                 tracing::error!(%e, "Failed to save settings after tunnel save");
+                return Err(e);
             }
-        });
+            Ok(())
+        })
     }
 
     // -----------------------------------------------------------------------
@@ -586,7 +598,7 @@ impl TunnelBuilderDialog {
             let editing_id = ws.editing_id;
             drop(ws);
 
-            Self::save_tunnel_to_state(
+            if let Err(ref err) = Self::save_tunnel_to_state(
                 &state,
                 editing_id,
                 &name,
@@ -594,7 +606,17 @@ impl TunnelBuilderDialog {
                 &forwards,
                 auto_start,
                 auto_reconnect,
-            );
+            ) {
+                crate::alert::show_error(
+                    &self_dialog,
+                    &i18n("Could Not Save Tunnel"),
+                    &i18n_f(
+                        "Saving the tunnel failed and your changes may be lost: {}",
+                        &[err],
+                    ),
+                );
+                return;
+            }
 
             if let Some(ref cb) = *on_save.borrow() {
                 cb();
