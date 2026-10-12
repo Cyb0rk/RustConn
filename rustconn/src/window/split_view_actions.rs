@@ -85,17 +85,38 @@ fn wire_new_shell_button(placement: PanelPlacement, state: SharedAppState) {
             return;
         }
 
-        if let Some(host_tab) = host_tab {
-            notebook.switch_to_tab(host_tab);
-        }
-
-        // The user asked for a shell here, so put the cursor here.
-        if let Err(e) = placement.bridge.focus_pane(panel_uuid) {
-            tracing::debug!(%panel_uuid, "could not focus the new pane: {e}");
-        }
-        if let Some(widget) = placement.bridge.content_widget(session_id) {
-            widget.grab_focus();
-        }
+        // Defer the tab restore + focus grab to the next idle, after GTK has
+        // finished reparenting the freshly spawned VTE into the pane.
+        //
+        // `place()` has just moved the terminal into the split via
+        // `move_session_to_panel` (`set_panel_content` → `unparent` then
+        // re-`append` under a new overlay) and parked its standalone tab. Doing
+        // `switch_to_tab` + `grab_focus` on that terminal *in the same tick*
+        // raced GTK's own teardown of the old parent's surface: GTK was left
+        // dispatching a Wayland event against a `wl_proxy` whose surface had
+        // already been destroyed, and `wl_proxy_get_version` on it crashed the
+        // process with SIGSEGV (confirmed by backtrace — the faulting stack is
+        // entirely inside libgtk-4/libwayland-client, no RustConn frame). This
+        // only bit the Local Shell path because it spawns *and* reparents a new
+        // VTE in one gesture; Select Tab moves an already-settled widget. One
+        // idle hop lets GTK settle the reparent and drop the stale proxy before
+        // we touch focus, which breaks the race. The widgets are resolved
+        // inside the idle (weakly, via the bridge) so a session closed in the
+        // meantime is a no-op, not a second dangling reference.
+        let notebook = Rc::clone(&placement.notebook);
+        let bridge = Rc::clone(&placement.bridge);
+        glib::idle_add_local_once(move || {
+            if let Some(host_tab) = host_tab {
+                notebook.switch_to_tab(host_tab);
+            }
+            // The user asked for a shell here, so put the cursor here.
+            if let Err(e) = bridge.focus_pane(panel_uuid) {
+                tracing::debug!(%panel_uuid, "could not focus the new pane: {e}");
+            }
+            if let Some(widget) = bridge.content_widget(session_id) {
+                widget.grab_focus();
+            }
+        });
     });
 }
 
