@@ -819,6 +819,9 @@ pub fn show_quick_connect_dialog_with_state(
     let host_row = adw::ActionRow::builder().title(i18n("Host")).build();
     host_row.add_suffix(&host_entry);
     settings_group.add(&host_row);
+    // Focus the Host field on open so keyboard and AT users land on the first
+    // editable field instead of nothing (the name dialog does the same).
+    let host_entry_for_focus = host_entry.clone();
 
     // Port spin
     let port_adj = gtk4::Adjustment::new(22.0, 1.0, 65535.0, 1.0, 10.0, 0.0);
@@ -1094,4 +1097,5 @@ pub fn show_quick_connect_dialog_with_state(
     });
 
     quick_dialog.present(Some(window));
+    host_entry_for_focus.grab_focus();
 }
