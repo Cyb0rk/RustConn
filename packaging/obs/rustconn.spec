@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.10
+Version:        0.23.11
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,12 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Mon Oct 12 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.11-0
+- Version bump to 0.23.11
+- Fixed opening a Local Shell as the second pane of a fresh RDP split crashing, by deferring the host-tab restore and focus grab to the next idle so GTK finishes reparenting the new VTE before focus is touched
+- Documented running ChromaTerm and other output filters from a sandboxed build via flatpak-spawn --host (issue #343)
+- Clarified the snap's external FreeRDP client and added a core26 migration checklist (issue #342)
+- Updated cc 1.7.0->1.8.0, serde_json 1.0.152->1.0.154, syn 3.0.7->3.0.8, unicode-ident 1.0.26->1.0.27, zopfli 0.8.3->0.8.4
 * Sun Oct 11 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.10-0
 - Version bump to 0.23.10
 - Added "Move to New Window" for a split-view pane, as a corner button and a context-menu item (Shift+F10)

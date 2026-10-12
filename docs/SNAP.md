@@ -151,6 +151,12 @@ client (`wlfreerdp3`) is deprecated upstream and Ubuntu 24.04 has no SDL client,
 neither is bundled. Before 0.22.7 the snap had no external RDP client at all, and
 those connections could not be made.
 
+> When the snap moves to `base: core26` (its Ubuntu 26.04 archive), re-check
+> whether an `sdl-freerdp3` package exists there: the SDL3 client is the
+> upstream-preferred one (the Flatpak already bundles it), so prefer it over the
+> X11 client at that point. This is tracked alongside the core26 base move in
+> the `snap/snapcraft.yaml` base comment (gnome extension / snapcraft#6185).
+
 ### Available CLIs
 
 | CLI | Purpose |
