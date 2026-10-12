@@ -3366,7 +3366,7 @@ set -g allow-passthrough on     # let wrapped sequences through untouched
 
 ### Interface page
 
-**Appearance group:** Theme (System, Light, Dark), Language (UI language selector, restart required), Rendering (see below, restart required), Sidebar width (260–500 pixels, default 320), Compact interface, Compact automatically on small windows, Sidebar row spacing, and Sidebar text size.
+**Appearance group:** Theme (System, Light, Dark), Language (UI language selector, restart required), Rendering (see below, restart required), Sidebar width (180–500 pixels, default 320), Compact interface, Compact automatically on small windows, Sidebar row spacing, and Sidebar text size.
 
 **Sidebar row spacing** and **Sidebar text size** tune the density of the connection list independently of Compact interface — the lever to reach for when you keep a large number of hosts in the sidebar and want more of them on screen at once. **Sidebar row spacing** is a slider from 0 to 12 pixels (default 7, the historical spacing) that sets the vertical gap above and below every connection row; lower it toward 0 for a tight, scan-many list and raise it for a roomier one. **Sidebar text size** scales only the connection-name labels — Small, Medium (the theme default) or Large — leaving the row icons, group arrows and status indicators at their usual size, so a smaller text size packs in more rows while a larger one aids readability. Both apply instantly as you change them (no restart) and are remembered across restarts. They are separate from **Compact interface**, which only tightens the window chrome (header bar, tab bar and toolbars) and no longer touches the connection list.
 
