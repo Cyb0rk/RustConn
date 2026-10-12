@@ -5,7 +5,8 @@ use gtk4::prelude::*;
 use gtk4::{Box as GtkBox, DropDown, StringList};
 use libadwaita as adw;
 use rustconn_core::config::{
-    ColorScheme, RendererPreference, SessionRestoreSettings, StartupAction, UiSettings,
+    ColorScheme, RendererPreference, SIDEBAR_ROW_MARGIN_MAX, SIDEBAR_ROW_MARGIN_MIN,
+    SessionRestoreSettings, SidebarFontSize, StartupAction, UiSettings,
 };
 use rustconn_core::models::Connection;
 
@@ -96,6 +97,10 @@ pub fn create_ui_page() -> (
     DropDown,
     // tunnel_browser_command
     adw::EntryRow,
+    adw::ComboRow,
+    // sidebar_row_margin (issue #379)
+    adw::SpinRow,
+    // sidebar_font_size (issue #379)
     adw::ComboRow,
 ) {
     let page = adw::PreferencesPage::builder()
@@ -299,6 +304,70 @@ pub fn create_ui_page() -> (
         let manual = compact_ui.clone();
         compact_auto.connect_active_notify(move |row| {
             crate::app::set_compact_prefs(manual.is_active(), row.is_active());
+        });
+    }
+
+    // Sidebar row spacing (issue #379) — per-side vertical padding of each
+    // connection row, 0–12px. Independent of Compact (which governs chrome):
+    // this is the real density lever for users with hundreds of hosts. Live
+    // preview via set_sidebar_density_prefs on every value change.
+    let sidebar_row_margin_row = adw::SpinRow::builder()
+        .title(i18n("Sidebar row spacing"))
+        .subtitle(i18n(
+            "Vertical space above and below each connection row, in pixels. Lower values fit more hosts on screen. Applied instantly",
+        ))
+        .adjustment(&gtk4::Adjustment::new(
+            7.0,
+            f64::from(rustconn_core::config::settings::SIDEBAR_ROW_MARGIN_MIN),
+            f64::from(rustconn_core::config::settings::SIDEBAR_ROW_MARGIN_MAX),
+            1.0,
+            2.0,
+            0.0,
+        ))
+        .build();
+    appearance_group.add(&sidebar_row_margin_row);
+
+    // Sidebar text size (issue #379) — scales only the row label.
+    let sidebar_font_size_row = adw::ComboRow::builder()
+        .title(i18n("Sidebar text size"))
+        .subtitle(i18n(
+            "Font size of the connection names in the sidebar. Applied instantly",
+        ))
+        .model(&gtk4::StringList::new(&[
+            &i18n(SidebarFontSize::Small.display_name()),
+            &i18n(SidebarFontSize::Medium.display_name()),
+            &i18n(SidebarFontSize::Large.display_name()),
+        ]))
+        .build();
+    appearance_group.add(&sidebar_font_size_row);
+
+    // Live preview: the slider feeds the row margin, the dropdown feeds the
+    // font class, both into the one apply function. The dropdown's selected
+    // index maps Small=0 / Medium=1 / Large=2 (SidebarFontSize::from_index).
+    {
+        let font_row = sidebar_font_size_row.clone();
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "SpinRow value is clamped to 0..=12 by its adjustment"
+        )]
+        sidebar_row_margin_row.connect_value_notify(move |row| {
+            let margin = row.value().round() as u32;
+            let font = SidebarFontSize::from_index(font_row.selected()).css_class();
+            crate::app::set_sidebar_density_prefs(margin, font);
+        });
+    }
+    {
+        let margin_row = sidebar_row_margin_row.clone();
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "SpinRow value is clamped to 0..=12 by its adjustment"
+        )]
+        sidebar_font_size_row.connect_selected_notify(move |row| {
+            let margin = margin_row.value().round() as u32;
+            let font = SidebarFontSize::from_index(row.selected()).css_class();
+            crate::app::set_sidebar_density_prefs(margin, font);
         });
     }
 
@@ -612,6 +681,10 @@ pub fn create_ui_page() -> (
         // Last so that the neighbouring positional arguments in load/collect
         // are SwitchRows: a ComboRow cannot be swapped with one by mistake.
         renderer_row,
+        // Sidebar density controls (issue #379), appended at the end to keep the
+        // existing positional layout stable.
+        sidebar_row_margin_row,
+        sidebar_font_size_row,
     )
 }
 
@@ -673,6 +746,8 @@ pub fn load_ui_settings(
     tunnel_start_preset: &DropDown,
     tunnel_browser_command_row: &adw::EntryRow,
     renderer_row: &adw::ComboRow,
+    sidebar_row_margin_row: &adw::SpinRow,
+    sidebar_font_size_row: &adw::ComboRow,
     settings: &UiSettings,
     connections: &[&Connection],
 ) {
@@ -779,6 +854,21 @@ pub fn load_ui_settings(
         .unwrap_or(0);
     renderer_row.set_selected(u32::try_from(renderer_index).unwrap_or(0));
 
+    // Sidebar density (issue #379): load the slider + dropdown, then apply so
+    // the sidebar reflects the saved values the moment Preferences opens.
+    sidebar_row_margin_row.set_value(f64::from(
+        settings
+            .sidebar_row_margin
+            .clamp(SIDEBAR_ROW_MARGIN_MIN, SIDEBAR_ROW_MARGIN_MAX),
+    ));
+    sidebar_font_size_row.set_selected(settings.sidebar_font_size.to_index());
+    crate::app::set_sidebar_density_prefs(
+        settings
+            .sidebar_row_margin
+            .clamp(SIDEBAR_ROW_MARGIN_MIN, SIDEBAR_ROW_MARGIN_MAX),
+        settings.sidebar_font_size.css_class(),
+    );
+
     // Populate startup action dropdown with connections
     let entries = build_startup_entries(connections);
     let mut labels: Vec<String> = vec![i18n("Do Nothing"), i18n("Local Shell")];
@@ -835,6 +925,8 @@ pub fn collect_ui_settings(
     tunnel_start_url_row: &adw::EntryRow,
     tunnel_browser_command_row: &adw::EntryRow,
     renderer_row: &adw::ComboRow,
+    sidebar_row_margin_row: &adw::SpinRow,
+    sidebar_font_size_row: &adw::ComboRow,
     connections: &[&Connection],
 ) -> UiSettings {
     let mut selected_scheme = ColorScheme::System;
@@ -901,6 +993,14 @@ pub fn collect_ui_settings(
         show_smart_folders: false, // Preserved via toggle button, not settings dialog
         compact_ui: compact_ui.is_active(),
         compact_auto: compact_auto.is_active(),
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "slider value is clamped to the 0..=12 range by its adjustment"
+        )]
+        sidebar_row_margin: (sidebar_row_margin_row.value().round() as u32)
+            .clamp(SIDEBAR_ROW_MARGIN_MIN, SIDEBAR_ROW_MARGIN_MAX),
+        sidebar_font_size: SidebarFontSize::from_index(sidebar_font_size_row.selected()),
         terminal_passthrough_ctrl: terminal_passthrough_ctrl.is_active(),
         window_title_shows_connection: window_title.shows_connection.is_active(),
         window_title_shows_path: window_title.shows_path.is_active(),

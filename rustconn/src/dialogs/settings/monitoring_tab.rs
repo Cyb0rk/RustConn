@@ -202,6 +202,23 @@ impl MonitoringPageWidgets {
 
         page.add(&activity_group);
 
+        // Dependent-row sensitivity (GNOME HIG): the Quiet Period and Silence
+        // Timeout spins are only meaningful for the timer-driven modes
+        // (Activity, Silence). For Off and Command they do nothing, so grey them
+        // out and let MonitorMode::uses_timers be the single source of truth —
+        // the same predicate the coordinator uses to decide whether to arm a
+        // timer. Independent of the live-metrics "Enable monitoring" switch,
+        // which these Activity defaults do not depend on.
+        {
+            let quiet = activity_quiet_period_spin.clone();
+            let silence = activity_silence_timeout_spin.clone();
+            activity_mode_combo.connect_selected_notify(move |combo| {
+                let uses_timers = crate::monitor_mode::from_index(combo.selected()).uses_timers();
+                quiet.set_sensitive(uses_timers);
+                silence.set_sensitive(uses_timers);
+            });
+        }
+
         Self {
             page,
             enabled_row,
@@ -270,6 +287,12 @@ impl MonitoringPageWidgets {
             .set_value(f64::from(defaults.effective_quiet_period()));
         self.activity_silence_timeout_spin
             .set_value(f64::from(defaults.effective_silence_timeout()));
+        // Match the spins' sensitivity to the loaded mode (see the handler in
+        // `new`): only Activity/Silence use these timer values.
+        let uses_timers = defaults.mode.uses_timers();
+        self.activity_quiet_period_spin.set_sensitive(uses_timers);
+        self.activity_silence_timeout_spin
+            .set_sensitive(uses_timers);
     }
 
     /// Collects activity monitor defaults from UI controls

@@ -136,6 +136,10 @@ pub fn create_clients_page() -> adw::PreferencesPage {
                 settings.connection.use_openh264 = enabled;
                 if let Err(e) = manager.save_settings(&settings) {
                     tracing::error!(?e, "Failed to persist use_openh264");
+                    crate::toast::show_error_toast_on_active_window(&i18n_f(
+                        "Could not save the hardware acceleration setting: {}",
+                        &[&e.to_string()],
+                    ));
                 }
             }
             rustconn_core::rdp_client::openh264_download::set_openh264_enabled(enabled);

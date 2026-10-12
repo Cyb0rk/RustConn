@@ -1,6 +1,6 @@
 # RustConn User Guide
 
-**Version 0.23.11** | GTK4/libadwaita Connection Manager for Linux
+**Version 0.23.12** | GTK4/libadwaita Connection Manager for Linux
 
 RustConn is a modern connection manager designed for Linux with Wayland-first approach. It supports SSH, RDP, VNC, SPICE, MOSH, SFTP, Telnet, Serial, Kubernetes, Web protocols and Zero Trust integrations through a native GTK4/libadwaita interface.
 
@@ -593,6 +593,7 @@ Temporary connection without saving:
 - Optional template selection for pre-filling
 - Password field for RDP/VNC
 - **Recent history** — the last 15 Quick Connect sessions are remembered and persist across restarts (stored in settings; host, port, protocol and username only — never a password); shown as a "Recent" section with type-ahead filtering by host/username; clicking an entry fills protocol, host, port, and username fields instantly
+- **Keyboard** — the Host field is focused the moment the dialog opens, and pressing Enter in any field connects (with a host filled in), so a quick connection can be made without touching the mouse
 
 ### Connection Actions
 
@@ -3366,7 +3367,9 @@ set -g allow-passthrough on     # let wrapped sequences through untouched
 
 ### Interface page
 
-**Appearance group:** Theme (System, Light, Dark), Language (UI language selector, restart required), Rendering (see below, restart required), Sidebar width (260–500 pixels, default 320).
+**Appearance group:** Theme (System, Light, Dark), Language (UI language selector, restart required), Rendering (see below, restart required), Sidebar width (180–500 pixels, default 320), Compact interface, Compact automatically on small windows, Sidebar row spacing, and Sidebar text size.
+
+**Sidebar row spacing** and **Sidebar text size** tune the density of the connection list independently of Compact interface — the lever to reach for when you keep a large number of hosts in the sidebar and want more of them on screen at once. **Sidebar row spacing** is a slider from 0 to 12 pixels (default 7, the historical spacing) that sets the vertical gap above and below every connection row; lower it toward 0 for a tight, scan-many list and raise it for a roomier one. **Sidebar text size** scales only the connection-name labels — Small, Medium (the theme default) or Large — leaving the row icons, group arrows and status indicators at their usual size, so a smaller text size packs in more rows while a larger one aids readability. Both apply instantly as you change them (no restart) and are remembered across restarts. They are separate from **Compact interface**, which only tightens the window chrome (header bar, tab bar and toolbars) and no longer touches the connection list.
 
 **Rendering** chooses which GTK renderer draws the interface. Leave it on **Automatic** unless the interface is sluggish: RustConn then uses the GPU renderer, except where it is known to behave worse than software rasterisation — X11 sessions whose compositor paints menus blank until you hover them, and macOS running inside a virtual machine, where the virtual GPU offers no accelerated OpenGL and the GPU path becomes both slow and CPU-hungry. **Software (Cairo)** forces software rasterisation everywhere; pick it if the interface lags, scrolls in steps, or responds late to typing in an environment the automatic choice does not recognise. **Hardware (GPU)** forces the GPU renderer, which is the setting for an X11 session with a driver that works fine. A `GSK_RENDERER` environment variable, if you set one, overrides all three. The choice applies on the next start, because GTK reads it while it opens the first window.
 

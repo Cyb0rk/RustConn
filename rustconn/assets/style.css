@@ -37,9 +37,9 @@
     border-left: 4px solid #3584e4;
 }
 
-/* Color 1: Green (#2ec27e) - GNOME Green */
+/* Color 1: Green (#33d17a) — matches SPLIT_COLOR_VALUES[1] in split_view/bridge.rs */
 .split-panel-color-1 {
-    border-left: 4px solid #2ec27e;
+    border-left: 4px solid #33d17a;
 }
 
 /* Color 2: Orange (#ff7800) - Vibrant Orange */
@@ -57,9 +57,9 @@
     border-left: 4px solid #00b4d8;
 }
 
-/* Color 5: Red (#e01b24) - GNOME Red */
+/* Color 5: Pink (#f66151) — matches SPLIT_COLOR_VALUES[5] in split_view/bridge.rs */
 .split-panel-color-5 {
-    border-left: 4px solid #e01b24;
+    border-left: 4px solid #f66151;
 }
 
 /* ============================================================
@@ -77,11 +77,11 @@
 }
 
 .split-panel-color-0 > .split-pane-header { background-color: alpha(#3584e4, 0.15); }
-.split-panel-color-1 > .split-pane-header { background-color: alpha(#2ec27e, 0.15); }
+.split-panel-color-1 > .split-pane-header { background-color: alpha(#33d17a, 0.15); }
 .split-panel-color-2 > .split-pane-header { background-color: alpha(#ff7800, 0.15); }
 .split-panel-color-3 > .split-pane-header { background-color: alpha(#9141ac, 0.15); }
 .split-panel-color-4 > .split-pane-header { background-color: alpha(#00b4d8, 0.15); }
-.split-panel-color-5 > .split-pane-header { background-color: alpha(#e01b24, 0.15); }
+.split-panel-color-5 > .split-pane-header { background-color: alpha(#f66151, 0.15); }
 
 /* Empty panel placeholder styling */
 /* Requirement 4.1: Empty panel displays placeholder with Select Tab button */
@@ -350,22 +350,13 @@ label.warning {
 }
 
 /* Connected status - green checkmark */
-.status-connected {
-    color: @success_color;
-    opacity: 1.0;
-}
-
-/* Connecting status - pulsing effect via opacity transition */
-.status-connecting {
-    color: @accent_color;
-    opacity: 0.7;
-}
-
-/* Failed status - red error */
-.status-failed {
-    color: @error_color;
-    opacity: 1.0;
-}
+/* Sidebar connection-status icon colors (.status-connected / -connecting /
+ * -failed) live in the higher-priority provider in src/sidebar_types.rs
+ * (STYLE_PROVIDER_PRIORITY_USER + 1), which is the single source of truth for
+ * them. They were previously ALSO defined here at APPLICATION priority with a
+ * different "connecting" color (@accent_color + opacity pulse) that the
+ * sidebar_types rule (@warning_color) always shadowed — dead CSS, now removed
+ * to avoid two conflicting definitions. */
 
 /* Status indicator styles for settings dialog */
 .success {
@@ -581,6 +572,22 @@ window:not(.compact):not(.macos) .sidebar-search-row {
     min-height: 0;
     background: none;
     border: none;
+}
+
+/* Sidebar connection-list label font size (issue #379).
+ *
+ * Scoped to the row LABEL only (`.sidebar-row-label`, set in sidebar/view.rs),
+ * never to `window` or the row box: a global font-size cascades into VTE and
+ * em-based metrics in GTK4 and leaves text floating in the rows. The class
+ * lives on the `.navigation-sidebar` list view and is toggled live by
+ * app.rs::apply_sidebar_font_class. Medium applies no class (theme default).
+ * The rows carry `min-height: 0` (set by the density provider), so a larger
+ * label simply makes its own row taller — nothing is clipped. */
+.navigation-sidebar.sidebar-font-s .sidebar-row-label {
+    font-size: 0.85em;
+}
+.navigation-sidebar.sidebar-font-l .sidebar-row-label {
+    font-size: 1.15em;
 }
 
 /* Sidebar bottom toolbar — no border, flat icons on transparent background,
@@ -867,17 +874,12 @@ window.compact preferencespage row.action-row {
     padding-bottom: 4px;
 }
 
-/* Sidebar rows — denser vertical spacing (spacing only, text unchanged) */
-window.compact listview > row {
-    min-height: 0;
-    padding-top: 1px;
-    padding-bottom: 1px;
-}
-
-window.compact listview > row treeexpander > box {
-    margin-top: 1px;
-    margin-bottom: 1px;
-}
+/* Sidebar connection-list row density is NO LONGER set here. It is owned by the
+ * "Row spacing" preference (issue #379) via the dynamic provider in app.rs
+ * (`set_sidebar_density_prefs`), which drives `.navigation-sidebar > row`
+ * padding independently of compact mode — a GTK4 widget margin (the old
+ * approach) cannot be overridden by CSS, which is why compact's row rule here
+ * had no visible effect. Compact still governs chrome only. */
 
 /* Sidebar search entry — slimmer.
  * Do NOT set min-height/padding on the `searchbar` node itself: a GtkSearchBar

@@ -152,6 +152,10 @@ pub struct SettingsDialog {
     show_directional_tab_close: adw::SwitchRow,
     // GSK renderer preference; applies from the next start (issue #274)
     renderer_row: adw::ComboRow,
+    // Sidebar row vertical spacing slider (issue #379)
+    sidebar_row_margin_row: adw::SpinRow,
+    // Sidebar text size dropdown (issue #379)
+    sidebar_font_size_row: adw::ComboRow,
     // SSH Agent settings
     ssh_agent_status_label: Label,
     ssh_agent_socket_label: Label,
@@ -288,6 +292,8 @@ impl SettingsDialog {
             tunnel_start_preset,
             tunnel_browser_command_row,
             renderer_row,
+            sidebar_row_margin_row,
+            sidebar_font_size_row,
         ) = create_ui_page();
         mark("ui_page");
 
@@ -736,6 +742,8 @@ impl SettingsDialog {
             show_directional_tab_close,
             reveal_toolbar_on_hover,
             renderer_row,
+            sidebar_row_margin_row,
+            sidebar_font_size_row,
             ssh_agent_status_label,
             ssh_agent_socket_label,
             ssh_agent_start_button,
@@ -1316,6 +1324,8 @@ impl SettingsDialog {
             &self.tunnel_start_preset,
             &self.tunnel_browser_command_row,
             &self.renderer_row,
+            &self.sidebar_row_margin_row,
+            &self.sidebar_font_size_row,
             &settings.ui,
             &conn_refs,
         );
@@ -1506,6 +1516,8 @@ impl SettingsDialog {
         let show_directional_tab_close_clone = self.show_directional_tab_close.clone();
         let reveal_toolbar_on_hover_clone = self.reveal_toolbar_on_hover.clone();
         let renderer_row_clone = self.renderer_row.clone();
+        let sidebar_row_margin_row_clone = self.sidebar_row_margin_row.clone();
+        let sidebar_font_size_row_clone = self.sidebar_font_size_row.clone();
         let connections_clone = self.connections.clone();
         let keybindings_overrides_clone = self.keybindings_overrides.clone();
 
@@ -1736,6 +1748,8 @@ impl SettingsDialog {
                 &tunnel_start_url_row_clone,
                 &tunnel_browser_command_row_clone,
                 &renderer_row_clone,
+                &sidebar_row_margin_row_clone,
+                &sidebar_font_size_row_clone,
                 &conn_refs,
             );
             // Preserve smart folders visibility (managed by toolbar toggle, not settings dialog)

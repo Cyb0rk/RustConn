@@ -810,48 +810,41 @@ pub fn show_quick_connect_dialog_with_state(
     protocol_row.add_suffix(&protocol_dropdown);
     settings_group.add(&protocol_row);
 
-    // Host entry
-    let host_entry = gtk4::Entry::builder()
-        .placeholder_text(i18n("hostname or IP"))
-        .valign(gtk4::Align::Center)
-        .hexpand(true)
+    // Host entry — AdwEntryRow so the title is the floating label, matching the
+    // connection editor and name dialog (HIG), instead of a bare GtkEntry stuck
+    // in an ActionRow suffix.
+    let host_entry = adw::EntryRow::builder()
+        .title(i18n("Host"))
+        .activates_default(true)
         .build();
-    let host_row = adw::ActionRow::builder().title(i18n("Host")).build();
-    host_row.add_suffix(&host_entry);
-    settings_group.add(&host_row);
+    settings_group.add(&host_entry);
+    // Focus the Host field on open so keyboard and AT users land on the first
+    // editable field instead of nothing (the name dialog does the same).
+    let host_entry_for_focus = host_entry.clone();
 
-    // Port spin
+    // Port — AdwSpinRow (title + inline spinner).
     let port_adj = gtk4::Adjustment::new(22.0, 1.0, 65535.0, 1.0, 10.0, 0.0);
-    let port_spin = gtk4::SpinButton::builder()
+    let port_spin = adw::SpinRow::builder()
+        .title(i18n("Port"))
         .adjustment(&port_adj)
         .climb_rate(1.0)
         .digits(0)
-        .valign(gtk4::Align::Center)
         .build();
-    let port_row = adw::ActionRow::builder().title(i18n("Port")).build();
-    port_row.add_suffix(&port_spin);
-    settings_group.add(&port_row);
+    settings_group.add(&port_spin);
 
-    // Username entry
-    let user_entry = gtk4::Entry::builder()
-        .placeholder_text(i18n("(optional)"))
-        .valign(gtk4::Align::Center)
-        .hexpand(true)
+    // Username — AdwEntryRow.
+    let user_entry = adw::EntryRow::builder()
+        .title(i18n("Username"))
+        .activates_default(true)
         .build();
-    let user_row = adw::ActionRow::builder().title(i18n("Username")).build();
-    user_row.add_suffix(&user_entry);
-    settings_group.add(&user_row);
+    settings_group.add(&user_entry);
 
-    // Password entry
-    let password_entry = gtk4::PasswordEntry::builder()
-        .show_peek_icon(true)
-        .placeholder_text(i18n("(optional)"))
-        .valign(gtk4::Align::Center)
-        .hexpand(true)
+    // Password — AdwPasswordEntryRow (floating title + reveal icon built in).
+    let password_entry = adw::PasswordEntryRow::builder()
+        .title(i18n("Password"))
+        .activates_default(true)
         .build();
-    let password_row = adw::ActionRow::builder().title(i18n("Password")).build();
-    password_row.add_suffix(&password_entry);
-    settings_group.add(&password_row);
+    settings_group.add(&password_entry);
 
     content.append(&settings_group);
 
@@ -949,7 +942,7 @@ pub fn show_quick_connect_dialog_with_state(
 
     // Connect port spin value-changed to track manual changes
     let port_manually_changed_clone = port_manually_changed.clone();
-    port_spin.connect_value_changed(move |_| {
+    port_spin.connect_value_notify(move |_| {
         *port_manually_changed_clone.borrow_mut() = true;
     });
 
@@ -1093,5 +1086,11 @@ pub fn show_quick_connect_dialog_with_state(
         window_clone.close();
     });
 
+    // Enter in any of the text fields activates the default (Connect), the
+    // standard dialog behaviour; the Connect handler already no-ops on an empty
+    // host, so Enter with nothing typed does nothing.
+    quick_dialog.set_default_widget(Some(&connect_btn));
+
     quick_dialog.present(Some(window));
+    host_entry_for_focus.grab_focus();
 }

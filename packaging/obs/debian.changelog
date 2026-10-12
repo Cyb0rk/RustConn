@@ -1,3 +1,24 @@
+rustconn (0.23.12-1) unstable; urgency=medium
+
+  * Version bump to 0.23.12
+  * Added: Sidebar row spacing and text size are now adjustable, independent of
+    Compact interface (issue #379)
+  * Changed: Quick Connect uses idiomatic Adwaita rows
+  * Fixed: Quick Connect is now keyboard-first - the Host field is focused on
+    open and Enter connects from any field
+  * Fixed: split-pane colour 1 (green) and 5 (pink) now match across the panel
+    border, tab stripe and sidebar marker
+  * Fixed: the sidebar connecting-status icon has a single, correct colour
+  * Fixed: the Monitoring activity-timer spins grey out when the mode does not
+    use them
+  * Fixed: three user actions that failed silently now report the failure -
+    saving a tunnel, deleting a snippet, and toggling hardware video
+    acceleration
+  * Dependencies: zip 8.6.0->9.0.2 plus semver-compatible aws-lc-rs, aws-lc-sys,
+    libz-sys and syn bumps
+
+ -- Anton Isaiev <totoshko88@gmail.com>  Tue, 13 Oct 2026 12:00:00 +0300
+
 rustconn (0.23.11-1) unstable; urgency=medium
 
   * Version bump to 0.23.11

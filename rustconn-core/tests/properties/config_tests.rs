@@ -586,6 +586,8 @@ fn arb_full_settings() -> impl Strategy<Value = AppSettings> {
                         show_smart_folders: false,
                         compact_ui: false,
                         compact_auto: false,
+                        sidebar_row_margin: 7,
+                        sidebar_font_size: rustconn_core::config::SidebarFontSize::Medium,
                         terminal_passthrough_ctrl: true,
                         window_title_shows_connection: false,
                         window_title_shows_path: false,

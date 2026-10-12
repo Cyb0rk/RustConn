@@ -959,6 +959,78 @@ impl RendererPreference {
     }
 }
 
+/// Text size of the sidebar connection-list rows.
+///
+/// Scales only the row *label* font — not the whole window — so icons,
+/// expanders and the row's fixed-size suffix indicators keep their metrics.
+/// The GUI maps each variant to a CSS class on the connection list
+/// (`sidebar-font-s` / `sidebar-font-l`); [`Self::Medium`] applies no class and
+/// inherits the theme default. A per-label class is used rather than a
+/// `window`-level `font-size`, which cascades unpredictably in GTK4 (VTE and
+/// em-based metrics) and leaves text floating inside the rows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SidebarFontSize {
+    /// Smaller label text — fits more hosts on screen (issue #379).
+    Small,
+    /// Theme default — no font override.
+    #[default]
+    Medium,
+    /// Larger label text — accessibility / high-DPI preference.
+    Large,
+}
+
+impl SidebarFontSize {
+    /// CSS class to apply to the connection list for this size, or `None` for
+    /// [`Self::Medium`] (which inherits the theme default and needs no class).
+    #[must_use]
+    pub const fn css_class(self) -> Option<&'static str> {
+        match self {
+            Self::Small => Some("sidebar-font-s"),
+            Self::Medium => None,
+            Self::Large => Some("sidebar-font-l"),
+        }
+    }
+
+    /// All CSS classes this enum can apply, for cleaning before re-applying.
+    #[must_use]
+    pub const fn all_css_classes() -> [&'static str; 2] {
+        ["sidebar-font-s", "sidebar-font-l"]
+    }
+
+    /// Returns the untranslated label for this size.
+    ///
+    /// Wrap the result in `i18n()` at the call site.
+    #[must_use]
+    pub const fn display_name(self) -> &'static str {
+        match self {
+            Self::Small => "Small",
+            Self::Medium => "Medium",
+            Self::Large => "Large",
+        }
+    }
+
+    /// Maps a dropdown position (Small=0, Medium=1, Large=2) back to the enum.
+    #[must_use]
+    pub const fn from_index(index: u32) -> Self {
+        match index {
+            0 => Self::Small,
+            2 => Self::Large,
+            _ => Self::Medium,
+        }
+    }
+
+    /// Dropdown position for this size (Small=0, Medium=1, Large=2).
+    #[must_use]
+    pub const fn to_index(self) -> u32 {
+        match self {
+            Self::Small => 0,
+            Self::Medium => 1,
+            Self::Large => 2,
+        }
+    }
+}
+
 /// Action to perform when the application starts
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -1082,6 +1154,24 @@ pub struct UiSettings {
     /// existing behavior is unchanged.
     #[serde(default)]
     pub compact_auto: bool,
+    /// Vertical margin (px) above and below each sidebar connection row.
+    ///
+    /// The dominant lever over sidebar list density (issue #379: a user with
+    /// 200+ hosts wants tighter rows). Applied as a GTK **widget** margin on
+    /// each row's content box in `sidebar/view.rs` — CSS cannot override a
+    /// widget margin property (it is added outside the CSS box), so density has
+    /// to live here, not in the stylesheet. Range 0–12; the default `7`
+    /// reproduces the historical row rhythm exactly, so existing users see no
+    /// change until they move the slider. Independent of
+    /// [`Self::compact_ui`] (which only touches window chrome).
+    #[serde(default = "default_sidebar_row_margin")]
+    pub sidebar_row_margin: u32,
+    /// Text size of the sidebar connection-list labels (issue #379).
+    ///
+    /// [`SidebarFontSize::Medium`] (default) inherits the theme font; Small/Large
+    /// apply a CSS class scoped to the row label only.
+    #[serde(default)]
+    pub sidebar_font_size: SidebarFontSize,
     /// Send single-Ctrl terminal control shortcuts (Ctrl+F/P/N/W/H/M/I) to the
     /// focused terminal/viewer instead of the application accelerators.
     ///
@@ -1270,6 +1360,8 @@ impl Default for UiSettings {
             show_smart_folders: false,
             compact_ui: cfg!(target_os = "macos"),
             compact_auto: false,
+            sidebar_row_margin: default_sidebar_row_margin(),
+            sidebar_font_size: SidebarFontSize::default(),
             terminal_passthrough_ctrl: true,
             window_title_shows_connection: false,
             window_title_shows_path: false,
@@ -1345,6 +1437,18 @@ pub struct NetworkSettings {
 
 const fn default_port_check_timeout() -> u32 {
     3
+}
+
+/// Minimum sidebar row margin (px) the Settings slider allows.
+pub const SIDEBAR_ROW_MARGIN_MIN: u32 = 0;
+
+/// Maximum sidebar row margin (px) the Settings slider allows.
+pub const SIDEBAR_ROW_MARGIN_MAX: u32 = 12;
+
+/// Historical per-row vertical margin, kept as the default so existing
+/// configs render identically until the user moves the slider.
+const fn default_sidebar_row_margin() -> u32 {
+    7
 }
 
 impl Default for ConnectionSettings {
