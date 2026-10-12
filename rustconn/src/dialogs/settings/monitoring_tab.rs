@@ -291,7 +291,8 @@ impl MonitoringPageWidgets {
         // `new`): only Activity/Silence use these timer values.
         let uses_timers = defaults.mode.uses_timers();
         self.activity_quiet_period_spin.set_sensitive(uses_timers);
-        self.activity_silence_timeout_spin.set_sensitive(uses_timers);
+        self.activity_silence_timeout_spin
+            .set_sensitive(uses_timers);
     }
 
     /// Collects activity monitor defaults from UI controls
