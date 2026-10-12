@@ -104,8 +104,32 @@ platforms:
 # `base: core26` even on stable Snapcraft 9.1.3 ("Extension 'gnome' does not
 # support base: 'core26'"), despite Snapcraft 9.0 adding the core26 *base*. The
 # gnome-core26 *platform* snap exists, but the *extension* that wires it in does
-# not accept it yet — see snapcraft#6185 and RustConn#174. Revisit once a
-# snapcraft release lists core26 among the gnome extension's supported bases.
+# not accept it yet — the gnome core26 extension is tracked in
+# https://github.com/canonical/snapcraft/issues/6185 ("placeholder task for
+# core26 support for the gnome extension", produced by the Desktop team after
+# the core26 base goes stable), and the RustConn side is RustConn#174.
+#
+# What to change here once snapcraft#6185 lands (the gnome extension accepts
+# core26), in ONE commit, built and smoke-tested before release:
+#   1. `base: core24` → `base: core26` (this line only; the extension still
+#      resolves the right platform/SDK, so no `extensions:` edit is needed).
+#   2. The gnome-48-* platform core26 pairs with ships libadwaita >= 1.6, so the
+#      snap can finally build WITH `--features adw-1-8` like the Flatpak — add
+#      `adw-1-8` to the `--features '...'` list in override-build below and drop
+#      the "minus adw-1-8" caveat from the libadwaita note above and that
+#      comment. Verify the platform's actual libadwaita version first
+#      (`snap info gnome-48-*` / the extension docs) before assuming 1.8.
+#   3. Re-check the staged VTE: core26's archive is Ubuntu 26.04, so the
+#      build-packages/stage-packages VTE name may change
+#      (libvte-2.91-gtk4-* → whatever 26.04 ships); confirm the app's
+#      `vte4 v0_76`+ requirement is still met by the platform or the staged .deb.
+#   4. Re-check `freerdp3-x11` is still the package name on 26.04 (24.04 had no
+#      SDL client; 26.04 may, in which case prefer `sdl-freerdp3` — see the
+#      stage-packages note and docs/SNAP.md "External RDP client").
+#   5. Re-run the full strict-confinement smoke on 26.04 (issue #174 was a
+#      startup break under strict confinement with the manual pre-extension
+#      approach — the whole reason we are on the extension + core24 today).
+# Until all of that is verified, core24 (Ubuntu 24.04 LTS) stays the base.
 #
 # libadwaita: the core24 gnome platform (gnome-46-2404) ships libadwaita 1.5,
 # so the GUI is built WITHOUT `--features adw-1-8` (the 1.6/1.7/1.8 widgets are

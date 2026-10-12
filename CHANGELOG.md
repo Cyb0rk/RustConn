@@ -5,6 +5,11 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Documentation
+- **Clarified the snap's external FreeRDP client and documented the core26 migration (#342)** — the snap has bundled FreeRDP's X11 client (`xfreerdp3`, from `freerdp3-x11`) since 0.22.7 and gained the `network-status` plug (fixing the portal `NetworkMonitor` warning) in 0.22.11, so the reported gaps are already closed. The `snap/snapcraft.yaml` base comment now carries an actionable, numbered checklist for the eventual `base: core24 → core26` move (enabling `--features adw-1-8`, re-checking the VTE and `freerdp3-x11`/`sdl-freerdp3` package names on 26.04, and re-running the strict-confinement smoke), tied to the gnome extension's core26 support tracked in [snapcraft#6185](https://github.com/canonical/snapcraft/issues/6185) and RustConn#174. `docs/SNAP.md` notes that an `sdl-freerdp3` client should be preferred over the X11 one once the snap is on 26.04. No build or runtime change. (`snap/snapcraft.yaml`, `docs/SNAP.md`)
+
 ## [0.23.10] - 2026-10-11
 
 ### Added
