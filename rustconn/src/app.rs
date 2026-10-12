@@ -234,9 +234,9 @@ fn set_window_compact(window: &gtk4::Window, manual: bool, auto: bool) {
     // `compact-manual` marks the case where the user DELIBERATELY turned compact
     // on (the toggle / menu / shortcut), as opposed to auto-compact engaging
     // because the window got small. Only the manual case trades the standard
-    // 34px icon-button size (ui.rs / sidebar_ui.rs, matching libadwaita's native
+    // 32px icon-button size (ui.rs / sidebar_ui.rs, matching libadwaita's native
     // header buttons) down to the denser 28px. Auto-compact leaves buttons at
-    // 34px. Driven in CSS by `window.compact-manual .header-icon-button`
+    // 32px. Driven in CSS by `window.compact-manual .header-icon-button`
     // (assets/style.css). See issue #369 for why the old 44px HIG touch target
     // was dropped on the desktop pointer case.
     if manual {

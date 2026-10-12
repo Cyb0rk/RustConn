@@ -205,7 +205,7 @@ pub fn create_header_bar() -> (
     header_bar.pack_end(&passthrough_indicator);
 
     // Icon-only header buttons carry `.header-icon-button`, which sizes them to
-    // libadwaita's native 34px (28px on macOS, and 28px under deliberate
+    // libadwaita's native 32px (28px on macOS, and 28px under deliberate
     // compact). Buttons with a text label (Shell, Broadcast, Passthrough)
     // already exceed it via their content. The sidebar header uses the same
     // class, so both bars come out the same height.
