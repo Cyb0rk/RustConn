@@ -196,12 +196,15 @@ pub fn setup_list_item(
     let expander = TreeExpander::new();
 
     let content_box = GtkBox::new(Orientation::Horizontal, 10);
-    // Row rhythm close to an AdwActionRow: a little more vertical breathing
-    // room and leading/trailing padding than the bare list row.
+    // Leading/trailing padding stays a widget margin (horizontal density is not
+    // user-tunable). The VERTICAL rhythm, by contrast, is driven from the row's
+    // CSS node (`.navigation-sidebar > row` padding) via the dynamic provider in
+    // `app.rs`, so the "Row spacing" slider (issue #379) can retune it live.
+    // It must NOT be a widget margin here: a GTK4 widget margin is added OUTSIDE
+    // the CSS box and cannot be overridden by a stylesheet, so a CSS/widget mix
+    // would double up and the slider could never shrink it below this value.
     content_box.set_margin_start(6);
     content_box.set_margin_end(6);
-    content_box.set_margin_top(7);
-    content_box.set_margin_bottom(7);
 
     let icon = Image::from_icon_name("network-server-symbolic");
     icon.set_pixel_size(16);
@@ -224,6 +227,10 @@ pub fn setup_list_item(
     label.set_halign(gtk4::Align::Start);
     label.set_hexpand(true);
     label.set_ellipsize(pango::EllipsizeMode::End);
+    // Named so the sidebar font-size preference (issue #379) can scale the row
+    // text alone — `.sidebar-font-s .sidebar-row-label` — without touching
+    // icons, expanders or the fixed-size suffix indicators.
+    label.add_css_class("sidebar-row-label");
     content_box.append(&label);
 
     let pin_icon = Image::from_icon_name("starred-symbolic");

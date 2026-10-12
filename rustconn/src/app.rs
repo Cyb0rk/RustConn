@@ -98,6 +98,99 @@ thread_local! {
     /// boolean would be worse than reading it where it is needed. Mirrors
     /// `ui.reveal_session_toolbar_on_hover`.
     static REVEAL_TOOLBAR_ON_HOVER: Cell<bool> = const { Cell::new(true) };
+
+    /// Current sidebar row vertical margin (px) and font-size class.
+    ///
+    /// The row margin is applied as `.navigation-sidebar > row` padding through
+    /// a dedicated CSS provider (see [`SIDEBAR_DENSITY_PROVIDER`]) rather than a
+    /// GTK widget margin, so the "Row spacing" slider (issue #379) retunes it
+    /// live without a sidebar rebuild. The font class (`sidebar-font-s` /
+    /// `sidebar-font-l`, or `None` for Medium) is toggled on each list view.
+    static SIDEBAR_FONT_CLASS: RefCell<Option<&'static str>> = const { RefCell::new(None) };
+
+    /// The single reusable provider carrying the live sidebar row-spacing CSS.
+    ///
+    /// Reloaded in place on every slider change so the old padding rule never
+    /// lingers; added to the display once, at [`gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION`]
+    /// + 1 so it wins over the base stylesheet's row rule but still yields to a
+    /// user theme.
+    static SIDEBAR_DENSITY_PROVIDER: RefCell<Option<gtk4::CssProvider>> = const { RefCell::new(None) };
+}
+
+/// Default sidebar row padding (px, each side) when the margin matches the
+/// historical widget margin of 7 — split top/bottom to reproduce the old
+/// 14px-per-row rhythm as closely as a symmetric padding allows.
+const fn sidebar_row_pad(margin: u32) -> u32 {
+    margin
+}
+
+/// Applies the sidebar density preferences (row spacing + font size) live to
+/// every window, and remembers them for list views built later.
+///
+/// `row_margin` is the per-side vertical padding in px (0–12); `font_class` is
+/// the CSS class for the label font size, or `None` for the theme default.
+/// Call after the slider / dropdown changes and once at startup.
+pub fn set_sidebar_density_prefs(row_margin: u32, font_class: Option<&'static str>) {
+    SIDEBAR_FONT_CLASS.with(|c| *c.borrow_mut() = font_class);
+
+    let pad = sidebar_row_pad(row_margin.min(12));
+    let css = format!(
+        ".navigation-sidebar > row {{ min-height: 0; padding-top: {pad}px; padding-bottom: {pad}px; }}\n\
+         .navigation-sidebar > row treeexpander > box {{ margin-top: 0; margin-bottom: 0; }}"
+    );
+
+    SIDEBAR_DENSITY_PROVIDER.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let provider = slot.get_or_insert_with(|| {
+            let p = gtk4::CssProvider::new();
+            crate::utils::add_css_provider(&p, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
+            p
+        });
+        provider.load_from_string(&css);
+    });
+
+    // Toggle the font-size class on every live sidebar list view.
+    if let Some(app) = gtk4::gio::Application::default()
+        && let Some(gtk_app) = app.downcast_ref::<gtk4::Application>()
+    {
+        for window in gtk_app.windows() {
+            apply_sidebar_font_class(window.upcast_ref());
+        }
+    }
+}
+
+/// Re-applies the stored sidebar font-size class to every `.navigation-sidebar`
+/// list view found under `root`, removing any previously-applied size class
+/// first so switching sizes does not stack classes.
+pub fn apply_sidebar_font_class(root: &gtk4::Widget) {
+    let target = SIDEBAR_FONT_CLASS.with(|c| *c.borrow());
+    for list in find_navigation_sidebars(root) {
+        for cls in rustconn_core::config::settings::SidebarFontSize::all_css_classes() {
+            list.remove_css_class(cls);
+        }
+        if let Some(cls) = target {
+            list.add_css_class(cls);
+        }
+    }
+}
+
+/// Depth-first walk collecting every widget carrying the `.navigation-sidebar`
+/// class under `root` (there is normally one per window, plus any in detached
+/// windows).
+fn find_navigation_sidebars(root: &gtk4::Widget) -> Vec<gtk4::Widget> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.clone()];
+    while let Some(w) = stack.pop() {
+        if w.has_css_class("navigation-sidebar") {
+            out.push(w.clone());
+        }
+        let mut child = w.first_child();
+        while let Some(c) = child {
+            stack.push(c.clone());
+            child = c.next_sibling();
+        }
+    }
+    out
 }
 
 /// Auto-compact engages when the window is no taller than this (logical px).
@@ -358,6 +451,20 @@ fn build_ui(app: &adw::Application, tray_manager: SharedTrayManager) {
     };
     set_compact_prefs(compact_manual, compact_auto);
     set_reveal_toolbar_on_hover(state.borrow().settings().ui.reveal_session_toolbar_on_hover);
+
+    // Apply saved sidebar density (row spacing + text size, issue #379) so the
+    // connection list honours the preference from the first frame, without the
+    // user opening Preferences. The row-spacing CSS provider is global; the
+    // font class is toggled on this window's sidebar list view.
+    {
+        let (row_margin, font_class) = {
+            let state_ref = state.borrow();
+            let ui = &state_ref.settings().ui;
+            (ui.sidebar_row_margin, ui.sidebar_font_size.css_class())
+        };
+        set_sidebar_density_prefs(row_margin, font_class);
+        apply_sidebar_font_class(window.gtk_window().upcast_ref());
+    }
 
     // Initialize tray icon if enabled in settings
     let enable_tray = state.borrow().settings().ui.enable_tray_icon;

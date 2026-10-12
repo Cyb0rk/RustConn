@@ -583,6 +583,22 @@ window:not(.compact):not(.macos) .sidebar-search-row {
     border: none;
 }
 
+/* Sidebar connection-list label font size (issue #379).
+ *
+ * Scoped to the row LABEL only (`.sidebar-row-label`, set in sidebar/view.rs),
+ * never to `window` or the row box: a global font-size cascades into VTE and
+ * em-based metrics in GTK4 and leaves text floating in the rows. The class
+ * lives on the `.navigation-sidebar` list view and is toggled live by
+ * app.rs::apply_sidebar_font_class. Medium applies no class (theme default).
+ * The rows carry `min-height: 0` (set by the density provider), so a larger
+ * label simply makes its own row taller — nothing is clipped. */
+.navigation-sidebar.sidebar-font-s .sidebar-row-label {
+    font-size: 0.85em;
+}
+.navigation-sidebar.sidebar-font-l .sidebar-row-label {
+    font-size: 1.15em;
+}
+
 /* Sidebar bottom toolbar — no border, flat icons on transparent background,
  * so the action row merges into the connection list like GNOME Files' sidebar
  * rather than reading as a separate panel split off by a divider (issue #374). */
@@ -867,17 +883,12 @@ window.compact preferencespage row.action-row {
     padding-bottom: 4px;
 }
 
-/* Sidebar rows — denser vertical spacing (spacing only, text unchanged) */
-window.compact listview > row {
-    min-height: 0;
-    padding-top: 1px;
-    padding-bottom: 1px;
-}
-
-window.compact listview > row treeexpander > box {
-    margin-top: 1px;
-    margin-bottom: 1px;
-}
+/* Sidebar connection-list row density is NO LONGER set here. It is owned by the
+ * "Row spacing" preference (issue #379) via the dynamic provider in app.rs
+ * (`set_sidebar_density_prefs`), which drives `.navigation-sidebar > row`
+ * padding independently of compact mode — a GTK4 widget margin (the old
+ * approach) cannot be overridden by CSS, which is why compact's row rule here
+ * had no visible effect. Compact still governs chrome only. */
 
 /* Sidebar search entry — slimmer.
  * Do NOT set min-height/padding on the `searchbar` node itself: a GtkSearchBar

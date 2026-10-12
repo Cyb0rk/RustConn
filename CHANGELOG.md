@@ -5,6 +5,11 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.12] - 2026-10-12
+
+### Added
+- **Sidebar row spacing and text size are now adjustable, independent of Compact interface (#379)** — a user with 200+ hosts asked to tighten the gap between connections and groups and to control the sidebar font, because Compact interface appeared to change nothing in the list. It genuinely did not: the per-row vertical rhythm was a GTK *widget* margin (`set_margin_top/bottom(7)` on each row's content box in `sidebar/view.rs`), and a GTK4 widget margin is added outside the CSS box and cannot be overridden by a stylesheet — so Compact's `window.compact listview > row` rule was dead code with no visible effect. Density now lives where CSS can reach it. Two new Settings ▸ Interface ▸ Appearance controls: **Sidebar row spacing**, a 0–12px slider (default 7, reproducing the old spacing exactly, so existing configs look unchanged until moved) that drives `.navigation-sidebar > row` padding through a dedicated live CSS provider; and **Sidebar text size** (Small / Medium / Large), a class scoped to the row label alone (`.sidebar-row-label`) so icons, group arrows and status indicators keep their metrics — a label-only class rather than a `window` font-size, which cascades unpredictably into VTE and em-based metrics in GTK4. Both apply instantly (no restart), are remembered across restarts and are applied from the first frame without opening Preferences. The two controls are fully independent of **Compact interface**, which now tightens window chrome only; the superseded (and ineffective) compact list-row CSS was removed. (`rustconn-core/src/config/settings.rs`, `rustconn/src/sidebar/view.rs`, `rustconn/src/app.rs`, `rustconn/src/dialogs/settings/ui_tab.rs`, `rustconn/src/dialogs/settings/mod.rs`, `rustconn/assets/style.css`)
+
 ## [0.23.11] - 2026-10-12
 
 ### Fixed
