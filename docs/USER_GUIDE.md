@@ -593,6 +593,7 @@ Temporary connection without saving:
 - Optional template selection for pre-filling
 - Password field for RDP/VNC
 - **Recent history** — the last 15 Quick Connect sessions are remembered and persist across restarts (stored in settings; host, port, protocol and username only — never a password); shown as a "Recent" section with type-ahead filtering by host/username; clicking an entry fills protocol, host, port, and username fields instantly
+- **Keyboard** — the Host field is focused the moment the dialog opens, and pressing Enter in any field connects (with a host filled in), so a quick connection can be made without touching the mouse
 
 ### Connection Actions
 
