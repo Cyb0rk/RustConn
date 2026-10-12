@@ -1,4 +1,19 @@
 -------------------------------------------------------------------
+Mon Oct 12 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.11
+
+- Version bump to 0.23.11
+- Fixed: opening a Local Shell as the second pane of a fresh RDP split no longer
+  crashes - the host-tab restore and focus grab are deferred to the next idle so
+  GTK finishes reparenting the new VTE before focus is touched, breaking a
+  Wayland use-after-free
+- Documentation: documented running ChromaTerm and other output filters from a
+  sandboxed build via flatpak-spawn --host (issue #343)
+- Documentation: clarified the snap's external FreeRDP client and added a core26
+  migration checklist to snapcraft.yaml and docs/SNAP.md (issue #342)
+- Updated: cc 1.7.0->1.8.0, serde_json 1.0.152->1.0.154, syn 3.0.7->3.0.8,
+  unicode-ident 1.0.26->1.0.27, zopfli 0.8.3->0.8.4
+
+-------------------------------------------------------------------
 Sun Oct 11 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.10
 
 - Version bump to 0.23.10

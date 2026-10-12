@@ -140,6 +140,17 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.11" date="2026-10-12">
+      <description>
+        <p>Version 0.23.11 - a split-view crash fix, documentation, and dependency updates:</p>
+        <ul>
+          <li>Fixed opening a Local Shell as the second pane of a fresh RDP split crashing - the host-tab restore and focus grab are deferred to the next idle so GTK finishes reparenting the new terminal before focus is touched, breaking a Wayland use-after-free</li>
+          <li>Documented running ChromaTerm and other output filters from a sandboxed build via flatpak-spawn --host (issue #343)</li>
+          <li>Clarified the snap's external FreeRDP client and added a core26 migration checklist (issue #342)</li>
+          <li>Updated cc, serde_json, syn, unicode-ident and zopfli to their latest compatible versions</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.10" date="2026-10-11">
       <description>
         <p>Version 0.23.10 - split-view polish and accessibility:</p>
