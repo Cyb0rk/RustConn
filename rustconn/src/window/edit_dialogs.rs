@@ -815,6 +815,7 @@ pub fn show_quick_connect_dialog_with_state(
         .placeholder_text(i18n("hostname or IP"))
         .valign(gtk4::Align::Center)
         .hexpand(true)
+        .activates_default(true)
         .build();
     let host_row = adw::ActionRow::builder().title(i18n("Host")).build();
     host_row.add_suffix(&host_entry);
@@ -840,6 +841,7 @@ pub fn show_quick_connect_dialog_with_state(
         .placeholder_text(i18n("(optional)"))
         .valign(gtk4::Align::Center)
         .hexpand(true)
+        .activates_default(true)
         .build();
     let user_row = adw::ActionRow::builder().title(i18n("Username")).build();
     user_row.add_suffix(&user_entry);
@@ -851,6 +853,7 @@ pub fn show_quick_connect_dialog_with_state(
         .placeholder_text(i18n("(optional)"))
         .valign(gtk4::Align::Center)
         .hexpand(true)
+        .activates_default(true)
         .build();
     let password_row = adw::ActionRow::builder().title(i18n("Password")).build();
     password_row.add_suffix(&password_entry);
@@ -1095,6 +1098,11 @@ pub fn show_quick_connect_dialog_with_state(
 
         window_clone.close();
     });
+
+    // Enter in any of the text fields activates the default (Connect), the
+    // standard dialog behaviour; the Connect handler already no-ops on an empty
+    // host, so Enter with nothing typed does nothing.
+    quick_dialog.set_default_widget(Some(&connect_btn));
 
     quick_dialog.present(Some(window));
     host_entry_for_focus.grab_focus();
