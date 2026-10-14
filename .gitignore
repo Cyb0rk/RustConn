@@ -99,3 +99,6 @@ ROADMAP.md
 
 # Generated code-review reports
 semantic-review/
+
+# Kiro agents tasks
+.agents/

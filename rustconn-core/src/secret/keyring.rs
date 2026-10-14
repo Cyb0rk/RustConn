@@ -4,7 +4,7 @@
 //! that need system keyring integration (GNOME Keyring, KDE Wallet, etc.).
 //!
 //! - On Linux/BSD (`cfg(not(target_os = "macos"))`) this talks to the Secret
-//!   Service **in process** via the [`oo7`] crate (`oo7::dbus::Service`), so no
+//!   Service **in process** via the [`oo7`](https://docs.rs/oo7) crate (`oo7::dbus::Service`), so no
 //!   `secret-tool` binary or bundled libsecret C library is required.
 //! - On macOS these generic auxiliary operations delegate to the native
 //!   Keychain implementation in `super::macos_keychain::keychain_ops`.

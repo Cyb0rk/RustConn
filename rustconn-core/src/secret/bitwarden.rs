@@ -2108,7 +2108,10 @@ mod root_search_tests {
         let candidates = BitwardenBackend::bare_candidates(identity.key, &aliases);
 
         // The bare leaf is now a candidate and matches the real vault title.
-        assert!(BitwardenBackend::root_search_matches("hanfile03", &candidates));
+        assert!(BitwardenBackend::root_search_matches(
+            "hanfile03",
+            &candidates
+        ));
         // The full slash path still matches when the user titled it that way.
         assert!(BitwardenBackend::root_search_matches(
             "AME/DE/11/hanfile03",
@@ -2120,6 +2123,9 @@ mod root_search_tests {
             "hanfile99",
             &candidates
         ));
-        assert!(!BitwardenBackend::root_search_matches("hanfile", &candidates));
+        assert!(!BitwardenBackend::root_search_matches(
+            "hanfile",
+            &candidates
+        ));
     }
 }

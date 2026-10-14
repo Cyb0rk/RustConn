@@ -73,10 +73,7 @@ fn fixed_shortcuts(category: KeybindingCategory) -> Vec<HelpEntry> {
             entry("<Control>v", i18n("Paste connection")),
             entry("Return", i18n("Connect to selected")),
             entry("Right", i18n("Expand selected group (sidebar)")),
-            entry(
-                "Left",
-                i18n("Collapse group, or go to parent (sidebar)"),
-            ),
+            entry("Left", i18n("Collapse group, or go to parent (sidebar)")),
         ],
         KeybindingCategory::Terminal => vec![
             entry("<Control>plus", i18n("Zoom In (font size)")),
@@ -626,6 +623,8 @@ mod tests {
         "<Control>c",
         "<Control>v",
         "Return",
+        "Right",
+        "Left",
         // Navigation
         "<Control>f",
         "<Control>1|<Alt>1",

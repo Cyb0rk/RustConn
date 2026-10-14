@@ -125,14 +125,21 @@ pub struct ConnectionSidebar {
     toolbar_view: adw::ToolbarView,
 }
 
+/// Whether a bare Left/Right arrow expands (else collapses / goes to the
+/// parent) in the connection tree (issue #380). The tree nests toward the
+/// reading direction's end, so in RTL the keys swap.
+const fn arrow_expands(right_key: bool, rtl: bool) -> bool {
+    right_key != rtl
+}
+
 impl ConnectionSidebar {
     /// Creates a new connection sidebar
     #[must_use]
     pub fn new() -> Self {
         let container = GtkBox::new(Orientation::Vertical, 0);
-        // Minimum sidebar width — kept in sync with the OverlaySplitView min
-        // (window/mod.rs) and the settings SpinRow lower bound (ui_tab.rs).
-        container.set_width_request(180);
+        // Minimum sidebar width — one constant shared with the OverlaySplitView
+        // minimum (window/mod.rs) and the Settings spin row (ui_tab.rs).
+        container.set_width_request(rustconn_core::config::SIDEBAR_WIDTH_MIN);
         container.add_css_class("sidebar");
 
         // Search box with entry and help button
@@ -503,43 +510,24 @@ impl ConnectionSidebar {
                     }
                     glib::Propagation::Stop
                 }
-                gdk::Key::Right | gdk::Key::KP_Right if !ctrl => {
-                    // Right on a collapsed group expands it (issue #380). On a
-                    // leaf or an already-expanded group, fall through so the
-                    // ListView keeps its default focus behaviour. Multi-select
-                    // acts on the single focused row only.
-                    if let Some(lv) = list_view_weak.upgrade()
-                        && let Some(row) = Self::selected_tree_list_row(&lv)
-                        && Self::row_is_group(&row)
-                        && !row.is_expanded()
-                    {
-                        row.set_expanded(true);
-                        return glib::Propagation::Stop;
+                key @ (gdk::Key::Right
+                | gdk::Key::KP_Right
+                | gdk::Key::Left
+                | gdk::Key::KP_Left)
+                    if !ctrl =>
+                {
+                    // Bare Left/Right expand and collapse groups (issue #380).
+                    // In RTL the tree nests toward the left, so the keys swap.
+                    let Some(lv) = list_view_weak.upgrade() else {
+                        return glib::Propagation::Proceed;
+                    };
+                    let right = matches!(key, gdk::Key::Right | gdk::Key::KP_Right);
+                    let rtl = lv.direction() == gtk4::TextDirection::Rtl;
+                    if arrow_expands(right, rtl) {
+                        Self::expand_focused_group(&lv)
+                    } else {
+                        Self::collapse_or_go_to_parent(&lv)
                     }
-                    glib::Propagation::Proceed
-                }
-                gdk::Key::Left | gdk::Key::KP_Left if !ctrl => {
-                    // Left collapses an expanded group; on a collapsed group or
-                    // a leaf it moves selection to the parent group — the
-                    // behaviour users miss most (issue #380). A top-level row
-                    // has no parent, so it falls through.
-                    if let Some(lv) = list_view_weak.upgrade()
-                        && let Some(row) = Self::selected_tree_list_row(&lv)
-                    {
-                        if Self::row_is_group(&row) && row.is_expanded() {
-                            row.set_expanded(false);
-                            return glib::Propagation::Stop;
-                        }
-                        if let Some(parent) = row.parent()
-                            && let Some(model) = lv.model()
-                            && let Some(pos) =
-                                crate::sidebar::view::position_of_row(&model, &parent)
-                        {
-                            crate::sidebar::view::select_single_position(&model, pos);
-                            return glib::Propagation::Stop;
-                        }
-                    }
-                    glib::Propagation::Proceed
                 }
                 _ => glib::Propagation::Proceed,
             }
@@ -891,6 +879,42 @@ impl ConnectionSidebar {
         row.item()
             .and_downcast::<ConnectionItem>()
             .is_some_and(|item| item.is_group())
+    }
+
+    /// The "expand" arrow key (issue #380): on a collapsed group it expands it.
+    /// On a leaf or an already-expanded group it falls through so the ListView
+    /// keeps its default focus behaviour. Multi-select acts on the single
+    /// focused row only.
+    fn expand_focused_group(lv: &ListView) -> glib::Propagation {
+        if let Some(row) = Self::selected_tree_list_row(lv)
+            && Self::row_is_group(&row)
+            && !row.is_expanded()
+        {
+            row.set_expanded(true);
+            return glib::Propagation::Stop;
+        }
+        glib::Propagation::Proceed
+    }
+
+    /// The "collapse" arrow key (issue #380): collapses an expanded group; on a
+    /// collapsed group or a leaf it moves selection to the parent group — the
+    /// behaviour users miss most. A top-level row has no parent, so it falls
+    /// through.
+    fn collapse_or_go_to_parent(lv: &ListView) -> glib::Propagation {
+        if let Some(row) = Self::selected_tree_list_row(lv) {
+            if Self::row_is_group(&row) && row.is_expanded() {
+                row.set_expanded(false);
+                return glib::Propagation::Stop;
+            }
+            if let Some(parent) = row.parent()
+                && let Some(model) = lv.model()
+                && let Some(pos) = crate::sidebar::view::position_of_row(&model, &parent)
+            {
+                crate::sidebar::view::select_single_position(&model, pos);
+                return glib::Propagation::Stop;
+            }
+        }
+        glib::Propagation::Proceed
     }
 
     /// Builds the single "Filter" menu button (GNOME HIG §2a) and its popover of
@@ -2255,5 +2279,19 @@ impl ConnectionItem {
 impl Default for ConnectionItem {
     fn default() -> Self {
         Self::new_connection("", "Unnamed", "ssh", "")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::arrow_expands;
+
+    #[test]
+    fn arrow_keys_swap_in_rtl() {
+        // (right_key, rtl) -> expands
+        assert!(arrow_expands(true, false));
+        assert!(!arrow_expands(false, false));
+        assert!(!arrow_expands(true, true));
+        assert!(arrow_expands(false, true));
     }
 }

@@ -1079,20 +1079,16 @@ pub struct UiSettings {
     /// Whether the window was maximized at last close (restored on startup, #202)
     #[serde(default)]
     pub window_maximized: bool,
-    /// Sidebar width
+    /// The one width of the connection sidebar, in the split view's
+    /// `sidebar-width-unit` (sp). Written by the Settings spin row and, when
+    /// opted in, by dragging the sidebar edge (issue #3). `None` means the
+    /// default; read it through [`UiSettings::effective_sidebar_width`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sidebar_width: Option<i32>,
-    /// Minimum sidebar width in pixels — the floor the user may not drag below
-    /// (issue #3 drag-resize). This is the value the Settings spin row drives;
-    /// `sidebar_width` is the *current* width, which dragging rewrites down to
-    /// this floor but no lower. `None` means the built-in 180 px floor.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sidebar_min_width: Option<i32>,
-    /// Allow resizing the sidebar by dragging its trailing edge (issue #3).
-    /// Off by default: a drag handle on a navigation sidebar is outside the
-    /// GNOME HIG pattern (Nautilus 43 dropped resizable sidebars for exactly
-    /// this reason), so it is strictly opt-in. When off, the sidebar width is
-    /// governed only by the Settings spin row, as before.
+    /// Allow resizing the sidebar by dragging its inner edge (issue #3). The
+    /// drag rewrites `sidebar_width` within the same range the spin row offers.
+    /// Off by default because libadwaita's adaptive sidebar has no draggable
+    /// edge.
     #[serde(default)]
     pub sidebar_drag_resize: bool,
     /// Enable tray icon
@@ -1291,38 +1287,23 @@ pub struct UiSettings {
 }
 
 impl UiSettings {
-    /// The configured sidebar width floor in pixels — the minimum the user may
-    /// drag the sidebar down to (issue #3).
-    ///
-    /// Falls back to [`SIDEBAR_WIDTH_FLOOR_MIN`] when unset, and is always
-    /// clamped into `[SIDEBAR_WIDTH_FLOOR_MIN, SIDEBAR_WIDTH_FLOOR_MAX]` so a
-    /// stale or hand-edited config can never push the floor out of range.
+    /// The sidebar width to apply: the saved value when it lies in
+    /// `SIDEBAR_WIDTH_MIN..=SIDEBAR_WIDTH_MAX`, otherwise
+    /// [`SIDEBAR_WIDTH_DEFAULT`] (unset, hand-edited, or > 500 from the old
+    /// 360 px minimum — reset rather than clamped, as in 0.23.12).
     #[must_use]
-    pub fn sidebar_width_floor(&self) -> i32 {
-        self.sidebar_min_width
-            .unwrap_or(SIDEBAR_WIDTH_FLOOR_MIN)
-            .clamp(SIDEBAR_WIDTH_FLOOR_MIN, SIDEBAR_WIDTH_FLOOR_MAX)
-    }
-
-    /// Clamps a candidate current sidebar width into the allowed range for a
-    /// given window width (issue #3): no narrower than the configured floor,
-    /// no wider than half the window.
-    ///
-    /// `window_width` is the window's current width in pixels. When it is too
-    /// small for the floor to fit under the half-window ceiling (a very narrow
-    /// window), the floor wins — the sidebar is never clamped below the floor.
-    #[must_use]
-    pub fn clamp_sidebar_width(&self, candidate: i32, window_width: i32) -> i32 {
-        let floor = self.sidebar_width_floor();
-        // Half the window is the ceiling; never let it drop below the floor.
-        let ceil = (window_width / 2).max(floor);
-        candidate.clamp(floor, ceil)
+    pub fn effective_sidebar_width(&self) -> i32 {
+        match self.sidebar_width {
+            Some(w) if (SIDEBAR_WIDTH_MIN..=SIDEBAR_WIDTH_MAX).contains(&w) => w,
+            _ => SIDEBAR_WIDTH_DEFAULT,
+        }
     }
 
     /// Adds a search query to the persisted history
     ///
     /// Moves existing entries to front and limits to max entries.
-    pub fn add_search_history(&mut self, query: &str) {        let query = query.trim();
+    pub fn add_search_history(&mut self, query: &str) {
+        let query = query.trim();
         if query.is_empty() {
             return;
         }
@@ -1387,7 +1368,6 @@ impl Default for UiSettings {
             window_height: None,
             window_maximized: false,
             sidebar_width: None,
-            sidebar_min_width: None,
             sidebar_drag_resize: false,
             enable_tray_icon: true,
             minimize_to_tray: false,
@@ -1487,20 +1467,29 @@ pub const SIDEBAR_ROW_MARGIN_MIN: u32 = 0;
 /// Maximum sidebar row margin (px) the Settings slider allows.
 pub const SIDEBAR_ROW_MARGIN_MAX: u32 = 12;
 
-/// Hard lower bound for the sidebar width floor, in pixels.
-///
-/// The Settings spin row cannot go below this, and it is the fallback floor
-/// when `sidebar_min_width` is unset. Matches
-/// `AdwOverlaySplitView::set_min_sidebar_width(180.0)`.
-pub const SIDEBAR_WIDTH_FLOOR_MIN: i32 = 180;
+/// Narrowest sidebar width (sp) the Settings spin row offers and a drag may
+/// reach (issue #3). Matches the `AdwOverlaySplitView` `min-sidebar-width`.
+pub const SIDEBAR_WIDTH_MIN: i32 = 180;
 
-/// Upper bound for the configurable sidebar width floor, in pixels.
-///
-/// The *current* width may exceed this by dragging up to half the window, but
-/// the configurable floor itself is capped here so a user cannot pin the
-/// sidebar permanently huge through the minimum alone.
-pub const SIDEBAR_WIDTH_FLOOR_MAX: i32 = 500;
+/// Widest sidebar width (sp) the Settings spin row offers and a drag may reach
+/// (issue #3). Saved values above it date from the old 360 px minimum.
+pub const SIDEBAR_WIDTH_MAX: i32 = 500;
 
+/// Sidebar width (sp) used when none is saved or the saved one is out of range.
+pub const SIDEBAR_WIDTH_DEFAULT: i32 = 320;
+
+/// Clamps a sidebar width into `SIDEBAR_WIDTH_MIN..=SIDEBAR_WIDTH_MAX`, the
+/// range the Settings spin row offers and a drag may reach (issue #3).
+#[must_use]
+pub const fn clamp_sidebar_width(width: i32) -> i32 {
+    if width < SIDEBAR_WIDTH_MIN {
+        SIDEBAR_WIDTH_MIN
+    } else if width > SIDEBAR_WIDTH_MAX {
+        SIDEBAR_WIDTH_MAX
+    } else {
+        width
+    }
+}
 
 /// Historical per-row vertical margin, kept as the default so existing
 /// configs render identically until the user moves the slider.
@@ -2264,7 +2253,7 @@ fn hex_decode(data: &str) -> Option<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{RendererPreference, UiSettings};
+    use super::{RendererPreference, UiSettings, clamp_sidebar_width};
 
     /// Right-click paste is opt-in: a fresh install must default to `false`, so
     /// the long-standing native context menu stays the default behaviour
@@ -2593,45 +2582,30 @@ mod tests {
         assert_eq!(decoded.kdbx_yubikey_slot, Some("2:12345678".to_string()));
     }
 
-    /// Issue #3: an unset floor falls back to the built-in 180, and a
-    /// hand-edited out-of-range floor is clamped into [180, 500].
+    /// Issue #3: the spin row and a drag share one 180..=500 range.
     #[test]
-    fn sidebar_width_floor_falls_back_and_clamps() {
-        let mut ui = UiSettings::default();
-        assert_eq!(ui.sidebar_width_floor(), 180, "unset -> built-in floor");
-
-        ui.sidebar_min_width = Some(240);
-        assert_eq!(ui.sidebar_width_floor(), 240);
-
-        ui.sidebar_min_width = Some(50); // below hard minimum
-        assert_eq!(ui.sidebar_width_floor(), 180);
-
-        ui.sidebar_min_width = Some(9000); // above cap
-        assert_eq!(ui.sidebar_width_floor(), 500);
+    fn clamp_sidebar_width_keeps_the_settings_range() {
+        assert_eq!(clamp_sidebar_width(179), 180);
+        assert_eq!(clamp_sidebar_width(180), 180);
+        assert_eq!(clamp_sidebar_width(320), 320);
+        assert_eq!(clamp_sidebar_width(500), 500);
+        assert_eq!(clamp_sidebar_width(501), 500);
     }
 
-    /// Issue #3: the current width is clamped between the configured floor and
-    /// half the window, and a drag below the floor snaps back up to it.
+    /// Issue #3: an unset or out-of-range saved width resets to the default
+    /// (as in 0.23.12) instead of being clamped; an in-range one is kept.
     #[test]
-    fn clamp_sidebar_width_respects_floor_and_half_window() {
-        let mut ui = UiSettings::default();
-        ui.sidebar_min_width = Some(200);
-
-        // Window 1200 wide -> ceiling 600; a 350 candidate is untouched.
-        assert_eq!(ui.clamp_sidebar_width(350, 1200), 350);
-        // Dragged below the floor -> snaps up to the floor.
-        assert_eq!(ui.clamp_sidebar_width(120, 1200), 200);
-        // Dragged past half the window -> capped at half.
-        assert_eq!(ui.clamp_sidebar_width(800, 1200), 600);
-    }
-
-    /// Issue #3 edge: when the window is so narrow that half of it is below the
-    /// floor, the floor still wins — the sidebar is never clamped under it.
-    #[test]
-    fn clamp_sidebar_width_floor_wins_on_a_tiny_window() {
-        let mut ui = UiSettings::default();
-        ui.sidebar_min_width = Some(300);
-        // Half of 400 is 200, below the 300 floor -> floor wins.
-        assert_eq!(ui.clamp_sidebar_width(260, 400), 300);
+    fn effective_sidebar_width_falls_back_to_default() {
+        let width = |w| {
+            UiSettings {
+                sidebar_width: w,
+                ..Default::default()
+            }
+            .effective_sidebar_width()
+        };
+        assert_eq!(width(None), 320);
+        assert_eq!(width(Some(600)), 320);
+        assert_eq!(width(Some(150)), 320);
+        assert_eq!(width(Some(250)), 250);
     }
 }

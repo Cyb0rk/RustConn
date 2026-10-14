@@ -542,29 +542,17 @@ impl MainWindow {
         // Create the main layout with OverlaySplitView (GNOME HIG)
         let overlay_split_view = adw::OverlaySplitView::new();
 
-        // Apply saved sidebar width as max-sidebar-width
-        // Migration: if saved width > 400, it was set with the old 360px minimum —
-        // reset to default to avoid an overly wide sidebar on HiDPI displays.
-        let saved_width = with_state(&state, |s| s.settings().ui.sidebar_width);
-        // The configurable floor (issue #3): the Settings spin row drives it,
-        // and the overlay's own minimum enforces it. Defaults to the built-in
-        // 180 when unset.
-        let sidebar_floor = with_state(&state, |s| s.settings().ui.sidebar_width_floor());
-        // Migration: reset sidebar width if it was set by an older version.
-        // - Values > 500 came from the old 360px minimum (too wide on HiDPI)
-        // - Values below the floor are raised to it
-        // Only keep values in the floor..=500 range that the user intentionally set.
-        let sidebar_width = match saved_width {
-            Some(w) if (sidebar_floor..=500).contains(&w) => w,
-            _ => 320.max(sidebar_floor),
-        };
-        overlay_split_view.set_max_sidebar_width(f64::from(sidebar_width.max(sidebar_floor)));
-        overlay_split_view.set_min_sidebar_width(f64::from(sidebar_floor));
+        // One sidebar width (issue #3): the saved value if it lies in 180..=500,
+        // else the 320 default — values > 500 date from the old 360 px minimum.
+        let sidebar_width = with_state(&state, |s| s.settings().ui.effective_sidebar_width());
+        overlay_split_view.set_max_sidebar_width(f64::from(sidebar_width));
+        overlay_split_view
+            .set_min_sidebar_width(f64::from(rustconn_core::config::SIDEBAR_WIDTH_MIN));
         // High fraction so the configured sidebar width (max-sidebar-width) is the
         // effective width whenever the sidebar is shown, instead of being capped
         // below the setting by a small proportion (#204: "sidebar width not
         // adjustable"). The sidebar is only shown at ≥ 820 sp, where
-        // 0.7 × width already exceeds the 500 px maximum, so max wins.
+        // 0.7 × width already exceeds the 500 sp maximum, so max wins.
         overlay_split_view.set_sidebar_width_fraction(0.7);
         overlay_split_view.set_enable_show_gesture(true);
         overlay_split_view.set_enable_hide_gesture(true);
@@ -572,9 +560,9 @@ impl MainWindow {
 
         // Create sidebar
         let sidebar = Rc::new(ConnectionSidebar::new());
-        // Wrap the sidebar in the opt-in drag-resize handle (issue #3). When the
-        // setting is off the handle is inert and invisible, so this does not
-        // change the default experience.
+        // Wrap the sidebar in the opt-in drag-resize handle (issue #3). The
+        // handle is hidden entirely while the setting is off or the split view
+        // is collapsed, so the default layout is unchanged.
         let sidebar_wrapper =
             sidebar_resize::wrap_with_handle(sidebar.widget(), &overlay_split_view, &state);
         overlay_split_view.set_sidebar(Some(&sidebar_wrapper));
@@ -2186,7 +2174,9 @@ impl MainWindow {
             // persist the same thing.
             let (width, height) = win.default_size();
             let is_maximized = win.is_maximized();
-            let sidebar_width_raw = split_view_clone.max_sidebar_width().round() as i32;
+            let sidebar_width = rustconn_core::config::clamp_sidebar_width(
+                split_view_clone.max_sidebar_width().round() as i32,
+            );
 
             // Save expanded groups state
             let expanded = sidebar_clone.get_expanded_groups();
@@ -2202,9 +2192,7 @@ impl MainWindow {
                     settings.ui.window_width = Some(width);
                     settings.ui.window_height = Some(height);
                     settings.ui.window_maximized = is_maximized;
-                    // Never persist below the configured floor (issue #3).
-                    settings.ui.sidebar_width =
-                        Some(settings.ui.clamp_sidebar_width(sidebar_width_raw, width));
+                    settings.ui.sidebar_width = Some(sidebar_width);
                 }
 
                 // Persist the keyboard passthrough toggle so it survives a
@@ -4014,21 +4002,16 @@ impl MainWindow {
                 // Apply the tab menu's directional-close visibility setting
                 notebook.set_show_directional_close(settings.ui.show_directional_tab_close);
 
-                // Apply sidebar width setting (issue #3: floor + current).
-                // The floor drives the overlay minimum; the current width is
-                // re-clamped into [floor, half-window] through the shared helper
-                // so a raised floor pushes a too-narrow sidebar back out.
-                {
-                    let floor = settings.ui.sidebar_width_floor();
-                    overlay_split_view.set_min_sidebar_width(f64::from(floor));
-                    let window_width = overlay_split_view.width();
-                    let current = settings
-                        .ui
-                        .sidebar_width
-                        .unwrap_or_else(|| overlay_split_view.max_sidebar_width().round() as i32);
-                    let clamped = settings.ui.clamp_sidebar_width(current, window_width);
-                    overlay_split_view.set_max_sidebar_width(f64::from(clamped));
+                // Apply the sidebar width (issue #3: one value, 180..=500) and show
+                // or hide the drag handle to match the opt-in toggle.
+                if let Some(w) = settings.ui.sidebar_width {
+                    overlay_split_view
+                        .set_max_sidebar_width(f64::from(rustconn_core::config::clamp_sidebar_width(w)));
                 }
+                sidebar_resize::apply_drag_resize_setting(
+                    &overlay_split_view,
+                    settings.ui.sidebar_drag_resize,
+                );
 
                 // Apply monitoring settings to active bars
                 monitoring.apply_settings_to_all(&settings.monitoring);

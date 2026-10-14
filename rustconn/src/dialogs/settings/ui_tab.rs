@@ -6,7 +6,8 @@ use gtk4::{Box as GtkBox, DropDown, StringList};
 use libadwaita as adw;
 use rustconn_core::config::{
     ColorScheme, RendererPreference, SIDEBAR_ROW_MARGIN_MAX, SIDEBAR_ROW_MARGIN_MIN,
-    SessionRestoreSettings, SidebarFontSize, StartupAction, UiSettings,
+    SIDEBAR_WIDTH_DEFAULT, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MIN, SessionRestoreSettings,
+    SidebarFontSize, StartupAction, UiSettings, clamp_sidebar_width,
 };
 use rustconn_core::models::Connection;
 
@@ -231,26 +232,28 @@ pub fn create_ui_page() -> (
         .build();
     appearance_group.add(&renderer_row);
 
-    // Sidebar width SpinRow — this is the *minimum* width (the floor) the
-    // sidebar may be dragged down to when drag-resize is on; without it, it is
-    // simply the fixed sidebar width (issue #3).
+    // Sidebar width (issue #3): the one width value; the drag toggle below
+    // rewrites the same value within the same range.
     let sidebar_width_row = adw::SpinRow::builder()
-        .title(i18n("Minimum sidebar width"))
-        .subtitle(i18n(
-            "Smallest width of the connection sidebar in pixels. The sidebar can be dragged no narrower than this",
+        .title(i18n("Sidebar width"))
+        .subtitle(i18n("Width of the connection sidebar in pixels"))
+        .adjustment(&gtk4::Adjustment::new(
+            f64::from(SIDEBAR_WIDTH_DEFAULT),
+            f64::from(SIDEBAR_WIDTH_MIN),
+            f64::from(SIDEBAR_WIDTH_MAX),
+            10.0,
+            50.0,
+            0.0,
         ))
-        .adjustment(&gtk4::Adjustment::new(320.0, 180.0, 500.0, 10.0, 50.0, 0.0))
         .build();
     appearance_group.add(&sidebar_width_row);
 
-    // Opt-in: let the user resize the sidebar by dragging its trailing edge.
-    // Off by default — a drag handle on a navigation sidebar is outside the
-    // GNOME HIG pattern, so it is a deliberate choice, not the default (#3).
+    // Opt-in: let the user resize the sidebar by dragging its inner edge.
+    // Off by default — libadwaita's adaptive sidebar has no draggable edge,
+    // so it is a deliberate choice, not the default (#3).
     let sidebar_drag_resize = adw::SwitchRow::builder()
         .title(i18n("Resize sidebar by dragging"))
-        .subtitle(i18n(
-            "Drag the sidebar's edge to resize it, down to the minimum width above and up to half the window",
-        ))
+        .subtitle(i18n("Drag the sidebar's edge to change the width above"))
         .build();
     appearance_group.add(&sidebar_drag_resize);
 
@@ -824,10 +827,9 @@ pub fn load_ui_settings(
     prompt_on_restore.set_sensitive(settings.session_restore.enabled);
     max_age_row.set_sensitive(settings.session_restore.enabled);
 
-    // Load the sidebar width floor into the spin row (issue #3). Falls back to
-    // the built-in minimum when unset, so an existing config shows 180 until
-    // the user raises it.
-    sidebar_width_row.set_value(f64::from(settings.sidebar_width_floor()));
+    // Load the one sidebar width (issue #3): the saved value, or the default
+    // when it is unset or out of range — the same width the window applies.
+    sidebar_width_row.set_value(f64::from(settings.effective_sidebar_width()));
     sidebar_drag_resize.set_active(settings.sidebar_drag_resize);
 
     // Load compact interface — apply CSS immediately so it persists at startup.
@@ -992,14 +994,7 @@ pub fn collect_ui_settings(
         window_width: None,
         window_height: None,
         window_maximized: false,
-        // Current width is runtime-owned (drag / on-close persist); None here
-        // so update_settings preserves the existing value instead of resetting
-        // it to the floor on every Settings save (issue #3).
-        sidebar_width: None,
-        sidebar_min_width: Some(sidebar_width_row.value().clamp(
-            f64::from(rustconn_core::config::SIDEBAR_WIDTH_FLOOR_MIN),
-            f64::from(rustconn_core::config::SIDEBAR_WIDTH_FLOOR_MAX),
-        ) as i32),
+        sidebar_width: Some(clamp_sidebar_width(sidebar_width_row.value().round() as i32)),
         sidebar_drag_resize: sidebar_drag_resize.is_active(),
         enable_tray_icon: enable_tray_icon.is_active(),
         minimize_to_tray: minimize_to_tray.is_active(),

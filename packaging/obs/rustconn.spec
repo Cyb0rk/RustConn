@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.12
+Version:        0.23.13
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,13 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Wed Oct 14 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.13-0
+- Version bump to 0.23.13
+- Added expand and collapse sidebar groups with the arrow keys, RTL-aware (issue #380)
+- Added optional drag-to-resize for the sidebar: one Sidebar width value (180-500, default 320) that both Settings and the opt-in drag rewrite, the handle hidden when the option is off (issue #3)
+- Fixed Bitwarden root-search to find an entry titled by the leaf of a slash-separated connection name (issue #353)
+- Updated rustls, sha2, tokio, zip and several compatible dependencies
+
 * Tue Oct 13 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.12-0
 - Version bump to 0.23.12
 - Added adjustable Sidebar row spacing and text size, independent of Compact interface (issue #379)
