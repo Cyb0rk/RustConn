@@ -4384,7 +4384,7 @@ flatpak override --user --reset io.github.totoshko88.RustConn
 
 Press **Ctrl+?** or **F1** for searchable shortcuts dialog.
 
-Note: Sidebar-scoped shortcuts (F2, Delete, Ctrl+E, Ctrl+D, Ctrl+C, Ctrl+V, Ctrl+M) only work when the sidebar has focus.
+Note: Sidebar-scoped shortcuts (F2, Delete, Ctrl+E, Ctrl+D, Ctrl+C, Ctrl+V, Ctrl+M, Left, Right) only work when the sidebar has focus.
 
 ### Connections
 
@@ -4403,6 +4403,8 @@ Note: Sidebar-scoped shortcuts (F2, Delete, Ctrl+E, Ctrl+D, Ctrl+C, Ctrl+V, Ctrl
 | Ctrl+C / Ctrl+V | Copy / Paste |
 | Ctrl+M | Move to Group |
 | Enter | Connect to selected |
+| Right | Expand selected group (sidebar) |
+| Left | Collapse group, or move to parent group (sidebar) |
 | Menu / Shift+F10 | Open context menu for selected row |
 
 ### Terminal

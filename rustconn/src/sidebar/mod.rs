@@ -36,8 +36,8 @@ use gtk4::prelude::*;
 use gtk4::subclass::prelude::ObjectSubclassIsExt;
 use gtk4::{
     Box as GtkBox, Button, DropTarget, EventControllerKey, GestureClick, ListItem, ListView,
-    Orientation, PolicyType, ScrolledWindow, SearchEntry, SignalListItemFactory, TreeExpander,
-    TreeListModel, TreeListRow, Widget, gdk, gio, glib,
+    Orientation, PolicyType, ScrolledWindow, SearchEntry, SignalListItemFactory, SingleSelection,
+    TreeExpander, TreeListModel, TreeListRow, Widget, gdk, gio, glib,
 };
 use libadwaita as adw;
 use rustconn_core::Debouncer;
@@ -503,6 +503,44 @@ impl ConnectionSidebar {
                     }
                     glib::Propagation::Stop
                 }
+                gdk::Key::Right | gdk::Key::KP_Right if !ctrl => {
+                    // Right on a collapsed group expands it (issue #380). On a
+                    // leaf or an already-expanded group, fall through so the
+                    // ListView keeps its default focus behaviour. Multi-select
+                    // acts on the single focused row only.
+                    if let Some(lv) = list_view_weak.upgrade()
+                        && let Some(row) = Self::selected_tree_list_row(&lv)
+                        && Self::row_is_group(&row)
+                        && !row.is_expanded()
+                    {
+                        row.set_expanded(true);
+                        return glib::Propagation::Stop;
+                    }
+                    glib::Propagation::Proceed
+                }
+                gdk::Key::Left | gdk::Key::KP_Left if !ctrl => {
+                    // Left collapses an expanded group; on a collapsed group or
+                    // a leaf it moves selection to the parent group — the
+                    // behaviour users miss most (issue #380). A top-level row
+                    // has no parent, so it falls through.
+                    if let Some(lv) = list_view_weak.upgrade()
+                        && let Some(row) = Self::selected_tree_list_row(&lv)
+                    {
+                        if Self::row_is_group(&row) && row.is_expanded() {
+                            row.set_expanded(false);
+                            return glib::Propagation::Stop;
+                        }
+                        if let Some(parent) = row.parent()
+                            && let Some(model) = lv.model()
+                            && let Some(pos) =
+                                crate::sidebar::view::position_of_row(&model, &parent)
+                        {
+                            crate::sidebar::view::select_single_position(&model, pos);
+                            return glib::Propagation::Stop;
+                        }
+                    }
+                    glib::Propagation::Proceed
+                }
                 _ => glib::Propagation::Proceed,
             }
         });
@@ -825,6 +863,34 @@ impl ConnectionSidebar {
             smart_folders_revealer,
             toolbar_view,
         }
+    }
+
+    /// The currently selected row as a [`TreeListRow`], if exactly one row is
+    /// selected and the model yields a tree row at that position.
+    ///
+    /// Used by the Left/Right arrow handlers (issue #380). In multi-selection
+    /// mode this returns the first selected position's row, so arrow
+    /// expand/collapse acts on a single anchor rather than the whole selection.
+    fn selected_tree_list_row(list_view: &ListView) -> Option<TreeListRow> {
+        let model = list_view.model()?;
+        let selected = model
+            .downcast_ref::<SingleSelection>()
+            .map(SingleSelection::selected)
+            .filter(|p| *p != gtk4::INVALID_LIST_POSITION)
+            .or_else(|| {
+                // Multi-selection: act on the first selected position.
+                let sel = model.selection();
+                (sel.size() > 0).then(|| sel.nth(0))
+            })?;
+        model.item(selected).and_downcast::<TreeListRow>()
+    }
+
+    /// Whether a tree row wraps a group [`ConnectionItem`] (vs a leaf
+    /// connection). Groups are the only rows that expand/collapse (issue #380).
+    fn row_is_group(row: &TreeListRow) -> bool {
+        row.item()
+            .and_downcast::<ConnectionItem>()
+            .is_some_and(|item| item.is_group())
     }
 
     /// Builds the single "Filter" menu button (GNOME HIG §2a) and its popover of
