@@ -140,6 +140,17 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.13" date="2026-10-14">
+      <description>
+        <p>Version 0.23.13 - sidebar keyboard and drag-resize, a Bitwarden lookup fix, and dependency updates:</p>
+        <ul>
+          <li>Added expand and collapse of sidebar groups with the arrow keys, swapping in right-to-left layouts (issue #380)</li>
+          <li>Added optional drag-to-resize for the sidebar: one Sidebar width value (180-500, default 320) that both Settings and the opt-in drag rewrite, with the handle hidden while the option is off (issue #3)</li>
+          <li>Fixed Bitwarden root-search to find an entry titled by the leaf of a slash-separated connection name (issue #353)</li>
+          <li>Updated rustls, sha2, tokio, zip and several compatible dependencies</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.12" date="2026-10-13">
       <description>
         <p>Version 0.23.12 - sidebar density controls, Quick Connect polish, and fixes:</p>

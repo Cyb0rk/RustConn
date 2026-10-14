@@ -1254,3 +1254,16 @@ window tabbar .box {
     background-color: @window_bg_color;
     box-shadow: none;
 }
+
+/* Sidebar drag-resize handle (issue #3). Opt-in; the widget is hidden
+ * (set_visible(false)) while the setting is off or the split view is
+ * collapsed, so these rules only ever apply when the feature is active.
+ * Transparent at rest — a faint separator line appears on hover so the
+ * affordance stays out of the way until the pointer is on the edge. The
+ * col-resize cursor is set in code (set_cursor_from_name). */
+.sidebar-resize-handle {
+    background-color: transparent;
+}
+.sidebar-resize-handle:hover {
+    background-color: alpha(@borders, 0.8);
+}

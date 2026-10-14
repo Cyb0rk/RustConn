@@ -6,7 +6,8 @@ use gtk4::{Box as GtkBox, DropDown, StringList};
 use libadwaita as adw;
 use rustconn_core::config::{
     ColorScheme, RendererPreference, SIDEBAR_ROW_MARGIN_MAX, SIDEBAR_ROW_MARGIN_MIN,
-    SessionRestoreSettings, SidebarFontSize, StartupAction, UiSettings,
+    SIDEBAR_WIDTH_DEFAULT, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MIN, SessionRestoreSettings,
+    SidebarFontSize, StartupAction, UiSettings, clamp_sidebar_width,
 };
 use rustconn_core::models::Connection;
 
@@ -76,6 +77,7 @@ pub fn create_ui_page() -> (
     adw::SpinRow,
     adw::ComboRow,
     adw::SpinRow,
+    adw::SwitchRow, // sidebar_drag_resize (#3)
     adw::SwitchRow,
     adw::SwitchRow,
     adw::SwitchRow,
@@ -230,13 +232,30 @@ pub fn create_ui_page() -> (
         .build();
     appearance_group.add(&renderer_row);
 
-    // Sidebar width SpinRow
+    // Sidebar width (issue #3): the one width value; the drag toggle below
+    // rewrites the same value within the same range.
     let sidebar_width_row = adw::SpinRow::builder()
         .title(i18n("Sidebar width"))
         .subtitle(i18n("Width of the connection sidebar in pixels"))
-        .adjustment(&gtk4::Adjustment::new(320.0, 180.0, 500.0, 10.0, 50.0, 0.0))
+        .adjustment(&gtk4::Adjustment::new(
+            f64::from(SIDEBAR_WIDTH_DEFAULT),
+            f64::from(SIDEBAR_WIDTH_MIN),
+            f64::from(SIDEBAR_WIDTH_MAX),
+            10.0,
+            50.0,
+            0.0,
+        ))
         .build();
     appearance_group.add(&sidebar_width_row);
+
+    // Opt-in: let the user resize the sidebar by dragging its inner edge.
+    // Off by default — libadwaita's adaptive sidebar has no draggable edge,
+    // so it is a deliberate choice, not the default (#3).
+    let sidebar_drag_resize = adw::SwitchRow::builder()
+        .title(i18n("Resize sidebar by dragging"))
+        .subtitle(i18n("Drag the sidebar's edge to change the width above"))
+        .build();
+    appearance_group.add(&sidebar_drag_resize);
 
     // Compact interface toggle — denser header bar, tabs and buttons.
     // Live preview: applies the .compact CSS class to all windows on toggle,
@@ -660,6 +679,7 @@ pub fn create_ui_page() -> (
         max_age_row,
         startup_action_dropdown,
         sidebar_width_row,
+        sidebar_drag_resize,
         compact_ui,
         compact_auto,
         terminal_passthrough_ctrl,
@@ -729,6 +749,7 @@ pub fn load_ui_settings(
     prompt_on_restore: &adw::SwitchRow,
     max_age_row: &adw::SpinRow,
     startup_action_dropdown: &adw::ComboRow,
+    sidebar_drag_resize: &adw::SwitchRow,
     sidebar_width_row: &adw::SpinRow,
     compact_ui: &adw::SwitchRow,
     compact_auto: &adw::SwitchRow,
@@ -806,9 +827,10 @@ pub fn load_ui_settings(
     prompt_on_restore.set_sensitive(settings.session_restore.enabled);
     max_age_row.set_sensitive(settings.session_restore.enabled);
 
-    // Load sidebar width (default 320 if not set)
-    let sidebar_w = settings.sidebar_width.unwrap_or(320);
-    sidebar_width_row.set_value(f64::from(sidebar_w.clamp(180, 500)));
+    // Load the one sidebar width (issue #3): the saved value, or the default
+    // when it is unset or out of range — the same width the window applies.
+    sidebar_width_row.set_value(f64::from(settings.effective_sidebar_width()));
+    sidebar_drag_resize.set_active(settings.sidebar_drag_resize);
 
     // Load compact interface — apply CSS immediately so it persists at startup.
     compact_ui.set_active(settings.compact_ui);
@@ -909,6 +931,7 @@ pub fn collect_ui_settings(
     prompt_on_restore: &adw::SwitchRow,
     max_age_row: &adw::SpinRow,
     startup_action_dropdown: &adw::ComboRow,
+    sidebar_drag_resize: &adw::SwitchRow,
     sidebar_width_row: &adw::SpinRow,
     compact_ui: &adw::SwitchRow,
     compact_auto: &adw::SwitchRow,
@@ -971,7 +994,8 @@ pub fn collect_ui_settings(
         window_width: None,
         window_height: None,
         window_maximized: false,
-        sidebar_width: Some(sidebar_width_row.value().clamp(180.0, 500.0) as i32),
+        sidebar_width: Some(clamp_sidebar_width(sidebar_width_row.value().round() as i32)),
+        sidebar_drag_resize: sidebar_drag_resize.is_active(),
         enable_tray_icon: enable_tray_icon.is_active(),
         minimize_to_tray: minimize_to_tray.is_active(),
         expanded_groups: std::collections::HashSet::new(),

@@ -1,6 +1,6 @@
 # RustConn User Guide
 
-**Version 0.23.12** | GTK4/libadwaita Connection Manager for Linux
+**Version 0.23.13** | GTK4/libadwaita Connection Manager for Linux
 
 RustConn is a modern connection manager designed for Linux with Wayland-first approach. It supports SSH, RDP, VNC, SPICE, MOSH, SFTP, Telnet, Serial, Kubernetes, Web protocols and Zero Trust integrations through a native GTK4/libadwaita interface.
 
@@ -3367,7 +3367,7 @@ set -g allow-passthrough on     # let wrapped sequences through untouched
 
 ### Interface page
 
-**Appearance group:** Theme (System, Light, Dark), Language (UI language selector, restart required), Rendering (see below, restart required), Sidebar width (180–500 pixels, default 320), Compact interface, Compact automatically on small windows, Sidebar row spacing, and Sidebar text size.
+**Appearance group:** Theme (System, Light, Dark), Language (UI language selector, restart required), Rendering (see below, restart required), Sidebar width (180–500 pixels, default 320), Resize sidebar by dragging (off by default; when on, drag the sidebar's inner edge to change the same Sidebar width within the same range, saved when you let go; hidden on narrow windows), Compact interface, Compact automatically on small windows, Sidebar row spacing, and Sidebar text size.
 
 **Sidebar row spacing** and **Sidebar text size** tune the density of the connection list independently of Compact interface — the lever to reach for when you keep a large number of hosts in the sidebar and want more of them on screen at once. **Sidebar row spacing** is a slider from 0 to 12 pixels (default 7, the historical spacing) that sets the vertical gap above and below every connection row; lower it toward 0 for a tight, scan-many list and raise it for a roomier one. **Sidebar text size** scales only the connection-name labels — Small, Medium (the theme default) or Large — leaving the row icons, group arrows and status indicators at their usual size, so a smaller text size packs in more rows while a larger one aids readability. Both apply instantly as you change them (no restart) and are remembered across restarts. They are separate from **Compact interface**, which only tightens the window chrome (header bar, tab bar and toolbars) and no longer touches the connection list.
 
@@ -4384,7 +4384,7 @@ flatpak override --user --reset io.github.totoshko88.RustConn
 
 Press **Ctrl+?** or **F1** for searchable shortcuts dialog.
 
-Note: Sidebar-scoped shortcuts (F2, Delete, Ctrl+E, Ctrl+D, Ctrl+C, Ctrl+V, Ctrl+M) only work when the sidebar has focus.
+Note: Sidebar-scoped shortcuts (F2, Delete, Ctrl+E, Ctrl+D, Ctrl+C, Ctrl+V, Ctrl+M, Left, Right) only work when the sidebar has focus. In right-to-left layouts Left and Right swap.
 
 ### Connections
 
@@ -4403,6 +4403,8 @@ Note: Sidebar-scoped shortcuts (F2, Delete, Ctrl+E, Ctrl+D, Ctrl+C, Ctrl+V, Ctrl
 | Ctrl+C / Ctrl+V | Copy / Paste |
 | Ctrl+M | Move to Group |
 | Enter | Connect to selected |
+| Right | Expand selected group (sidebar) |
+| Left | Collapse group, or move to parent group (sidebar) |
 | Menu / Shift+F10 | Open context menu for selected row |
 
 ### Terminal

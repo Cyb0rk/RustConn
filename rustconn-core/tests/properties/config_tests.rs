@@ -11,8 +11,8 @@ use std::path::PathBuf;
 
 use proptest::prelude::*;
 use rustconn_core::config::{
-    AppSettings, ColorScheme, ConfigManager, LoggingSettings, SecretBackendType, SecretSettings,
-    SessionRestoreSettings, TerminalSettings, UiSettings,
+    AppSettings, ColorScheme, ConfigManager, LoggingSettings, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MIN,
+    SecretBackendType, SecretSettings, SessionRestoreSettings, TerminalSettings, UiSettings,
 };
 use rustconn_core::sync::SyncSettings;
 use rustconn_core::{
@@ -485,10 +485,15 @@ fn arb_full_settings() -> impl Strategy<Value = AppSettings> {
         1u32..365u32,                      // retention_days
         arb_secret_backend_type(),         // preferred_backend
         any::<bool>(),                     // enable_fallback
-        (any::<bool>(), any::<bool>()),    // (remember_window_geometry, window_maximized)
-        arb_optional_dimension(),          // window_width
-        arb_optional_dimension(),          // window_height
-        arb_optional_dimension(),          // sidebar_width
+        // (remember_window_geometry, window_maximized, sidebar_drag_resize)
+        (any::<bool>(), any::<bool>(), any::<bool>()),
+        arb_optional_dimension(), // window_width
+        arb_optional_dimension(), // window_height
+        // sidebar_width, within the range the spin row and the drag share
+        prop_oneof![
+            Just(None),
+            (SIDEBAR_WIDTH_MIN..=SIDEBAR_WIDTH_MAX).prop_map(Some)
+        ],
     )
         .prop_map(
             |(
@@ -500,7 +505,7 @@ fn arb_full_settings() -> impl Strategy<Value = AppSettings> {
                 retention_days,
                 preferred_backend,
                 enable_fallback,
-                (remember_window_geometry, window_maximized),
+                (remember_window_geometry, window_maximized, sidebar_drag_resize),
                 window_width,
                 window_height,
                 sidebar_width,
@@ -573,6 +578,7 @@ fn arb_full_settings() -> impl Strategy<Value = AppSettings> {
                         window_height,
                         window_maximized,
                         sidebar_width,
+                        sidebar_drag_resize,
                         enable_tray_icon: true,
                         minimize_to_tray: false,
                         expanded_groups: std::collections::HashSet::new(),
@@ -852,6 +858,11 @@ proptest! {
             settings.ui.sidebar_width,
             loaded.ui.sidebar_width,
             "Sidebar width should be preserved"
+        );
+        prop_assert_eq!(
+            settings.ui.sidebar_drag_resize,
+            loaded.ui.sidebar_drag_resize,
+            "Sidebar drag-resize toggle should be preserved"
         );
     }
 

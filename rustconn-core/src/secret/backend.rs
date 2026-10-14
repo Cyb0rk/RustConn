@@ -53,9 +53,31 @@ impl<'a> LookupIdentity<'a> {
     /// hand-entered display name, so when a vault holds entries titled both
     /// ways the host-titled one is the safer match. (The UUID/key is tried
     /// ahead of both by the caller for back-compat.)
+    ///
+    /// **Slash-leaf (issue #353):** a connection name such as
+    /// `AME/DE/11/hanfile03` is a path the user organises by, but the vault
+    /// entry is almost always titled by the bare leaf (`hanfile03`). For each
+    /// alias that contains a `/`, the leaf after the last `/` is appended as an
+    /// extra candidate, right after the full alias so the exact full-title
+    /// match still wins first. This mirrors the KeePass path, whose
+    /// `root_match_entry_path_multi` already extracts `candidate.rsplit('/')`
+    /// as its basename; without it the two backends diverge and a slash-named
+    /// connection resolves on KeePass but silently misses on Bitwarden.
     #[must_use]
     pub fn aliases(&self) -> Vec<&'a str> {
-        [self.host, self.name].into_iter().flatten().collect()
+        let mut out: Vec<&'a str> = Vec::new();
+        for alias in [self.host, self.name].into_iter().flatten() {
+            out.push(alias);
+            // Append the leaf of a slash-separated path, when it is a distinct,
+            // non-empty tail (`a/b` -> `b`; `a/` -> nothing; `plain` -> nothing).
+            if let Some(leaf) = alias.rsplit('/').next()
+                && leaf != alias
+                && !leaf.is_empty()
+            {
+                out.push(leaf);
+            }
+        }
+        out
     }
 }
 
@@ -330,5 +352,55 @@ mod capability_tests {
         assert!(b.store("conn-1", &creds).await.is_ok());
         assert!(b.delete("conn-1").await.is_ok());
         assert!(b.searches_from_root());
+    }
+
+    /// Issue #353: a slash-separated connection name/host (`AME/DE/11/hanfile03`)
+    /// yields the bare leaf (`hanfile03`) as an extra candidate, immediately
+    /// after the full alias so an exact full-title match still wins first. This
+    /// is what let Bitwarden diverge from KeePass — KeePass already extracted
+    /// the basename, Bitwarden only ever had the full path.
+    #[test]
+    fn aliases_append_the_leaf_of_a_slash_path() {
+        let id = LookupIdentity {
+            key: "rustconn/whatever",
+            name: Some("AME/DE/11/hanfile03"),
+            host: Some("10.0.0.1"),
+        };
+        // Host first (no slash -> no leaf), then the slash name followed by its
+        // leaf. Order matters: the full path precedes the leaf so a vault entry
+        // titled by the full path is matched before one titled by the leaf.
+        assert_eq!(
+            id.aliases(),
+            vec!["10.0.0.1", "AME/DE/11/hanfile03", "hanfile03"]
+        );
+    }
+
+    /// Edge cases: a plain alias adds no leaf, a trailing slash adds no empty
+    /// leaf, and an absent field contributes nothing.
+    #[test]
+    fn aliases_leaf_edges_are_safe() {
+        // Plain name, no host: just the name, no spurious leaf.
+        let plain = LookupIdentity {
+            key: "k",
+            name: Some("hanfile03"),
+            host: None,
+        };
+        assert_eq!(plain.aliases(), vec!["hanfile03"]);
+
+        // Trailing slash: leaf is empty and must be dropped, never pushed blank.
+        let trailing = LookupIdentity {
+            key: "k",
+            name: Some("group/"),
+            host: None,
+        };
+        assert_eq!(trailing.aliases(), vec!["group/"]);
+
+        // No aliases at all.
+        let bare = LookupIdentity {
+            key: "k",
+            name: None,
+            host: None,
+        };
+        assert!(bare.aliases().is_empty());
     }
 }
