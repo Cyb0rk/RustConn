@@ -73,6 +73,19 @@ warn()  { printf '%s!%s %s\n'     "$C_YELLOW" "$C_RESET" "$*" >&2; }
 die()   { printf '%s✗%s %s\n'     "$C_RED"    "$C_RESET" "$*" >&2; exit 1; }
 step()  { printf '\n%s%s%s\n'     "$C_BOLD"   "$*" "$C_RESET"; }
 
+# Portable in-place sed. BSD sed on macOS needs `-i ''` and treats the next
+# argument as the backup suffix, so a bare `sed -i -E …` consumes `-E` as the
+# suffix and the edit silently no-ops — which is how the commit: strip below
+# reported success yet left the line in place. GNU sed needs `-i` with no
+# argument. Branch on the platform, exactly as scripts/release.sh does.
+sedi() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        sed -i '' -E "$@"
+    else
+        sed -i -E "$@"
+    fi
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Args
 # ──────────────────────────────────────────────────────────────────────────────
@@ -200,7 +213,7 @@ else
     # before that commit is the tag's target), which makes the Flathub build
     # abort with "commit does not match tag". Ship tag-only; Flathub resolves
     # the real commit from the tag.
-    sed -i -E '/^[[:space:]]*commit: [0-9a-f]{7,40}[[:space:]]*$/d' "$WORKDIR/$APP_ID.yml"
+    sedi '/^[[:space:]]*commit: [0-9a-f]{7,40}[[:space:]]*$/d' "$WORKDIR/$APP_ID.yml"
     ok "Downloaded manifest + cargo-sources.json (README.md dropped, commit: line stripped)."
     # Sanity: the manifest must keep the tag pin and must NOT carry a commit pin.
     grep -qE "^[[:space:]]*tag: $TAG[[:space:]]*$" "$WORKDIR/$APP_ID.yml" \
