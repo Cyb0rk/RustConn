@@ -76,6 +76,7 @@ pub fn create_ui_page() -> (
     adw::SpinRow,
     adw::ComboRow,
     adw::SpinRow,
+    adw::SwitchRow, // sidebar_drag_resize (#3)
     adw::SwitchRow,
     adw::SwitchRow,
     adw::SwitchRow,
@@ -230,13 +231,28 @@ pub fn create_ui_page() -> (
         .build();
     appearance_group.add(&renderer_row);
 
-    // Sidebar width SpinRow
+    // Sidebar width SpinRow — this is the *minimum* width (the floor) the
+    // sidebar may be dragged down to when drag-resize is on; without it, it is
+    // simply the fixed sidebar width (issue #3).
     let sidebar_width_row = adw::SpinRow::builder()
-        .title(i18n("Sidebar width"))
-        .subtitle(i18n("Width of the connection sidebar in pixels"))
+        .title(i18n("Minimum sidebar width"))
+        .subtitle(i18n(
+            "Smallest width of the connection sidebar in pixels. The sidebar can be dragged no narrower than this",
+        ))
         .adjustment(&gtk4::Adjustment::new(320.0, 180.0, 500.0, 10.0, 50.0, 0.0))
         .build();
     appearance_group.add(&sidebar_width_row);
+
+    // Opt-in: let the user resize the sidebar by dragging its trailing edge.
+    // Off by default — a drag handle on a navigation sidebar is outside the
+    // GNOME HIG pattern, so it is a deliberate choice, not the default (#3).
+    let sidebar_drag_resize = adw::SwitchRow::builder()
+        .title(i18n("Resize sidebar by dragging"))
+        .subtitle(i18n(
+            "Drag the sidebar's edge to resize it, down to the minimum width above and up to half the window",
+        ))
+        .build();
+    appearance_group.add(&sidebar_drag_resize);
 
     // Compact interface toggle — denser header bar, tabs and buttons.
     // Live preview: applies the .compact CSS class to all windows on toggle,
@@ -660,6 +676,7 @@ pub fn create_ui_page() -> (
         max_age_row,
         startup_action_dropdown,
         sidebar_width_row,
+        sidebar_drag_resize,
         compact_ui,
         compact_auto,
         terminal_passthrough_ctrl,
@@ -729,6 +746,7 @@ pub fn load_ui_settings(
     prompt_on_restore: &adw::SwitchRow,
     max_age_row: &adw::SpinRow,
     startup_action_dropdown: &adw::ComboRow,
+    sidebar_drag_resize: &adw::SwitchRow,
     sidebar_width_row: &adw::SpinRow,
     compact_ui: &adw::SwitchRow,
     compact_auto: &adw::SwitchRow,
@@ -806,9 +824,11 @@ pub fn load_ui_settings(
     prompt_on_restore.set_sensitive(settings.session_restore.enabled);
     max_age_row.set_sensitive(settings.session_restore.enabled);
 
-    // Load sidebar width (default 320 if not set)
-    let sidebar_w = settings.sidebar_width.unwrap_or(320);
-    sidebar_width_row.set_value(f64::from(sidebar_w.clamp(180, 500)));
+    // Load the sidebar width floor into the spin row (issue #3). Falls back to
+    // the built-in minimum when unset, so an existing config shows 180 until
+    // the user raises it.
+    sidebar_width_row.set_value(f64::from(settings.sidebar_width_floor()));
+    sidebar_drag_resize.set_active(settings.sidebar_drag_resize);
 
     // Load compact interface — apply CSS immediately so it persists at startup.
     compact_ui.set_active(settings.compact_ui);
@@ -909,6 +929,7 @@ pub fn collect_ui_settings(
     prompt_on_restore: &adw::SwitchRow,
     max_age_row: &adw::SpinRow,
     startup_action_dropdown: &adw::ComboRow,
+    sidebar_drag_resize: &adw::SwitchRow,
     sidebar_width_row: &adw::SpinRow,
     compact_ui: &adw::SwitchRow,
     compact_auto: &adw::SwitchRow,
@@ -971,7 +992,15 @@ pub fn collect_ui_settings(
         window_width: None,
         window_height: None,
         window_maximized: false,
-        sidebar_width: Some(sidebar_width_row.value().clamp(180.0, 500.0) as i32),
+        // Current width is runtime-owned (drag / on-close persist); None here
+        // so update_settings preserves the existing value instead of resetting
+        // it to the floor on every Settings save (issue #3).
+        sidebar_width: None,
+        sidebar_min_width: Some(sidebar_width_row.value().clamp(
+            f64::from(rustconn_core::config::SIDEBAR_WIDTH_FLOOR_MIN),
+            f64::from(rustconn_core::config::SIDEBAR_WIDTH_FLOOR_MAX),
+        ) as i32),
+        sidebar_drag_resize: sidebar_drag_resize.is_active(),
         enable_tray_icon: enable_tray_icon.is_active(),
         minimize_to_tray: minimize_to_tray.is_active(),
         expanded_groups: std::collections::HashSet::new(),

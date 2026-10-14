@@ -120,6 +120,8 @@ pub struct SettingsDialog {
     startup_action_dropdown: adw::ComboRow,
     // Sidebar width setting
     sidebar_width_row: adw::SpinRow,
+    /// Opt-in drag-to-resize sidebar toggle (issue #3)
+    sidebar_drag_resize: adw::SwitchRow,
     // Compact interface toggle
     compact_ui: adw::SwitchRow,
     // Automatic compact interface on small windows
@@ -276,6 +278,7 @@ impl SettingsDialog {
             max_age_row,
             startup_action_dropdown,
             sidebar_width_row,
+            sidebar_drag_resize,
             compact_ui,
             compact_auto,
             terminal_passthrough_ctrl,
@@ -726,6 +729,7 @@ impl SettingsDialog {
             max_age_row,
             startup_action_dropdown,
             sidebar_width_row,
+            sidebar_drag_resize,
             compact_ui,
             compact_auto,
             terminal_passthrough_ctrl,
@@ -1307,6 +1311,7 @@ impl SettingsDialog {
             &self.prompt_on_restore,
             &self.max_age_row,
             &self.startup_action_dropdown,
+            &self.sidebar_drag_resize,
             &self.sidebar_width_row,
             &self.compact_ui,
             &self.compact_auto,
@@ -1500,6 +1505,7 @@ impl SettingsDialog {
         let max_age_row_clone = self.max_age_row.clone();
         let startup_action_dropdown_clone = self.startup_action_dropdown.clone();
         let sidebar_width_row_clone = self.sidebar_width_row.clone();
+        let sidebar_drag_resize_clone = self.sidebar_drag_resize.clone();
         let compact_ui_clone = self.compact_ui.clone();
         let compact_auto_clone = self.compact_auto.clone();
         let terminal_passthrough_ctrl_clone = self.terminal_passthrough_ctrl.clone();
@@ -1732,6 +1738,7 @@ impl SettingsDialog {
                 &prompt_on_restore_clone,
                 &max_age_row_clone,
                 &startup_action_dropdown_clone,
+                &sidebar_drag_resize_clone,
                 &sidebar_width_row_clone,
                 &compact_ui_clone,
                 &compact_auto_clone,

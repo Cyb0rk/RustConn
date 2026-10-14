@@ -573,6 +573,8 @@ fn arb_full_settings() -> impl Strategy<Value = AppSettings> {
                         window_height,
                         window_maximized,
                         sidebar_width,
+                        sidebar_min_width: None,
+                        sidebar_drag_resize: false,
                         enable_tray_icon: true,
                         minimize_to_tray: false,
                         expanded_groups: std::collections::HashSet::new(),

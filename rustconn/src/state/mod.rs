@@ -2225,6 +2225,16 @@ impl AppState {
                 self.settings.secrets.portable_passphrase.clone();
         }
 
+        // The current sidebar width is runtime-owned: it is written by dragging
+        // the sidebar edge and by the on-close geometry save, never by the
+        // Settings dialog (which owns only the *floor*, `sidebar_min_width`).
+        // The dialog collects `None` for it, so without this a Settings save
+        // would wipe the current width and the sidebar would jump to the floor
+        // (issue #3).
+        if settings.ui.sidebar_width.is_none() {
+            settings.ui.sidebar_width = self.settings.ui.sidebar_width;
+        }
+
         // Runtime-only secret restoration happens *before* the rebuild below,
         // not after. `rebuild_from_settings` hands the portable passphrase to the
         // new backend, so restoring it afterwards left the rebuilt backend locked

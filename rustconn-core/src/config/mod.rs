@@ -16,7 +16,8 @@ pub use manager::ConfigManager;
 pub use settings::{
     AppSettings, ColorScheme, ConnectionSettings, KeyringRevocations, LoggingSettings,
     NetworkSettings, QuickConnectHistoryItem, RendererPreference, SIDEBAR_ROW_MARGIN_MAX,
-    SIDEBAR_ROW_MARGIN_MIN, SecretBackendType, SecretSettings, SessionRestoreSettings,
+    SIDEBAR_ROW_MARGIN_MIN, SIDEBAR_WIDTH_FLOOR_MAX, SIDEBAR_WIDTH_FLOOR_MIN, SecretBackendType,
+    SecretSettings, SessionRestoreSettings,
     SidebarFontSize, StartupAction, TerminalSettings, UiSettings,
 };
 pub use version_skew::is_newer_than_running;
