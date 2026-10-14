@@ -5,6 +5,11 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.13] - 2026-10-14
+
+### Fixed
+- **Bitwarden root-search now finds an entry titled by the leaf of a slash-separated connection name (#353)** — with "search entire vault" enabled, a connection named by a path such as `AME/DE/11/hanfile03` still failed to resolve against a Bitwarden vault entry simply titled `hanfile03`, while the same vault resolved correctly under KeePass. The two backends had diverged: KeePass's root matcher already extracts the basename of each candidate (`candidate.rsplit('/')`), but the Bitwarden path only ever offered the *full* name/host as candidates and matched entry titles exactly, so the bare leaf was never searched for. The fix moves the leaf extraction into the shared `LookupIdentity::aliases` (`rustconn-core/src/secret/backend.rs`), so every root-search backend — Bitwarden, 1Password, pass, and the KDBX wrapper — now offers the slash-leaf as an additional candidate, placed right after the full alias so an exact full-title match still wins first. Matching stays exact (not substring), so a bare `db` can never steal a `database-prod` entry. Verified: the settings toggle already reaches the live backend correctly (`SecretManager::rebuild_from_settings` runs on every Secrets-tab save), so this was purely the missing leaf candidate, not a stale-settings bug. New unit tests cover the slash-leaf alias extraction and its edges (plain name, trailing slash, absent fields) and a Bitwarden lookup resolving a slash-named connection to a leaf-titled entry. (`rustconn-core/src/secret/backend.rs`, `rustconn-core/src/secret/bitwarden.rs`)
+
 ## [0.23.12] - 2026-10-13
 
 ### Added

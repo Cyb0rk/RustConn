@@ -2087,4 +2087,39 @@ mod root_search_tests {
             &candidates
         ));
     }
+
+    /// Issue #353 (the Bitwarden half): a connection NAMED by a slash path
+    /// (`AME/DE/11/hanfile03`) must match a vault entry titled by the bare leaf
+    /// (`hanfile03`). The leaf arrives as a candidate from
+    /// `LookupIdentity::aliases`, so the full chain — identity -> aliases ->
+    /// `bare_candidates` -> `root_search_matches` — is what a real lookup runs.
+    /// Before the fix the leaf was never a candidate and this missed, while the
+    /// KeePass path (basename-extracting) matched the same vault.
+    #[test]
+    fn slash_named_connection_matches_a_leaf_titled_entry() {
+        use crate::secret::backend::LookupIdentity;
+
+        let identity = LookupIdentity {
+            key: "rustconn/hanfile03",
+            name: Some("AME/DE/11/hanfile03"),
+            host: Some("10.0.0.1"),
+        };
+        let aliases = identity.aliases();
+        let candidates = BitwardenBackend::bare_candidates(identity.key, &aliases);
+
+        // The bare leaf is now a candidate and matches the real vault title.
+        assert!(BitwardenBackend::root_search_matches("hanfile03", &candidates));
+        // The full slash path still matches when the user titled it that way.
+        assert!(BitwardenBackend::root_search_matches(
+            "AME/DE/11/hanfile03",
+            &candidates
+        ));
+        // Exactness is preserved: a different leaf under the same path does not
+        // match, and a substring of the leaf does not match.
+        assert!(!BitwardenBackend::root_search_matches(
+            "hanfile99",
+            &candidates
+        ));
+        assert!(!BitwardenBackend::root_search_matches("hanfile", &candidates));
+    }
 }
