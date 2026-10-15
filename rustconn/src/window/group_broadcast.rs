@@ -533,7 +533,10 @@ mod tests {
     #[test]
     fn inactive_broadcast_resolves_no_targets() {
         let m = ids(3);
-        assert!(resolve_broadcast_targets(false, m[0], &m).is_empty());
+        assert_eq!(
+            resolve_broadcast_targets(false, m[0], &m),
+            Vec::<uuid::Uuid>::new()
+        );
     }
 
     // SHALL CONTINUE TO: a non-member tab types only into itself even while the
@@ -542,7 +545,10 @@ mod tests {
     fn non_member_source_resolves_no_targets() {
         let m = ids(3);
         let outsider = Uuid::new_v4();
-        assert!(resolve_broadcast_targets(true, outsider, &m).is_empty());
+        assert_eq!(
+            resolve_broadcast_targets(true, outsider, &m),
+            Vec::<uuid::Uuid>::new()
+        );
     }
 
     // Removing a member below two participants turns the mode off, so a stale

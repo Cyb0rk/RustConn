@@ -180,7 +180,7 @@ impl CsvImporter {
             return;
         };
 
-        let protocol_type = match mapping.protocol_col.and_then(&get) {
+        let protocol_type = match mapping.protocol_col.and_then(get) {
             Some(proto_str) => {
                 if let Some(pt) = parse_protocol(proto_str) {
                     pt
@@ -196,7 +196,7 @@ impl CsvImporter {
             None => ProtocolType::Ssh,
         };
 
-        let port = match mapping.port_col.and_then(&get) {
+        let port = match mapping.port_col.and_then(get) {
             Some(s) => match s.parse::<u16>() {
                 Ok(p) if p > 0 => p,
                 _ => {
@@ -218,13 +218,13 @@ impl CsvImporter {
             default_protocol_config(protocol_type),
         );
 
-        if let Some(username) = mapping.username_col.and_then(&get) {
+        if let Some(username) = mapping.username_col.and_then(get) {
             conn.username = Some(username.to_string());
         }
-        if let Some(desc) = mapping.description_col.and_then(&get) {
+        if let Some(desc) = mapping.description_col.and_then(get) {
             conn.description = Some(desc.to_string());
         }
-        if let Some(tags_str) = mapping.tags_col.and_then(&get) {
+        if let Some(tags_str) = mapping.tags_col.and_then(get) {
             conn.tags = tags_str
                 .split(';')
                 .map(str::trim)

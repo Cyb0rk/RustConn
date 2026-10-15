@@ -642,8 +642,8 @@ mod tests {
     #[test]
     fn test_labels_functions() {
         // Labels return non-empty strings (actual content depends on locale)
-        assert!(!labels::root_group().is_empty());
-        assert!(!labels::none_label().is_empty());
-        assert!(!labels::no_keys_loaded().is_empty());
+        assert_ne!(labels::root_group(), "");
+        assert_ne!(labels::none_label(), "");
+        assert_ne!(labels::no_keys_loaded(), "");
     }
 }

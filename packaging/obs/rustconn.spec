@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.13
+Version:        0.23.14
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,12 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Thu Oct 15 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.14-0
+- Version bump to 0.23.14
+- Fixed password login on servers that offer both keyboard-interactive and password: the SSH_ASKPASS helper no longer deletes the secret file after its first read, so the per-method second prompt still finds the password (issue #382)
+- Changed development toolchain pinned to Rust 1.99.0 (was 1.97.1); MSRV unchanged at 1.95; fixed two newly-stabilised clippy lints surfaced by the bump
+- Updated inout 0.2.2 to 0.2.3
+
 * Wed Oct 14 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.13-0
 - Version bump to 0.23.13
 - Added expand and collapse sidebar groups with the arrow keys, RTL-aware (issue #380)

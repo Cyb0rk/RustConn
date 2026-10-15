@@ -3343,14 +3343,14 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
-        "url": "https://static.crates.io/crates/inout/inout-0.2.2.crate",
-        "sha256": "4250ce6452e92010fdf7268ccc5d14faa80bb12fc741938534c58f16804e03c7",
-        "dest": "cargo/vendor/inout-0.2.2"
+        "url": "https://static.crates.io/crates/inout/inout-0.2.3.crate",
+        "sha256": "d8c0d789294fb457b791f7797a04478704788f30b407e5d0b01deaa846572d9f",
+        "dest": "cargo/vendor/inout-0.2.3"
     },
     {
         "type": "inline",
-        "contents": "{\"package\": \"4250ce6452e92010fdf7268ccc5d14faa80bb12fc741938534c58f16804e03c7\", \"files\": {}}",
-        "dest": "cargo/vendor/inout-0.2.2",
+        "contents": "{\"package\": \"d8c0d789294fb457b791f7797a04478704788f30b407e5d0b01deaa846572d9f\", \"files\": {}}",
+        "dest": "cargo/vendor/inout-0.2.3",
         "dest-filename": ".cargo-checksum.json"
     },
     {

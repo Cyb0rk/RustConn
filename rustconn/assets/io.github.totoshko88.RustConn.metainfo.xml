@@ -140,6 +140,16 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.14" date="2026-10-15">
+      <description>
+        <p>Version 0.23.14 - an SSH password-login fix, a toolchain bump, and a dependency update:</p>
+        <ul>
+          <li>Fixed password login on servers that offer both keyboard-interactive and password: the SSH_ASKPASS helper no longer deletes the secret file after its first read, so the per-method second prompt still finds the password (issue #382)</li>
+          <li>Changed development toolchain pinned to Rust 1.99.0 (was 1.97.1); MSRV unchanged at 1.95</li>
+          <li>Updated inout 0.2.2 to 0.2.3</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.13" date="2026-10-14">
       <description>
         <p>Version 0.23.13 - sidebar keyboard and drag-resize, a Bitwarden lookup fix, and dependency updates:</p>

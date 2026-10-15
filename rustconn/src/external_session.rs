@@ -613,7 +613,10 @@ mod tests {
             let session_b = Uuid::new_v4();
 
             assert!(!registry.has_active_session(connection_id));
-            assert!(registry.active_session_ids(connection_id).is_empty());
+            assert_eq!(
+                registry.active_session_ids(connection_id),
+                Vec::<uuid::Uuid>::new()
+            );
 
             registry.register(session_a, connection_id, None, None);
             registry.register(session_b, connection_id, None, None);
@@ -631,7 +634,10 @@ mod tests {
 
             registry.stop_tracking(session_b);
             assert!(!registry.has_active_session(connection_id));
-            assert!(registry.active_session_ids(connection_id).is_empty());
+            assert_eq!(
+                registry.active_session_ids(connection_id),
+                Vec::<uuid::Uuid>::new()
+            );
         });
     }
 

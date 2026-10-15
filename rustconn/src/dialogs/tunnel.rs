@@ -932,7 +932,7 @@ mod start_error_tests {
     fn an_unknown_program_gets_generic_advice_and_never_a_guessed_package() {
         let remedy = missing_program_remedy("some-future-wrapper");
 
-        assert!(!remedy.is_empty());
+        assert_ne!(remedy, "");
         assert!(!remedy.contains("OpenSSH"));
         assert!(!remedy.contains("mptcpd"));
         assert!(remedy.contains("PATH"), "no actionable advice: {remedy}");

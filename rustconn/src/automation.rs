@@ -866,7 +866,7 @@ mod tests {
             delay_ms: 250,
         };
         let rules = rustconn_core::elevated_credentials_rules(&elevated);
-        assert!(!rules.is_empty());
+        assert_ne!(rules, []);
 
         let manager = manager_with("password", "hunter2");
         let prepared = prepare_rules_from_config(&rules, &manager);

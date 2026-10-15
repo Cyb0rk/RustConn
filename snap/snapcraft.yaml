@@ -1,6 +1,6 @@
 name: rustconn
 base: core24
-version: '0.23.13'
+version: '0.23.14'
 title: RustConn
 summary: Manage remote connections easily
 description: |
@@ -331,7 +331,7 @@ parts:
       export PATH="$HOME/.cargo/bin:$PATH"
       # The `rust-deps` part installs rustup with --default-toolchain 1.95 on
       # purpose (MSRV), and cargo on that PATH is a rustup proxy, so it WOULD
-      # read the repo's rust-toolchain.toml and pull 1.97.1 instead. This env
+      # read the repo's rust-toolchain.toml and pull 1.99.0 instead. This env
       # var outranks that file and keeps the snap on the toolchain the part
       # deliberately installed — otherwise adding a dev-toolchain pin would have
       # silently changed what the snap compiles with, and downloaded a second
