@@ -1,4 +1,14 @@
 -------------------------------------------------------------------
+Thu Oct 15 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.14
+
+- Version bump to 0.23.14
+- Fixed: password login no longer fails on servers that offer both
+  keyboard-interactive and password - the SSH_ASKPASS helper no longer
+  deletes the secret file after its first read, so the per-method second
+  prompt still finds the password (issue #382)
+- Updated: inout 0.2.2 to 0.2.3
+
+-------------------------------------------------------------------
 Wed Oct 14 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.13
 
 - Version bump to 0.23.13

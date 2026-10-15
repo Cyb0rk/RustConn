@@ -5,6 +5,14 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.14] - 2026-10-15
+
+### Fixed
+- **Password login no longer fails on servers that offer both keyboard-interactive and password (issue #382)** — when a server advertised `keyboard-interactive` *and* `password` authentication, a password-based SSH connection would fail with `Permission denied` even though the password was correct. OpenSSH counts `NumberOfPasswordPrompts` per *method*, so it invoked the `SSH_ASKPASS` helper **twice** — once per method — against the same secret-file path, but the generated helper script deleted the secret file (`rm -f`) immediately after its first read. The second invocation then found no file and emitted an empty password. This is a regression surfaced by the keyboard-interactive support added for ESXi in 0.23.13 (#364), which made the two-method case reachable. The in-script delete is removed: the helper now only reads the file, and cleanup is already owned by the child-exit watcher (`watch_child_exit` removes every registered secret path when the ssh process exits) with the file living in a user-private `$XDG_RUNTIME_DIR` (tmpfs, mode 0600) — so dropping the `rm -f` costs no security. The fix is in the shared `askpass_script_contents`, so it covers the target-account helper and every jump-host (bastion) helper identically; a new regression test runs the generated helper twice against one secret file (for the target and jump-hop env vars) and asserts both invocations emit the password and the file survives. (`rustconn/src/window/protocols_ssh.rs`)
+
+### Dependencies
+- **Updated**: inout 0.2.2 → 0.2.3. A semver-compatible transitive patch bump; no security advisories affected (`cargo deny check advisories` clean). CLI download versions all current (TigerVNC pinned at 1.16.2, confirmed latest upstream); the RustCrypto release-candidate family and the out-of-range majors remain held back, pinned transitively by the sspi/picky-krb stack exactly as in 0.23.1–0.23.13. The Flatpak/Flathub manifests are in sync (GNOME runtime 51, FreeRDP 3.32.1, cJSON 1.7.19, OpenH264 2.6.0).
+
 ## [0.23.13] - 2026-10-14
 
 ### Added

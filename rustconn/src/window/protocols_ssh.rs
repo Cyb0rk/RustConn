@@ -37,7 +37,10 @@ fn target_password_askpass_script() -> Option<std::path::PathBuf> {
 /// The script holds no secret — only the env var name — so it is safe to keep
 /// for the process lifetime and share across sessions. The password is written
 /// directly from `SecretString` to a randomized mode-0600 runtime file; the env
-/// carries only its path, and the helper opens then unlinks it before output.
+/// carries only its path, and the helper opens and reads it. It deliberately does
+/// not unlink the file (that would break a second, keyboard-interactive
+/// invocation — see `askpass_script_contents`, issue #382); cleanup is handled by
+/// `watch_child_exit` on ssh-child exit.
 /// The script itself is placed in `$XDG_RUNTIME_DIR` (mode 0700) to avoid `/tmp`
 /// symlink races on a fixed filename, falling back to a randomized temp path.
 /// Created once (mode 0700) and cached per env var name; returns `None` if
@@ -137,6 +140,20 @@ fn parse_jump_host_for_control(jump_host: &str) -> (String, u16) {
 /// suffixes that have an uppercase first letter are matched by their first-letter-agnostic
 /// tail (e.g. `*ароль:` catches both `Пароль:` and `пароль:`); CJK/Kana suffixes are
 /// caseless and matched whole.
+///
+/// Re-invocation: the helper **reads** the secret file (`exec 3<` + `cat`) and
+/// must NOT delete it. OpenSSH counts `NumberOfPasswordPrompts` per *method*, so a
+/// server offering both `keyboard-interactive` and `password` runs this script
+/// **twice** against the same `$secret_file` path (the env-var name is fixed; only
+/// the path's value is per-connection). An in-script `rm -f` after the first read
+/// left the second invocation with no file → an empty password → `Permission
+/// denied` (issue
+/// [#382](https://github.com/totoshko88/RustConn/issues/382), a regression from
+/// the keyboard-interactive support added in #364). Cleanup is owned elsewhere:
+/// every secret-file path is registered in `cleanup_paths` and removed by
+/// `watch_child_exit` when the ssh child exits, and the file lives in a
+/// user-private tmpfs dir (`$XDG_RUNTIME_DIR`, mode 0600) — never world-writable
+/// `/tmp` — so the in-script delete bought no extra security.
 fn askpass_script_contents(env_var_name: &str) -> String {
     format!(
         "#!/bin/sh\n\
@@ -177,7 +194,6 @@ fn askpass_script_contents(env_var_name: &str) -> String {
          secret_file=\"${{{env_var_name}}}\"\n\
          [ -n \"$secret_file\" ] || exit 1\n\
          exec 3<\"$secret_file\" || exit 1\n\
-         rm -f \"$secret_file\"\n\
          cat <&3\n"
     )
 }
@@ -2330,10 +2346,21 @@ mod tests {
                 accepted.stdout, b"test-account-password",
                 "wrong output for: {accepted_prompt:?}"
             );
+            // The helper must READ, never delete: OpenSSH re-invokes it per
+            // auth method (keyboard-interactive + password), so the file has to
+            // survive the first read (issue #382). Cleanup is owned by
+            // `watch_child_exit`, not by the script.
             assert!(
-                !accepted_secret_path.exists(),
-                "secret file must be consumed for: {accepted_prompt:?}"
+                accepted_secret_path.exists(),
+                "secret file must survive a read for: {accepted_prompt:?}"
             );
+            assert_eq!(
+                std::fs::read(&accepted_secret_path).expect("secret file must still be readable"),
+                b"test-account-password",
+                "secret content must be intact after a read for: {accepted_prompt:?}"
+            );
+            std::fs::remove_file(&accepted_secret_path)
+                .expect("test secret file must be removed by the test");
         }
 
         // Prompts that must NEVER receive the account password: key passphrase,
@@ -2363,6 +2390,51 @@ mod tests {
             );
             std::fs::remove_file(rejected_secret_path)
                 .expect("rejected prompt must leave the test file for owner cleanup");
+        }
+    }
+
+    /// Regression for issue
+    /// [#382](https://github.com/totoshko88/RustConn/issues/382): OpenSSH counts
+    /// `NumberOfPasswordPrompts` per *method*, so a server offering both
+    /// `keyboard-interactive` and `password` runs the one askpass helper **twice**
+    /// against the same secret-file path. The helper must emit the password on
+    /// every invocation; the old in-script `rm -f` consumed the file on the first
+    /// read, so the second produced an empty password and `Permission denied`.
+    ///
+    /// Checked for the target env var and a jump-hop env var, since both share
+    /// `askpass_script_contents` — a fix to one must hold for the other.
+    #[test]
+    fn askpass_helper_survives_repeated_invocations() {
+        for env_var in [TARGET_PASSWORD_ENV, JUMP_HOST_PW_ENV, "_RC_JH_PW_FILE_1"] {
+            let secret_path =
+                std::env::temp_dir().join(format!("rustconn-askpass-reinvoke-{}", Uuid::new_v4()));
+            std::fs::write(&secret_path, b"persistent-secret")
+                .expect("test secret file must be writable");
+            let script = askpass_script_contents(env_var);
+
+            // Two invocations with the SAME env/path, as OpenSSH does for a
+            // keyboard-interactive + password server.
+            for round in 1..=2 {
+                let output = std::process::Command::new("sh")
+                    .args(["-c", &script, "rustconn-askpass-test", "Password: "])
+                    .env(env_var, &secret_path)
+                    .output()
+                    .expect("test askpass script must run");
+                assert!(
+                    output.status.success(),
+                    "invocation {round} failed for {env_var}"
+                );
+                assert_eq!(
+                    output.stdout, b"persistent-secret",
+                    "invocation {round} emitted the wrong password for {env_var}"
+                );
+                assert!(
+                    secret_path.exists(),
+                    "secret file deleted after invocation {round} for {env_var} (#382)"
+                );
+            }
+
+            std::fs::remove_file(&secret_path).expect("test secret file must be removed");
         }
     }
 }

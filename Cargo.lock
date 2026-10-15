@@ -26,7 +26,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1973cfbc1a2daf9cf550e74e1f088c28e7f7d8c1e1418fb6c9dc5184b7e84c99"
 dependencies = [
  "crypto-common 0.2.2",
- "inout 0.2.2",
+ "inout 0.2.3",
 ]
 
 [[package]]
@@ -746,7 +746,7 @@ checksum = "e8cf2a2c93cd704877c0858356ed03480ff301ee950b43f1cbe4573b088bfa6c"
 dependencies = [
  "block-buffer 0.12.1",
  "crypto-common 0.2.2",
- "inout 0.2.2",
+ "inout 0.2.3",
 ]
 
 [[package]]
@@ -2621,9 +2621,9 @@ dependencies = [
 
 [[package]]
 name = "inout"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4250ce6452e92010fdf7268ccc5d14faa80bb12fc741938534c58f16804e03c7"
+checksum = "d8c0d789294fb457b791f7797a04478704788f30b407e5d0b01deaa846572d9f"
 dependencies = [
  "block-padding 0.4.2",
  "hybrid-array",
@@ -4151,7 +4151,7 @@ dependencies = [
  "hex",
  "hmac 0.13.0",
  "http",
- "inout 0.2.2",
+ "inout 0.2.3",
  "md-5 0.11.0",
  "p256",
  "p384",
@@ -4233,7 +4233,7 @@ dependencies = [
  "crypto-bigint",
  "des",
  "hmac 0.13.0",
- "inout 0.2.2",
+ "inout 0.2.3",
  "oid",
  "pbkdf2 0.13.0",
  "picky-asn1",
@@ -4840,7 +4840,7 @@ dependencies = [
 
 [[package]]
 name = "rustconn"
-version = "0.23.13"
+version = "0.23.14"
 dependencies = [
  "async-channel",
  "chrono",
@@ -4880,7 +4880,7 @@ dependencies = [
 
 [[package]]
 name = "rustconn-cli"
-version = "0.23.13"
+version = "0.23.14"
 dependencies = [
  "chrono",
  "clap",
@@ -4902,7 +4902,7 @@ dependencies = [
 
 [[package]]
 name = "rustconn-core"
-version = "0.23.13"
+version = "0.23.14"
 dependencies = [
  "aes 0.9.3",
  "ar",
@@ -4963,7 +4963,7 @@ dependencies = [
 
 [[package]]
 name = "rustconn-dock-sys"
-version = "0.23.13"
+version = "0.23.14"
 dependencies = [
  "objc2",
  "objc2-app-kit",
@@ -4972,18 +4972,18 @@ dependencies = [
 
 [[package]]
 name = "rustconn-env-sys"
-version = "0.23.13"
+version = "0.23.14"
 
 [[package]]
 name = "rustconn-locale-sys"
-version = "0.23.13"
+version = "0.23.14"
 dependencies = [
  "gettext-rs",
 ]
 
 [[package]]
 name = "rustconn-pty-sys"
-version = "0.23.13"
+version = "0.23.14"
 dependencies = [
  "libc",
  "nix",
