@@ -34,7 +34,7 @@ env:
   # Why this is duplicated here at all: rust-toolchain.toml is honoured by cargo
   # (a rustup proxy) but the install action cannot read it, so if this said
   # `stable` every job would install stable AND then have the toolchain file pull
-  # 1.97.1 on the first cargo call — two toolchains downloaded per job.
+  # 1.99.0 on the first cargo call — two toolchains downloaded per job.
   #
   # The `msrv` job deliberately does NOT use this; it pins 1.95.0 and overrides
   # the toolchain file with RUSTUP_TOOLCHAIN.
@@ -44,7 +44,7 @@ env:
   # drift gate would NOT catch that: it reads this line as raw text with sed and
   # would see "1.100" matching the toml. The quoting is the only thing standing
   # between that typo and a silently wrong toolchain.
-  RUST_TOOLCHAIN: '1.97.1'
+  RUST_TOOLCHAIN: '1.99.0'
 
 jobs:
   check:
@@ -501,10 +501,10 @@ jobs:
   msrv:
     name: MSRV (1.95)
     runs-on: ubuntu-26.04
-    # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml, which pins 1.97.1 for
+    # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml, which pins 1.99.0 for
     # development. Without this the toolchain file would win over the
     # `rustup default 1.95.0` that the install action performs, and this job
-    # would silently re-test 1.97.1 while still calling itself MSRV.
+    # would silently re-test 1.99.0 while still calling itself MSRV.
     env:
       RUSTUP_TOOLCHAIN: 1.95.0
     steps:

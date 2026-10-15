@@ -16,7 +16,7 @@ env:
   #
   # The `build-rpm` job deliberately opts out via RUSTUP_TOOLCHAIN=1.95.0: its
   # RPM is built on MSRV.
-  RUST_TOOLCHAIN: '1.97.1'
+  RUST_TOOLCHAIN: '1.99.0'
 
 # Least privilege by default; jobs that need more (e.g. creating the GitHub
 # release) raise it explicitly at the job level.
@@ -183,7 +183,7 @@ jobs:
       image: fedora:44
     # This job installs rustup with --default-toolchain 1.95.0 on purpose (MSRV),
     # and the cargo it then calls is a rustup proxy, so it WOULD read the repo's
-    # rust-toolchain.toml and silently build the shipped RPM with 1.97.1 instead.
+    # rust-toolchain.toml and silently build the shipped RPM with 1.99.0 instead.
     # RUSTUP_TOOLCHAIN outranks that file. Keep in sync with the
     # --default-toolchain value in the "Install Rust" step below.
     env:
