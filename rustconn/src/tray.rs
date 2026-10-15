@@ -107,8 +107,9 @@ mod tray_impl {
         let transform = resvg::tiny_skia::Transform::from_scale(scale, scale);
         resvg::render(&tree, transform, &mut pixmap.as_mut());
         let rgba_data = pixmap.data();
-        let argb_data: Vec<u8> = rgba_data
-            .chunks_exact(4)
+        let (rgba_pixels, _rest) = rgba_data.as_chunks::<4>();
+        let argb_data: Vec<u8> = rgba_pixels
+            .iter()
             .flat_map(|rgba| [rgba[3], rgba[0], rgba[1], rgba[2]])
             .collect();
         vec![Icon {
