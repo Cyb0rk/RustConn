@@ -308,6 +308,22 @@ fi
 if [[ "$WAIT_CI" -eq 1 && "$DRY_RUN" -eq 0 ]]; then
     step "Waiting for Flathub CI checks on the PR"
     info "This is the flatpak build on Flathub's infra — it can take several minutes."
+
+    # Flathub registers its build check a little AFTER the PR opens, so on a
+    # freshly-pushed branch `gh pr checks --watch` finds zero checks and exits
+    # non-zero immediately with "no checks reported" — a race, not a failure.
+    # Poll until at least one check is registered before watching, so an empty
+    # check set is treated as "not yet", not as "CI failed".
+    checks_deadline=$(( $(date +%s) + WAIT_JOB_TIMEOUT ))
+    until gh pr checks "$VERSION" --repo "$FLATHUB_REPO" 2>/dev/null | grep -q .; do
+        if [[ $(date +%s) -ge $checks_deadline ]]; then
+            die "No Flathub CI check appeared within ${WAIT_JOB_TIMEOUT}s. Inspect the PR:
+  $PR_URL"
+        fi
+        info "No checks reported yet — Flathub has not registered the build … (waiting)"
+        sleep "$POLL_INTERVAL"
+    done
+
     if ! gh pr checks "$VERSION" --repo "$FLATHUB_REPO" --watch --interval "$POLL_INTERVAL"; then
         die "Flathub CI did not pass. Inspect the PR before merging:
   $PR_URL"
