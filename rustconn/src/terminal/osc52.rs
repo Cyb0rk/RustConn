@@ -418,7 +418,7 @@ mod tests {
         let stream = b"\x1b]0;a title\x07\x1b]133;A\x1b\\hello\x1b[2J\x1b[1;31m\x1b[m world\x1b(B";
         let (fed, writes) = run(stream);
         assert_eq!(fed, stream);
-        assert!(writes.is_empty());
+        assert_eq!(writes, Vec::<String>::new());
     }
 
     #[test]
@@ -438,7 +438,7 @@ mod tests {
         stream.extend_from_slice(&offer("third"));
         let (fed, writes) = run(&stream);
         assert_eq!(writes, ["first", "second", "third"]);
-        assert!(fed.is_empty());
+        assert_eq!(fed, Vec::<u8>::new());
     }
 
     #[test]
@@ -473,7 +473,7 @@ mod tests {
         let mut stream = format!("\x1b]52;c;{payload}").into_bytes();
         stream.extend_from_slice(b"\x1b[2J");
         let (fed, writes) = run(&stream);
-        assert!(writes.is_empty());
+        assert_eq!(writes, Vec::<String>::new());
         // Nothing lost and nothing reordered: the fragment plus the CSI that
         // replaced it comes out as it went in.
         assert_eq!(fed, stream);
@@ -516,7 +516,7 @@ mod tests {
             writes.is_empty(),
             "the local clipboard must not be sent out"
         );
-        assert!(fed.is_empty());
+        assert_eq!(fed, Vec::<u8>::new());
     }
 
     #[test]
@@ -547,7 +547,7 @@ mod tests {
     fn an_empty_payload_clears_the_clipboard() {
         let (fed, writes) = run(b"\x1b]52;c;\x07");
         assert_eq!(writes, [""]);
-        assert!(fed.is_empty());
+        assert_eq!(fed, Vec::<u8>::new());
     }
 
     #[test]
@@ -559,7 +559,7 @@ mod tests {
         let mut sink = |text: &str| writes.push(text.to_owned());
         let fed = filter.push(&sequence, &mut sink).to_vec();
         assert_eq!(fed, sequence, "the sequence must reach VTE untouched");
-        assert!(writes.is_empty());
+        assert_eq!(writes, Vec::<String>::new());
 
         // And an offer split across chunks stays whole on the way to VTE.
         set_enabled(false);
@@ -570,7 +570,7 @@ mod tests {
             fed.extend_from_slice(filter.push(std::slice::from_ref(byte), &mut sink));
         }
         assert_eq!(fed, sequence);
-        assert!(writes.is_empty());
+        assert_eq!(writes, Vec::<String>::new());
     }
 
     #[test]

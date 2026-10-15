@@ -631,7 +631,7 @@ mod tests {
         ] {
             let explanation = verdict_explanation(verdict)
                 .unwrap_or_else(|| panic!("{} needs an explanation", verdict.reason_key()));
-            assert!(!explanation.is_empty());
+            assert_ne!(explanation, "");
         }
     }
 

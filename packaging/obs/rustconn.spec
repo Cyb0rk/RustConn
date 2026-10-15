@@ -395,6 +395,7 @@ done
 * Thu Oct 15 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.14-0
 - Version bump to 0.23.14
 - Fixed password login on servers that offer both keyboard-interactive and password: the SSH_ASKPASS helper no longer deletes the secret file after its first read, so the per-method second prompt still finds the password (issue #382)
+- Changed development toolchain pinned to Rust 1.99.0 (was 1.97.1); MSRV unchanged at 1.95; fixed two newly-stabilised clippy lints surfaced by the bump
 - Updated inout 0.2.2 to 0.2.3
 
 * Wed Oct 14 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.13-0

@@ -811,7 +811,7 @@ mod tests {
     fn test_extract_variables_empty() {
         let template = "No variables here";
         let vars = extract_variables(template);
-        assert!(vars.is_empty());
+        assert_eq!(vars, Vec::<String>::new());
     }
 
     #[test]

@@ -1233,7 +1233,7 @@ mod tests {
     #[test]
     fn test_vnc_config_default() {
         let config = VncConfig::default();
-        assert!(config.host.is_empty());
+        assert_eq!(config.host, "");
         assert_eq!(config.port, 0);
         assert!(config.password.is_none());
         assert_eq!(config.width, 0);
