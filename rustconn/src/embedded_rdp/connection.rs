@@ -1813,6 +1813,20 @@ impl super::EmbeddedRdpWidget {
                                 if *connection_generation.borrow() == generation {
                                     *state.borrow_mut() = RdpConnectionState::Disconnected;
                                     toolbar.set_visible(false);
+                                    // Restore the local arrow pointer. The remote
+                                    // session may have left the cursor hidden
+                                    // (`CursorHidden` → "none") — e.g. a Windows
+                                    // box on its "Restarting…" screen shows no
+                                    // cursor just before it drops the link — and
+                                    // nothing else resets it once the session
+                                    // ends, so the "Session disconnected" /
+                                    // Reconnect overlay would be presented with an
+                                    // invisible pointer, making Reconnect hard to
+                                    // click (issue #383). There is no remote
+                                    // session left to own the pointer, so force
+                                    // the default arrow regardless of
+                                    // show_local_cursor.
+                                    drawing_area.set_cursor_from_name(Some("default"));
                                     if let Some(ref callback) = *on_state_changed.borrow() {
                                         callback(RdpConnectionState::Disconnected);
                                     }

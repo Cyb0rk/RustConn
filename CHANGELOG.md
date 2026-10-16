@@ -5,6 +5,11 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.15] - Unreleased
+
+### Fixed
+- **Mouse pointer no longer vanishes on the "Session disconnected" screen after a remote RDP box reboots (issue #383)** — the embedded IronRDP viewer mirrors the server's cursor: a `CursorHidden` event sets the drawing area's pointer to `"none"`. A rebooting Windows host hides its cursor on the "Restarting…" screen (and holds it there, longest during Windows Updates) just before it drops the link, so the last cursor state RustConn received was "hidden". When the session then disconnected, nothing restored the local pointer, so the "Session disconnected" / Reconnect overlay was presented with an invisible cursor and the user had to hunt for the Reconnect button. On the `Disconnected` transition the viewer now forces the default arrow (`set_cursor_from_name("default")`) unconditionally — there is no remote session left to own the pointer, so `show_local_cursor` does not apply — making the Reconnect overlay usable regardless of the cursor state the session ended in. (The reporter's hunch about OpenH264 being disabled is unrelated: this is pointer state, not video decoding.) (`rustconn/src/embedded_rdp/connection.rs`)
+
 ## [0.23.14] - 2026-10-15
 
 ### Fixed
