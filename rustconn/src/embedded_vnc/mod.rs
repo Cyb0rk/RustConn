@@ -502,6 +502,15 @@ impl EmbeddedVncWidget {
                         tracing::debug!("[EmbeddedVNC] Disconnected");
                         *state.borrow_mut() = VncConnectionState::Disconnected;
                         toolbar_auto_hide.hide();
+                        // Restore the local arrow pointer. The remote server may
+                        // have left the cursor hidden (an empty `CursorUpdate`
+                        // bitmap sets it to "none"), and nothing else resets it
+                        // once the session ends, so the reconnect banner would be
+                        // presented with an invisible pointer — the same defect
+                        // fixed for embedded RDP in issue #383. There is no remote
+                        // session left to own the pointer, so force the default
+                        // arrow regardless of show_local_cursor.
+                        drawing_area.set_cursor_from_name(Some("default"));
                         if let Some(ref callback) = *on_state_changed.borrow() {
                             callback(VncConnectionState::Disconnected);
                         }
@@ -555,6 +564,9 @@ impl EmbeddedVncWidget {
                             tracing::debug!("[EmbeddedVNC] Treating EOF as disconnect");
                             *state.borrow_mut() = VncConnectionState::Disconnected;
                             toolbar_auto_hide.hide();
+                            // Restore the local arrow pointer — see the
+                            // Disconnected arm above (issue #383 parity).
+                            drawing_area.set_cursor_from_name(Some("default"));
                             if let Some(ref callback) = *on_state_changed.borrow() {
                                 callback(VncConnectionState::Disconnected);
                             }
