@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.14
+Version:        0.23.15
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,13 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Sat Oct 17 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.15-0
+- Version bump to 0.23.15
+- Fixed the mouse pointer vanishing on the "Session disconnected" screen after a remote RDP box reboots: the embedded RDP viewer now forces the default arrow on disconnect regardless of the cursor state the session ended in (issue #383)
+- Fixed the same invisible-pointer symptom on the embedded VNC reconnect banner, restored centrally in the state-change handler
+- Changed by removing stale editor backup files (*.bak) from the source tree
+- Updated inout 0.2.3 to 0.2.4 (clears a yanked-version warning), zip, openh264, lzma-rust2, zstd and several compatible dependencies
+
 * Thu Oct 15 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.14-0
 - Version bump to 0.23.14
 - Fixed password login on servers that offer both keyboard-interactive and password: the SSH_ASKPASS helper no longer deletes the secret file after its first read, so the per-method second prompt still finds the password (issue #382)
