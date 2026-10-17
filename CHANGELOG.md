@@ -5,6 +5,18 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.15] - 2026-10-17
+
+### Fixed
+- **Mouse pointer no longer vanishes on the "Session disconnected" screen after a remote RDP box reboots (issue #383)** — the embedded IronRDP viewer mirrors the server's cursor: a `CursorHidden` event sets the drawing area's pointer to `"none"`. A rebooting Windows host hides its cursor on the "Restarting…" screen (and holds it there, longest during Windows Updates) just before it drops the link, so the last cursor state RustConn received was "hidden". When the session then disconnected, nothing restored the local pointer, so the "Session disconnected" / Reconnect overlay was presented with an invisible cursor and the user had to hunt for the Reconnect button. On the `Disconnected` transition the viewer now forces the default arrow (`set_cursor_from_name("default")`) unconditionally — there is no remote session left to own the pointer, so `show_local_cursor` does not apply — making the Reconnect overlay usable regardless of the cursor state the session ended in. (The reporter's hunch about OpenH264 being disabled is unrelated: this is pointer state, not video decoding.) (`rustconn/src/embedded_rdp/connection.rs`)
+- **Same invisible-pointer fix applied to the embedded VNC viewer** — the VNC viewer mirrors the server cursor identically (an empty server `CursorUpdate` bitmap sets the pointer to `"none"`), and its reconnect banner is shown in exactly the `Disconnected`/`Error` states, so a VNC server that left the cursor hidden before dropping the link reproduced the #383 symptom on the VNC reconnect banner. The default arrow is now restored centrally in the state-change handler whenever the reconnect banner is shown, so every banner-showing transition is covered by one invariant (banner visible ⇒ arrow visible): clean disconnect, "unexpected end of file" (EOF-as-disconnect), a generic session error, and the failure path of the external-viewer encryption fallback. (`rustconn/src/embedded_vnc/mod.rs`)
+
+### Changed
+- **Removed stale editor backup files from the source tree** — six `launcher.rs.bak*` snapshots in `rustconn/src/embedded_rdp/` and one `mod.rs.bak14` in `rustconn/src/embedded_vnc/` had been committed before `*.bak` was added to `.gitignore` (which does not untrack already-tracked files). They are now deleted; the `.gitignore` rule already prevents new ones.
+
+### Dependencies
+- **Updated**: inout 0.2.3 → 0.2.4, zip 9.0.3 → 9.0.4, openh264 0.9.8 → 0.9.9, openh264-sys2 0.9.8 → 0.9.9, lzma-rust2 0.21.0 → 0.22.0, zstd 0.14.2 → 0.14.3, zstd-safe 8.1.0 → 8.2.0, zstd-sys 2.1.1 → 2.1.2, libc 0.2.190 → 0.2.191, schannel 0.1.29 → 0.1.30, combine 4.6.8 → 4.6.9, font-types 0.12.6 → 0.12.7, zbus_names 4.3.4 → 4.3.5, zvariant 5.15.0 → 5.15.1, zvariant_derive 5.15.0 → 5.15.1. All semver-compatible patch/minor bumps. The inout bump clears a yanked-version warning: 0.2.3 was yanked upstream (`cargo deny check advisories` flagged it as a yanked crate, pulled transitively through the aes-gcm/picky stack), and 0.2.4 is the drop-in replacement; advisories are otherwise clean. CLI download versions all current (TigerVNC pinned at 1.16.2, confirmed latest upstream); the RustCrypto release-candidate family and the out-of-range majors remain held back, pinned transitively by the sspi/picky-krb stack exactly as in 0.23.1–0.23.14. The Flatpak/Flathub manifests are in sync (GNOME runtime 51, FreeRDP 3.32.1, cJSON 1.7.19, OpenH264 2.6.0).
+
 ## [0.23.14] - 2026-10-15
 
 ### Fixed

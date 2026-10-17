@@ -140,6 +140,17 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.15" date="2026-10-17">
+      <description>
+        <p>Version 0.23.15 - an invisible-pointer fix for the RDP and VNC disconnect screens, and dependency updates:</p>
+        <ul>
+          <li>Fixed the mouse pointer vanishing on the "Session disconnected" screen after a remote RDP box reboots: the embedded RDP viewer now forces the default arrow on disconnect regardless of the cursor state the session ended in (issue #383)</li>
+          <li>Fixed the same invisible-pointer symptom on the embedded VNC reconnect banner, restored centrally in the state-change handler</li>
+          <li>Changed by removing stale editor backup files from the source tree</li>
+          <li>Updated inout 0.2.3 to 0.2.4 (clears a yanked-version warning), zip, openh264, lzma-rust2, zstd and several compatible dependencies</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.14" date="2026-10-15">
       <description>
         <p>Version 0.23.14 - an SSH password-login fix, a toolchain bump, and a dependency update:</p>

@@ -1,4 +1,18 @@
 -------------------------------------------------------------------
+Sat Oct 17 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.15
+
+- Version bump to 0.23.15
+- Fixed: the mouse pointer no longer vanishes on the "Session disconnected"
+  screen after a remote RDP box reboots - the embedded RDP viewer now forces
+  the default arrow on disconnect regardless of the cursor state the session
+  ended in (issue #383)
+- Fixed: same invisible-pointer fix applied to the embedded VNC reconnect
+  banner, restored centrally in the state-change handler
+- Changed: removed stale editor backup files (*.bak) from the source tree
+- Updated: inout 0.2.3 to 0.2.4 (clears a yanked-version warning), zip,
+  openh264, lzma-rust2, zstd and several compatible dependencies
+
+-------------------------------------------------------------------
 Thu Oct 15 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.14
 
 - Version bump to 0.23.14
