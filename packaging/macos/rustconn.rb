@@ -251,7 +251,7 @@ class Rustconn < Formula
     chmod 0755, bin/"rustconn-app"
   end
 
-  def post_install
+  def post_install_steps
     # Register .app bundle with LaunchServices so macOS recognises the bundle
     # identity for Dock pinning, file associations and the Cmd-Tab switcher.
     #
