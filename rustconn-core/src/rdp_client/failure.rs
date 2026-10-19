@@ -137,8 +137,26 @@ const GRAPHICS_MARKERS: &[&str] = &[
 ];
 
 /// Explicit security protocols IronRDP cannot speak.
+///
+/// Two spellings of "Standard RDP Security" appear, from two different code
+/// paths, and both must fall back to external FreeRDP (which implements the
+/// RC4 standard security IronRDP does not):
+///
+/// * `"standard rdp security"` — prose, as in `ironrdp`'s
+///   `"server only supports Standard RDP Security"` negotiation error
+///   (issue [#235]).
+/// * `"standard_rdp_security"` — the `SecurityProtocol` enum variant name,
+///   emitted verbatim by `ironrdp-connector` 0.10 when the server down-selects
+///   to standard security after the client advertised SSL/HYBRID/HYBRID_EX:
+///   `"client advertised SSL | HYBRID | HYBRID_EX, but server selected
+///   STANDARD_RDP_SECURITY"`. xrdp's default `security_layer=negotiate` picks
+///   this, so without the underscore spelling the session fell into `Other`
+///   and was stranded with no fallback, even though external FreeRDP connects.
+///
+/// [#235]: https://github.com/totoshko88/RustConn/issues/235
 const SECURITY_MARKERS: &[&str] = &[
     "standard rdp security",
+    "standard_rdp_security",
     "ssl_not_allowed_by_server",
     "hybrid_required_by_server",
     "unsupported security protocol",
@@ -511,11 +529,38 @@ mod tests {
          CredSSP server returned an error status; \
          nstatus: Some(NStatusCode(0xc000006d))";
 
+    /// Verbatim `ironrdp-connector` 0.10 error when a server (e.g. xrdp with the
+    /// default `security_layer=negotiate`) down-selects to standard RDP security
+    /// after the client advertised the enhanced protocols. The variant name
+    /// `STANDARD_RDP_SECURITY` has underscores, not spaces, so it does not match
+    /// the prose `"standard rdp security"` marker from issue #235.
+    const CONNECTOR_STANDARD_RDP_DOWNSELECT: &str = "Connection failed: Connection begin failed: \
+         [Initiation] reason: client advertised SSL | HYBRID | HYBRID_EX, \
+         but server selected STANDARD_RDP_SECURITY \
+         [kind: Reason(\"client advertised SSL | HYBRID | HYBRID_EX, \
+         but server selected STANDARD_RDP_SECURITY\")]";
+
     #[test]
     fn standard_rdp_security_is_security_unsupported() {
         let class = classify_rdp_failure(ISSUE_235);
         assert_eq!(class, RdpFailureClass::SecurityUnsupported);
         assert!(class.warrants_freerdp_fallback());
+    }
+
+    #[test]
+    fn connector_standard_rdp_downselect_is_security_unsupported() {
+        // The underscored `STANDARD_RDP_SECURITY` enum-variant spelling from
+        // ironrdp-connector 0.10 must classify exactly like the prose #235 form,
+        // so an xrdp (or any standard-security-only) server falls back to the
+        // external FreeRDP client instead of being stranded in `Other`.
+        let class = classify_rdp_failure(CONNECTOR_STANDARD_RDP_DOWNSELECT);
+        assert_eq!(class, RdpFailureClass::SecurityUnsupported);
+        assert!(class.warrants_freerdp_fallback());
+        // It is a security-unsupported case, not the CredSSP/HYBRID_EX one, so
+        // it must not also trip the TLS-only (#366) retry gate.
+        assert!(!warrants_tls_only_fallback(
+            CONNECTOR_STANDARD_RDP_DOWNSELECT
+        ));
     }
 
     #[test]

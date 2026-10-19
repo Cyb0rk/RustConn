@@ -42,7 +42,10 @@ build-flatpak/
 Thumbs.db
 
 # Backup files
-*.bak
+# `*.bak` alone does NOT match the numbered snapshots editors produce
+# (`foo.rs.bak30`), so numbered suffixes slipped past it and got committed
+# (0.23.15 removed one batch; 59 more remained). `*.bak*` covers both.
+*.bak*
 *~
 *.our_backup
 

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: rustconn 0.12.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 16:24+0200\n"
+"POT-Creation-Date: 2026-10-19 17:40+0300\n"
 "PO-Revision-Date: 2026-04-25 10:46+0000\n"
 "Last-Translator: RustConn Team\n"
 "Language-Team: German\n"
@@ -264,7 +264,7 @@ msgid "Enter Password Manually"
 msgstr "Passwort manuell eingeben"
 
 #: rustconn/src/dialogs/backend_missing.rs:56
-#: rustconn/src/embedded_rdp/connection.rs:2240 rustconn/src/vault_ops.rs:66
+#: rustconn/src/embedded_rdp/connection.rs:2271 rustconn/src/vault_ops.rs:66
 #: rustconn/src/vault_ops.rs:316 rustconn/src/window/mod.rs:1045
 msgid "Open Settings"
 msgstr "Einstellungen öffnen"
@@ -8215,8 +8215,8 @@ msgstr "Escape-Präfix senden statt zusammengesetzter Zeichen (für vim/emacs)"
 #: rustconn/src/dialogs/settings/ui_tab.rs:576
 #: rustconn/src/dialogs/settings/ui_tab.rs:896
 #: rustconn/src/dialogs/shortcuts.rs:170
-#: rustconn/src/split_view/adapter.rs:1838 rustconn/src/tray.rs:258
-#: rustconn/src/tray.rs:648 rustconn/src/window/ui.rs:266
+#: rustconn/src/split_view/adapter.rs:1838 rustconn/src/tray.rs:259
+#: rustconn/src/tray.rs:649 rustconn/src/window/ui.rs:266
 msgid "Local Shell"
 msgstr "Lokale Shell"
 
@@ -8734,8 +8734,8 @@ msgstr "Geteilte Ansicht"
 msgid "View"
 msgstr "Ansicht"
 
-#: rustconn/src/dialogs/shortcuts.rs:156 rustconn/src/tray.rs:287
-#: rustconn/src/tray.rs:661 rustconn/src/window/ui.rs:345
+#: rustconn/src/dialogs/shortcuts.rs:156 rustconn/src/tray.rs:288
+#: rustconn/src/tray.rs:662 rustconn/src/window/ui.rs:345
 msgid "Quit"
 msgstr "Beenden"
 
@@ -10274,7 +10274,7 @@ msgstr ""
 "Bisher vertraut: {}"
 
 #: rustconn/src/embedded_rdp/connection.rs:205
-#: rustconn/src/embedded_rdp/connection.rs:299
+#: rustconn/src/embedded_rdp/connection.rs:316
 msgid "Server certificate has changed since the last connection."
 msgstr "Das Serverzertifikat hat sich seit der letzten Verbindung geändert."
 
@@ -10306,29 +10306,35 @@ msgstr ""
 "Das Passwort ist abgelaufen. Ändern Sie es auf dem Server und versuchen Sie "
 "es erneut."
 
-#: rustconn/src/embedded_rdp/connection.rs:292
+#: rustconn/src/embedded_rdp/connection.rs:302
+msgid ""
+"This server requires Network Level Authentication.              The username "
+"or password is likely incorrect — check your credentials and try again."
+msgstr "Dieser Server erfordert Network Level Authentication. Benutzername oder Passwort sind wahrscheinlich falsch — überprüfen Sie Ihre Anmeldedaten und versuchen Sie es erneut."
+
+#: rustconn/src/embedded_rdp/connection.rs:309
 msgid ""
 "Connection failed: server is unreachable. Check the host address and port."
 msgstr ""
 "Verbindung fehlgeschlagen: Der Server ist nicht erreichbar. Überprüfen Sie "
 "Hostadresse und Port."
 
-#: rustconn/src/embedded_rdp/connection.rs:303
+#: rustconn/src/embedded_rdp/connection.rs:320
 msgid "RDP connection failed ({}). Run with RUST_LOG=debug for details."
 msgstr ""
 "RDP-Verbindung fehlgeschlagen ({}). Mit RUST_LOG=debug starten für Details."
 
-#: rustconn/src/embedded_rdp/connection.rs:607
+#: rustconn/src/embedded_rdp/connection.rs:624
 msgid "FreeRDP {} is not supported. Install FreeRDP 3."
 msgstr "FreeRDP {} wird nicht unterstützt. Installieren Sie FreeRDP 3."
 
-#: rustconn/src/embedded_rdp/connection.rs:615
+#: rustconn/src/embedded_rdp/connection.rs:632
 msgid "RDP connection failed. Install FreeRDP 3 for external RDP sessions."
 msgstr ""
 "RDP-Verbindung fehlgeschlagen. Installieren Sie FreeRDP 3 für externe RDP-"
 "Sitzungen."
 
-#: rustconn/src/embedded_rdp/connection.rs:671
+#: rustconn/src/embedded_rdp/connection.rs:688
 msgid ""
 "The embedded client does not support the legacy RDP security layer. Using "
 "FreeRDP instead."
@@ -10336,14 +10342,14 @@ msgstr ""
 "Der eingebettete Client unterstützt die veraltete RDP-Sicherheitsschicht "
 "nicht. Es wird stattdessen FreeRDP verwendet."
 
-#: rustconn/src/embedded_rdp/connection.rs:674
+#: rustconn/src/embedded_rdp/connection.rs:691
 msgid ""
 "The embedded client does not support TLS without NLA. Using FreeRDP instead."
 msgstr ""
 "Der eingebettete Client unterstützt TLS ohne NLA nicht. Es wird stattdessen "
 "FreeRDP verwendet."
 
-#: rustconn/src/embedded_rdp/connection.rs:677
+#: rustconn/src/embedded_rdp/connection.rs:694
 msgid ""
 "The embedded client does not support TLS security levels below 2. Using "
 "FreeRDP instead."
@@ -10351,13 +10357,13 @@ msgstr ""
 "Der eingebettete Client unterstützt TLS-Sicherheitsstufen unter 2 nicht. Es "
 "wird stattdessen FreeRDP verwendet."
 
-#: rustconn/src/embedded_rdp/connection.rs:680
+#: rustconn/src/embedded_rdp/connection.rs:697
 msgid "The embedded client does not support RemoteApp. Using FreeRDP instead."
 msgstr ""
 "Der eingebettete Client unterstützt RemoteApp nicht. Es wird stattdessen "
 "FreeRDP verwendet."
 
-#: rustconn/src/embedded_rdp/connection.rs:683
+#: rustconn/src/embedded_rdp/connection.rs:700
 msgid ""
 "The embedded client does not support playing audio on the remote computer. "
 "Using FreeRDP instead."
@@ -10365,13 +10371,13 @@ msgstr ""
 "Der eingebettete Client unterstützt die Audiowiedergabe auf dem "
 "Remotecomputer nicht. Es wird stattdessen FreeRDP verwendet."
 
-#: rustconn/src/embedded_rdp/connection.rs:801
-#: rustconn/src/embedded_rdp/connection.rs:2571
+#: rustconn/src/embedded_rdp/connection.rs:818
+#: rustconn/src/embedded_rdp/connection.rs:2602
 msgid "Connection cancelled because the server requires legacy RDP security."
 msgstr ""
 "Verbindung abgebrochen, da der Server veraltete RDP-Sicherheit erfordert."
 
-#: rustconn/src/embedded_rdp/connection.rs:905
+#: rustconn/src/embedded_rdp/connection.rs:922
 msgid ""
 "Custom FreeRDP arguments are ignored by the embedded "
 "client.                          Set the RDP client mode to External to "
@@ -10380,7 +10386,7 @@ msgstr ""
 "Der eingebettete Client ignoriert eigene FreeRDP-Argumente. Setzen Sie den "
 "RDP-Client-Modus auf Extern, um sie anzuwenden."
 
-#: rustconn/src/embedded_rdp/connection.rs:2217
+#: rustconn/src/embedded_rdp/connection.rs:2248
 msgid ""
 "H.264 is off — the installed OpenH264 isn't a Cisco build. Open Settings → "
 "Connection → Media Codecs to download it."
@@ -10388,7 +10394,7 @@ msgstr ""
 "H.264 ist aus — das installierte OpenH264 ist kein Cisco-Build. Öffnen Sie "
 "Einstellungen → Verbindung → Medien-Codecs, um es herunterzuladen."
 
-#: rustconn/src/embedded_rdp/connection.rs:2221
+#: rustconn/src/embedded_rdp/connection.rs:2252
 msgid ""
 "H.264 is off — no OpenH264 codec is installed. Open Settings → Connection → "
 "Media Codecs to download it."
@@ -10396,7 +10402,7 @@ msgstr ""
 "H.264 ist aus — es ist kein OpenH264-Codec installiert. Öffnen Sie "
 "Einstellungen → Verbindung → Medien-Codecs, um ihn herunterzuladen."
 
-#: rustconn/src/embedded_rdp/connection.rs:2225
+#: rustconn/src/embedded_rdp/connection.rs:2256
 msgid ""
 "H.264 is off — the OpenH264 codec could not be loaded. Open Settings → "
 "Connection → Media Codecs to re-download it."
@@ -10404,48 +10410,48 @@ msgstr ""
 "H.264 ist aus — der OpenH264-Codec konnte nicht geladen werden. Öffnen Sie "
 "Einstellungen → Verbindung → Medien-Codecs, um ihn erneut herunterzuladen."
 
-#: rustconn/src/embedded_rdp/connection.rs:2608
+#: rustconn/src/embedded_rdp/connection.rs:2639
 msgid "Could not prepare the external RDP compatibility client."
 msgstr "Der externe RDP-Kompatibilitätsclient konnte nicht vorbereitet werden."
 
-#: rustconn/src/embedded_rdp/connection.rs:2619
+#: rustconn/src/embedded_rdp/connection.rs:2650
 msgid "Using external RDP client (server requires RDS licensing)"
 msgstr "Externer RDP-Client wird verwendet (Server erfordert RDS-Lizenzierung)"
 
-#: rustconn/src/embedded_rdp/connection.rs:2621
+#: rustconn/src/embedded_rdp/connection.rs:2652
 msgid "Using external RDP client (server incompatible)"
 msgstr "Externer RDP-Client wird verwendet (Server inkompatibel)"
 
-#: rustconn/src/embedded_rdp/connection.rs:2639
-#: rustconn/src/embedded_rdp/connection.rs:3221
+#: rustconn/src/embedded_rdp/connection.rs:2670
+#: rustconn/src/embedded_rdp/connection.rs:3252
 msgid "The external RDP client could not be started."
 msgstr "Der externe RDP-Client konnte nicht gestartet werden."
 
-#: rustconn/src/embedded_rdp/connection.rs:2677
+#: rustconn/src/embedded_rdp/connection.rs:2708
 msgid ""
 "Could not start the external RDP client. Install FreeRDP 3 and try again."
 msgstr ""
 "Der externe RDP-Client konnte nicht gestartet werden. Installieren Sie "
 "FreeRDP 3 und versuchen Sie es erneut."
 
-#: rustconn/src/embedded_rdp/connection.rs:2755
+#: rustconn/src/embedded_rdp/connection.rs:2786
 msgid "TLS connection failed. The server may not support this security level."
 msgstr ""
 "TLS-Verbindung fehlgeschlagen. Der Server unterstützt möglicherweise diese "
 "Sicherheitsstufe nicht."
 
-#: rustconn/src/embedded_rdp/connection.rs:2759
+#: rustconn/src/embedded_rdp/connection.rs:2790
 msgid "Connection refused. Check host and port."
 msgstr "Verbindung abgelehnt. Host und Port überprüfen."
 
-#: rustconn/src/embedded_rdp/connection.rs:2762
+#: rustconn/src/embedded_rdp/connection.rs:2793
 #: rustconn/src/embedded_web/mod.rs:640
 msgid "Connection timed out. Check that the host is reachable."
 msgstr ""
 "Zeitüberschreitung der Verbindung. Überprüfen Sie, ob der Host erreichbar "
 "ist."
 
-#: rustconn/src/embedded_rdp/connection.rs:2782
+#: rustconn/src/embedded_rdp/connection.rs:2813
 msgid ""
 "Authentication failed: invalid username or password. If the credentials are "
 "correct and the server is a Linux RDP host (KDE KRdp, xrdp), this can "
@@ -10458,7 +10464,7 @@ msgstr ""
 "Regression mit FreeRDP 3.32 sein — aktualisieren Sie KRdp auf 6.7.90 oder "
 "neuer oder setzen Sie ExtSecurity=0 auf dem Server (FreeRDP issue #13567)."
 
-#: rustconn/src/embedded_rdp/connection.rs:2787
+#: rustconn/src/embedded_rdp/connection.rs:2818
 msgid ""
 "Account restrictions refused this sign-in. Protected Users members cannot "
 "use NTLM: turn on Kerberos Authentication in the connection's RDP settings."
@@ -10467,47 +10473,47 @@ msgstr ""
 "Protected Users können NTLM nicht verwenden: Aktivieren Sie die Kerberos-"
 "Authentifizierung in den RDP-Einstellungen der Verbindung."
 
-#: rustconn/src/embedded_rdp/connection.rs:2790
+#: rustconn/src/embedded_rdp/connection.rs:2821
 msgid "Authentication failed: account restrictions prevent this login."
 msgstr ""
 "Authentifizierung fehlgeschlagen: Kontobeschränkungen verhindern die "
 "Anmeldung."
 
-#: rustconn/src/embedded_rdp/connection.rs:2793
+#: rustconn/src/embedded_rdp/connection.rs:2824
 msgid "Authentication failed: password must be changed before first login."
 msgstr ""
 "Authentifizierung fehlgeschlagen: Das Passwort muss vor der ersten Anmeldung "
 "geändert werden."
 
-#: rustconn/src/embedded_rdp/connection.rs:2795
+#: rustconn/src/embedded_rdp/connection.rs:2826
 msgid "Authentication failed: account is disabled."
 msgstr "Authentifizierung fehlgeschlagen: Konto ist deaktiviert."
 
-#: rustconn/src/embedded_rdp/connection.rs:2796
+#: rustconn/src/embedded_rdp/connection.rs:2827
 msgid "Authentication failed: account is locked out."
 msgstr "Authentifizierung fehlgeschlagen: Konto ist gesperrt."
 
-#: rustconn/src/embedded_rdp/connection.rs:2797
+#: rustconn/src/embedded_rdp/connection.rs:2828
 msgid "Authentication failed: password has expired."
 msgstr "Authentifizierung fehlgeschlagen: Passwort ist abgelaufen."
 
-#: rustconn/src/embedded_rdp/connection.rs:2798
+#: rustconn/src/embedded_rdp/connection.rs:2829
 msgid "Authentication failed: account has expired."
 msgstr "Authentifizierung fehlgeschlagen: Konto ist abgelaufen."
 
-#: rustconn/src/embedded_rdp/connection.rs:2800
+#: rustconn/src/embedded_rdp/connection.rs:2831
 msgid "Authentication failed: account is disabled, locked out or expired."
 msgstr ""
 "Authentifizierung fehlgeschlagen: Konto ist deaktiviert, gesperrt oder "
 "abgelaufen."
 
-#: rustconn/src/embedded_rdp/connection.rs:2803
+#: rustconn/src/embedded_rdp/connection.rs:2834
 msgid "Authentication failed: user is not allowed to log on to this computer."
 msgstr ""
 "Authentifizierung fehlgeschlagen: Benutzer darf sich an diesem Computer "
 "nicht anmelden."
 
-#: rustconn/src/embedded_rdp/connection.rs:2807
+#: rustconn/src/embedded_rdp/connection.rs:2838
 msgid ""
 "No Kerberos KDC was found for the {} realm. Enter a KDC Address in the "
 "connection's RDP settings or add the realm to /etc/krb5.conf."
@@ -10516,8 +10522,8 @@ msgstr ""
 "Einstellungen der Verbindung eine KDC-Adresse ein oder fügen Sie den Realm "
 "zu /etc/krb5.conf hinzu."
 
-#: rustconn/src/embedded_rdp/connection.rs:2811
-#: rustconn/src/embedded_rdp/connection.rs:2851
+#: rustconn/src/embedded_rdp/connection.rs:2842
+#: rustconn/src/embedded_rdp/connection.rs:2882
 msgid ""
 "Kerberos needs the DNS domain. Enter it in the Domain field, for example "
 "EXAMPLE.COM."
@@ -10525,7 +10531,7 @@ msgstr ""
 "Kerberos benötigt die DNS-Domäne. Geben Sie sie im Feld „Domäne“ ein, zum "
 "Beispiel EXAMPLE.COM."
 
-#: rustconn/src/embedded_rdp/connection.rs:2815
+#: rustconn/src/embedded_rdp/connection.rs:2846
 msgid ""
 "Could not reach the Kerberos KDC. Enter a domain controller's name or IP "
 "address as the KDC Address in the connection's RDP settings."
@@ -10534,7 +10540,7 @@ msgstr ""
 "Einstellungen der Verbindung den Namen oder die IP-Adresse eines "
 "Domänencontrollers als KDC-Adresse ein."
 
-#: rustconn/src/embedded_rdp/connection.rs:2818
+#: rustconn/src/embedded_rdp/connection.rs:2849
 msgid ""
 "Kerberos sign-in failed: this computer's clock differs from the domain's by "
 "more than five minutes. Synchronize the clock and try again."
@@ -10543,7 +10549,7 @@ msgstr ""
 "als fünf Minuten von der Domänenzeit ab. Synchronisieren Sie die Uhr und "
 "versuchen Sie es erneut."
 
-#: rustconn/src/embedded_rdp/connection.rs:2821
+#: rustconn/src/embedded_rdp/connection.rs:2852
 msgid ""
 "The domain does not know this server by the name in Host. Connect by the "
 "server's DNS name, as registered in the domain."
@@ -10552,12 +10558,12 @@ msgstr ""
 "Sie die Verbindung über den DNS-Namen des Servers her, wie er in der Domäne "
 "registriert ist."
 
-#: rustconn/src/embedded_rdp/connection.rs:2823
+#: rustconn/src/embedded_rdp/connection.rs:2854
 msgid "NLA authentication failed. Check username and password."
 msgstr ""
 "NLA-Authentifizierung fehlgeschlagen. Benutzername und Passwort überprüfen."
 
-#: rustconn/src/embedded_rdp/connection.rs:2845
+#: rustconn/src/embedded_rdp/connection.rs:2876
 msgid ""
 "Kerberos needs the server's DNS name. Connecting by IP address or through an "
 "SSH tunnel fails."
@@ -10565,7 +10571,7 @@ msgstr ""
 "Kerberos benötigt den DNS-Namen des Servers. Eine Verbindung über die IP-"
 "Adresse oder einen SSH-Tunnel schlägt fehl."
 
-#: rustconn/src/embedded_rdp/connection.rs:2848
+#: rustconn/src/embedded_rdp/connection.rs:2879
 msgid ""
 "Kerberos needs the DNS domain, for example EXAMPLE.COM, not the short domain "
 "name."
@@ -10573,11 +10579,11 @@ msgstr ""
 "Kerberos benötigt die DNS-Domäne, zum Beispiel EXAMPLE.COM, nicht den kurzen "
 "Domänennamen."
 
-#: rustconn/src/embedded_rdp/connection.rs:3248
+#: rustconn/src/embedded_rdp/connection.rs:3279
 msgid "RDP session will open in an external window"
 msgstr "Die RDP-Sitzung wird in einem externen Fenster geöffnet"
 
-#: rustconn/src/embedded_rdp/connection.rs:3277
+#: rustconn/src/embedded_rdp/connection.rs:3308
 msgid "Failed to start FreeRDP: {}"
 msgstr "FreeRDP konnte nicht gestartet werden: {}"
 
@@ -10771,7 +10777,7 @@ msgstr ""
 "schlief"
 
 #: rustconn/src/embedded_rdp/polling_handlers.rs:159
-#: rustconn/src/embedded_vnc/mod.rs:685 rustconn/src/embedded_vnc/ui.rs:56
+#: rustconn/src/embedded_vnc/mod.rs:696 rustconn/src/embedded_vnc/ui.rs:56
 msgid "Copy remote clipboard to local"
 msgstr "Remote-Zwischenablage lokal kopieren"
 
@@ -10853,7 +10859,7 @@ msgstr "Weitere Aktionen"
 msgid "Show session toolbar"
 msgstr "Sitzungs-Werkzeugleiste anzeigen"
 
-#: rustconn/src/embedded_vnc/mod.rs:573
+#: rustconn/src/embedded_vnc/mod.rs:584
 msgid ""
 "VNC encryption not supported. Install TigerVNC and enable 'Accept "
 "Certificate'."
@@ -10861,7 +10867,7 @@ msgstr ""
 "VNC-Verschlüsselung nicht unterstützt. Installieren Sie TigerVNC und "
 "aktivieren Sie «Zertifikat akzeptieren»."
 
-#: rustconn/src/embedded_vnc/mod.rs:648
+#: rustconn/src/embedded_vnc/mod.rs:659
 msgid "Using external viewer (unsupported encryption)"
 msgstr "Externer Viewer wird verwendet (nicht unterstützte Verschlüsselung)"
 
@@ -11970,40 +11976,40 @@ msgstr "Rückgängig"
 msgid "Retry"
 msgstr "Wiederholen"
 
-#: rustconn/src/tray.rs:149
+#: rustconn/src/tray.rs:150
 msgid "{} active session(s)"
 msgstr "{} aktive Sitzung(en)"
 
-#: rustconn/src/tray.rs:155
+#: rustconn/src/tray.rs:156
 msgid "No active sessions"
 msgstr "Keine aktiven Sitzungen"
 
-#: rustconn/src/tray.rs:189 rustconn/src/tray.rs:569
+#: rustconn/src/tray.rs:190 rustconn/src/tray.rs:570
 msgid "Hide Window"
 msgstr "Fenster ausblenden"
 
-#: rustconn/src/tray.rs:191 rustconn/src/tray.rs:571
+#: rustconn/src/tray.rs:192 rustconn/src/tray.rs:572
 msgid "Show Window"
 msgstr "Fenster anzeigen"
 
-#: rustconn/src/tray.rs:220 rustconn/src/tray.rs:588
+#: rustconn/src/tray.rs:221 rustconn/src/tray.rs:589
 #: rustconn/src/window/sorting.rs:194
 msgid "Favorites"
 msgstr "Favoriten"
 
-#: rustconn/src/tray.rs:243 rustconn/src/tray.rs:607
+#: rustconn/src/tray.rs:244 rustconn/src/tray.rs:608
 msgid "Recent Connections"
 msgstr "Letzte Verbindungen"
 
-#: rustconn/src/tray.rs:251 rustconn/src/tray.rs:642
+#: rustconn/src/tray.rs:252 rustconn/src/tray.rs:643
 msgid "Quick Connect…"
 msgstr "Schnellverbindung…"
 
-#: rustconn/src/tray.rs:267 rustconn/src/tray.rs:626
+#: rustconn/src/tray.rs:268 rustconn/src/tray.rs:627
 msgid "{} Active Session(s)"
 msgstr "{} aktive Sitzung(en)"
 
-#: rustconn/src/tray.rs:280 rustconn/src/tray.rs:655
+#: rustconn/src/tray.rs:281 rustconn/src/tray.rs:656
 #: rustconn/src/window/ui.rs:344
 msgid "About RustConn"
 msgstr "Über RustConn"
@@ -13661,7 +13667,7 @@ msgstr "Zu sendender Text…"
 msgid "Append newline (press Enter)"
 msgstr "Zeilenumbruch anhängen (Enter drücken)"
 
-#: rustconn/src/window/sidebar_resize.rs:98
+#: rustconn/src/window/sidebar_resize.rs:111
 msgid "Resize sidebar"
 msgstr "Seitenleistenbreite ändern"
 

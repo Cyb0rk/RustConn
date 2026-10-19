@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.15
+Version:        0.23.16
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,12 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Mon Oct 19 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.16-0
+- Version bump to 0.23.16
+- Fixed embedded RDP to a Linux server that offers only Standard RDP Security dying silently: the STANDARD_RDP_SECURITY downselect from ironrdp-connector 0.10 is now classified as SecurityUnsupported and handed to the external FreeRDP client (issue #366)
+- Fixed a wrong password to an NLA-only RDP server reporting a raw "exit status: 161": it now reports that the server requires NLA and the credentials are likely wrong (issue #366)
+- Removed 59 stale numbered editor-backup files (*.bakNN) still tracked after the 0.23.15 cleanup; the .gitignore pattern is widened to *.bak*
+- Updated cc, find-msvc-tools, inout, ppmd-rust, zip (compatible bumps); Flatpak/Flathub FreeRDP 3.32.1 to 3.32.2 (upstream security and bugfix release)
 * Sat Oct 17 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.15-0
 - Version bump to 0.23.15
 - Fixed the mouse pointer vanishing on the "Session disconnected" screen after a remote RDP box reboots: the embedded RDP viewer now forces the default arrow on disconnect regardless of the cursor state the session ended in (issue #383)

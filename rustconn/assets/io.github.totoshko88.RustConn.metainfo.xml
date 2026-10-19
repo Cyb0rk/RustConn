@@ -140,6 +140,17 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.16" date="2026-10-19">
+      <description>
+        <p>Version 0.23.16 - two embedded-RDP fallback fixes for Linux servers, a source-tree cleanup, and dependency updates:</p>
+        <ul>
+          <li>Fixed embedded RDP to a Linux server that offers only Standard RDP Security dying silently: the STANDARD_RDP_SECURITY downselect from ironrdp-connector 0.10 is now classified as a security-unsupported case and handed to the external FreeRDP client (issue #366)</li>
+          <li>Fixed a wrong password to an NLA-only RDP server reporting a raw "exit status: 161": it now reports that the server requires Network Level Authentication and the credentials are likely wrong (issue #366)</li>
+          <li>Removed 59 stale numbered editor-backup files still tracked after the 0.23.15 cleanup, and widened the ignore rule to catch them</li>
+          <li>Updated cc, find-msvc-tools, inout, ppmd-rust and zip; the bundled Flatpak FreeRDP from 3.32.1 to 3.32.2, an upstream security and bugfix release</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.15" date="2026-10-17">
       <description>
         <p>Version 0.23.15 - an invisible-pointer fix for the RDP and VNC disconnect screens, and dependency updates:</p>

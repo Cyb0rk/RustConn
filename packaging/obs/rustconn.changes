@@ -1,4 +1,21 @@
 -------------------------------------------------------------------
+Mon Oct 19 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.16
+
+- Version bump to 0.23.16
+- Fixed: embedded RDP to a Linux server that offers only Standard RDP Security
+  no longer dies silently - the STANDARD_RDP_SECURITY downselect from
+  ironrdp-connector 0.10 is now classified as SecurityUnsupported and handed to
+  the external FreeRDP client (issue #366)
+- Fixed: a wrong password to an NLA-only RDP server now reports that the server
+  requires NLA and the credentials are likely wrong, instead of a raw
+  "exit status: 161" (issue #366)
+- Removed: 59 stale numbered editor-backup files (*.bakNN) still tracked after
+  the 0.23.15 cleanup; the .gitignore pattern is widened to *.bak*
+- Updated: cc, find-msvc-tools, inout, ppmd-rust, zip (compatible bumps);
+  Flatpak/Flathub FreeRDP 3.32.1 to 3.32.2 (upstream security and bugfix
+  release)
+
+-------------------------------------------------------------------
 Sat Oct 17 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.15
 
 - Version bump to 0.23.15
