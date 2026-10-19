@@ -285,6 +285,23 @@ fn classify_client_output(joined: &str, status_str: &str) -> FreerdpFailure {
         FreerdpFailure::Error(i18n(
             "Password expired. Change the password on the server and try again.",
         ))
+    } else if joined.contains("ERRCONNECT_HYBRID_REQUIRED_BY_SERVER")
+        || joined.contains("HYBRID_REQUIRED_BY_SERVER")
+    {
+        // The server requires NLA (CredSSP/HYBRID). This is reached by the
+        // #366 TLS-only fallback path: the embedded client's CredSSP was
+        // rejected with STATUS_LOGON_FAILURE (0xc000006d), which is
+        // indistinguishable from a wrong password, so the session was handed to
+        // external FreeRDP pinned to `/sec:tls` on the KRdp/FreeRDP-3.32
+        // HYBRID_EX hunch. A server that genuinely *requires* NLA then refuses
+        // the TLS-only attempt with ERRCONNECT_HYBRID_REQUIRED_BY_SERVER —
+        // meaning the original 0xc000006d really was a credential failure, not
+        // the HYBRID_EX regression. Say so plainly instead of surfacing the raw
+        // `exit status: 161`, which told the user nothing actionable.
+        FreerdpFailure::Error(i18n(
+            "This server requires Network Level Authentication. \
+             The username or password is likely incorrect — check your credentials and try again.",
+        ))
     } else if joined.contains("ERRCONNECT_CONNECT_TRANSPORT_FAILED")
         || joined.contains("connect_failed")
     {
@@ -3724,6 +3741,32 @@ mod tests {
     fn unrecognised_output_falls_back_to_the_status() {
         match classify_client_output("nothing familiar here", "exit status: 137") {
             FreerdpFailure::Error(msg) => assert!(msg.contains("exit status: 137")),
+            FreerdpFailure::CertificateMismatch(msg) => {
+                panic!("unexpected certificate classification: {msg}")
+            }
+        }
+    }
+
+    #[test]
+    fn hybrid_required_reports_nla_not_the_raw_exit_status() {
+        // Verbatim external sdl-freerdp output on the #366 TLS-only fallback path
+        // when the server genuinely requires NLA: the `/sec:tls` retry is refused
+        // with ERRCONNECT_HYBRID_REQUIRED_BY_SERVER. The user must get an
+        // actionable "requires NLA / check credentials" message, not the bare
+        // `exit status: 161` the generic fallthrough produced.
+        let joined = "[ERROR][com.freerdp.core.nego] - [nego_connect]: Protocol Security \
+             Negotiation Failure: HYBRID_REQUIRED_BY_SERVER [0x00000005]\n\
+             [ERROR][com.freerdp.core] - [nego_connect]: ERRCONNECT_HYBRID_REQUIRED_BY_SERVER \
+             [0x0002001E]\n\
+             The server requires Network Level Authentication, but it is not enabled.";
+        match classify_client_output(joined, "exit status: 161") {
+            FreerdpFailure::Error(msg) => {
+                assert!(msg.contains("Network Level Authentication"), "{msg}");
+                assert!(
+                    !msg.contains("161"),
+                    "raw exit status leaked to the user: {msg}"
+                );
+            }
             FreerdpFailure::CertificateMismatch(msg) => {
                 panic!("unexpected certificate classification: {msg}")
             }
