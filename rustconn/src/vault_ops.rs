@@ -353,21 +353,6 @@ fn show_vault_store_failed_dialog(
     });
 }
 
-/// How long a "Load from vault" button waits for a `Bitwarden` auto-unlock
-/// before reporting timeout.
-///
-/// 30 seconds covers the worst case where the user has to type the master
-/// password in an interactive prompt; below that, slow GPG/keyring backends
-/// would falsely time out. Shared by the connection and group dialogs so the
-/// two load buttons cannot drift apart.
-pub(crate) const BITWARDEN_UNLOCK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
-
-/// How long a "Load from vault" button waits for a single vault retrieve
-/// before reporting timeout.
-///
-/// 10 seconds is the standard project-wide vault budget — see `secrets-guide.md`.
-pub(crate) const VAULT_RETRIEVE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
-
 /// How long one vault operation may take before the GUI stops waiting for it.
 ///
 /// Two budgets, because the backends are two different kinds of thing and until
@@ -1843,91 +1828,6 @@ pub fn resolve_global_variables(
     vars
 }
 
-/// Builds every vault lookup key a connection's credentials may live under on a
-/// non-KeePass backend, most-current format first.
-///
-/// The first entry is the key the current code stores under; the rest are
-/// formats written by earlier releases, kept so that cleanup and fallback
-/// retrieval still find them.
-///
-/// For LibSecret and the macOS Keychain the current key embeds the group path
-/// (`RustConn/{group}/{name} ({protocol})`) so same-named connections in
-/// different groups no longer collide (issue #264). Deleting by the flat
-/// `{name} ({protocol})` key alone therefore matched nothing and silently left
-/// the keyring item behind (issue #263) — the attribute search in
-/// `LibSecretBackend::delete_value` finds zero items and reports success.
-///
-/// The legacy name-keyed formats are deliberately included even though two
-/// same-named connections in different groups map onto the same legacy key, so
-/// cleaning up one can remove an entry the other still resolves through. That is
-/// acceptable because a shared legacy key means the two connections were already
-/// sharing a single stored password — which is precisely the collision reported
-/// in issue #264 — so there is no distinct credential to lose. Once either
-/// connection has been resolved on 0.19.18 or later, its credential lives under
-/// its own group-scoped key and is unaffected.
-fn vault_keys_for_connection(
-    groups: &[rustconn_core::models::ConnectionGroup],
-    connection: &rustconn_core::models::Connection,
-    protocol_str: &str,
-    backend_type: rustconn_core::config::SecretBackendType,
-) -> Vec<String> {
-    use rustconn_core::config::SecretBackendType;
-
-    let mut keys = Vec::new();
-
-    if matches!(
-        backend_type,
-        SecretBackendType::LibSecret | SecretBackendType::MacOsKeychain
-    ) {
-        // Primary: exactly what `save_password_to_vault` writes. The ungrouped
-        // case — the `RustConn/` prefix with no group segment — is decided inside
-        // `generate_store_key_for_connection`; this call site used to make it
-        // itself, which is how the two sites that made it differently went
-        // unnoticed (issue #316).
-        keys.push(generate_store_key_for_connection(
-            &connection.name,
-            &connection.host,
-            protocol_str,
-            backend_type,
-            connection.group_id,
-            groups,
-        ));
-        // The resolver builds the same shape but additionally runs the name
-        // through `sanitize_imported_value`, so an imported name with trailing
-        // escape sequences can land under a second key. Read-time migration
-        // writes that variant, so cleanup has to cover it too.
-        keys.push(
-            rustconn_core::secret::CredentialResolver::generate_keyring_key_with_hierarchy(
-                connection, groups,
-            ),
-        );
-        // Pre-0.19.18 flat key, before the group path was part of the key.
-        keys.push(rustconn_core::secret::CredentialResolver::generate_keyring_key(connection));
-        // Pre-0.19.19 macOS Keychain key: the store path wrote the flat
-        // `rustconn/{name}` format while the resolver looked for the
-        // hierarchical one, so entries can still exist under it.
-        let identifier = if connection.name.trim().is_empty() {
-            &connection.host
-        } else {
-            &connection.name
-        };
-        keys.push(format!("rustconn/{identifier}"));
-    } else {
-        keys.push(generate_store_key(
-            &connection.name,
-            &connection.host,
-            protocol_str,
-            backend_type,
-        ));
-    }
-
-    // Oldest format: the connection UUID.
-    keys.push(connection.id.to_string());
-
-    keys.dedup();
-    keys
-}
-
 /// Deletes a connection's vault credentials from the configured backend.
 ///
 /// For KeePass backends, deletes the hierarchical entry. For flat backends,
@@ -2271,6 +2171,12 @@ pub fn copy_vault_credential(
     }
 }
 
+// The vault-key functions live in core so the CLI builds the same keys as the
+// GUI (issue #353). Re-exported here so `crate::state::` and `vault_ops::`
+// paths keep working.
+use rustconn_core::secret::vault_keys_for_connection;
+pub use rustconn_core::secret::{generate_store_key, generate_store_key_for_connection};
+
 /// Operation to perform on a vault backend.
 ///
 /// Used by [`dispatch_vault_op`] to consolidate the repeated
@@ -2280,8 +2186,41 @@ pub enum VaultOp<'a> {
     Store(&'a rustconn_core::models::Credentials),
     /// Retrieve credentials for the given key.
     Retrieve,
+    /// Retrieve a *connection's* credentials: the key, plus the connection's
+    /// name and host for a backend searching from the vault root to match an
+    /// entry titled by either (issue #353). A backend not searching from root
+    /// ignores them, so this reads exactly like [`Self::Retrieve`] there.
+    ///
+    /// [`Self::Retrieve`] passes no aliases, which left root search on
+    /// Bitwarden, 1Password, Passbolt and `pass` matching nothing but the
+    /// internal `rustconn/{name}` key — an entry title no user writes.
+    RetrieveFor {
+        /// The connection's display name.
+        name: &'a str,
+        /// The connection's host.
+        host: &'a str,
+    },
     /// Delete credentials for the given key.
     Delete,
+}
+
+/// The identity a retrieve hands its backend: `lookup_key`, plus the name and
+/// host when `op` is [`VaultOp::RetrieveFor`]. Blank values become `None`, so
+/// a connection with no host contributes no empty candidate.
+fn lookup_identity<'a>(
+    lookup_key: &'a str,
+    op: &VaultOp<'a>,
+) -> rustconn_core::secret::LookupIdentity<'a> {
+    let non_blank = |s: &'a str| Some(s).filter(|s| !s.trim().is_empty());
+    let (name, host) = match *op {
+        VaultOp::RetrieveFor { name, host } => (non_blank(name), non_blank(host)),
+        _ => (None, None),
+    };
+    rustconn_core::secret::LookupIdentity {
+        key: lookup_key,
+        name,
+        host,
+    }
 }
 
 /// Dispatches a single vault operation to the configured non-KeePass backend.
@@ -2482,14 +2421,16 @@ pub fn dispatch_vault_op_for(
                 tracing::debug!(%lookup_key, "dispatch_vault_op: store succeeded");
                 Ok(None)
             }
-            VaultOp::Retrieve => {
+            VaultOp::Retrieve | VaultOp::RetrieveFor { .. } => {
+                let identity = lookup_identity(lookup_key, &op);
                 tracing::debug!(
                     %lookup_key,
                     ?backend_type,
+                    aliases = ?identity.aliases(),
                     "dispatch_vault_op: retrieving credentials"
                 );
                 let result = rt.block_on(async {
-                    tokio::time::timeout(budget, backend.retrieve(lookup_key))
+                    tokio::time::timeout(budget, backend.retrieve_identity(identity))
                         .await
                         .map_err(|_| vault_op_timed_out("retrieve", budget))?
                         .map_err(|e| format!("{e}"))
@@ -3234,127 +3175,11 @@ pub fn select_backend_for_load(
     }
 }
 
-/// Generates the correct store key for a connection based on the backend type.
-///
-/// LibSecret uses hierarchical `"RustConn/{group_path}/{name} ({protocol})"` format
-/// when `group_path` is provided (matching
-/// [`rustconn_core::CredentialResolver::generate_keyring_key_with_hierarchy`]), or falls back to
-/// `"{name} ({protocol})"` for backward compatibility when no group path is given.
-/// All other backends use `"rustconn/{name}"` (matching
-/// [`rustconn_core::CredentialResolver::generate_lookup_key`]).
-///
-/// When `conn_name` is empty, falls back to `conn_host` for non-LibSecret
-/// backends, matching the resolver's `generate_lookup_key` behavior.
-///
-/// This ensures that the key used at store time matches the primary key the
-/// resolver tries at resolve time, eliminating the need for fallback lookups.
-pub fn generate_store_key(
-    conn_name: &str,
-    conn_host: &str,
-    protocol_str: &str,
-    backend_type: rustconn_core::config::SecretBackendType,
-) -> String {
-    generate_store_key_with_group(conn_name, conn_host, protocol_str, backend_type, None)
-}
-
-/// Generates a store key that includes the group path for keyring backends.
-///
-/// Prefer [`generate_store_key_for_connection`] whenever a connection's group is
-/// what decides the key. This function's `group_path` has three meanings, not
-/// two, and getting the third wrong is issue
-/// [#316](https://github.com/totoshko88/RustConn/issues/316): `Some("Prod")` is a
-/// grouped connection, `Some("")` is an ungrouped *connection*, and `None` is the
-/// pre-0.19.18 flat key that belongs to no connection at all. `Some("")` and
-/// `None` differ by the `RustConn/` prefix, which is exactly what an ungrouped
-/// connection's entry is written with.
-///
-/// `group_path` is the `/`-separated group hierarchy (e.g. `"Production/Web"`).
-/// When provided and the backend is LibSecret or the macOS Keychain, the key is
-/// `"RustConn/{group_path}/{name} ({protocol})"`.
-///
-/// The macOS Keychain is included because `CredentialResolver` resolves it
-/// through the same hierarchical keyring path as LibSecret
-/// (`resolve_from_keyring_hierarchical`). Storing it under the flat
-/// `rustconn/{name}` key, as this function did until 0.19.19, meant the resolver
-/// never looked where the credential had been written.
-pub fn generate_store_key_with_group(
-    conn_name: &str,
-    conn_host: &str,
-    protocol_str: &str,
-    backend_type: rustconn_core::config::SecretBackendType,
-    group_path: Option<&str>,
-) -> String {
-    use rustconn_core::config::SecretBackendType;
-
-    if matches!(
-        backend_type,
-        SecretBackendType::LibSecret | SecretBackendType::MacOsKeychain
-    ) {
-        let name = conn_name.trim().replace('/', "-");
-        let suffix = format!("{name} ({protocol_str})");
-        match group_path {
-            Some(path) if !path.is_empty() => format!("RustConn/{path}/{suffix}"),
-            Some(_) => format!("RustConn/{suffix}"),
-            None => suffix,
-        }
-    } else {
-        // All other backends: "rustconn/{identifier}" — matches generate_lookup_key
-        // Falls back to host when name is empty, same as CredentialResolver
-        let identifier = if conn_name.trim().is_empty() {
-            conn_host
-        } else {
-            conn_name
-        };
-        format!("rustconn/{identifier}")
-    }
-}
-
-/// Generates the vault key for a connection, from the group it is in.
-///
-/// The form to use wherever a connection decides the key, and the reason it
-/// exists is issue [#316](https://github.com/totoshko88/RustConn/issues/316).
-/// Four call sites built the `Option<&str>` group path for
-/// [`generate_store_key_with_group`] themselves, and they did not agree about the
-/// ungrouped case: saving and deleting passed `Some("")`, while resolving and the
-/// connection dialog's 📂 load and ✓ test buttons wrote
-/// `connection.group_id.map(…)`, which is `None` when there is no group. With
-/// LibSecret that meant a password on an ungrouped connection was written to
-/// `RustConn/{name} ({protocol})` and looked for at `{name} ({protocol})`. The
-/// Secret Service matches attributes exactly, so the two never met: connecting
-/// prompted for a password that was sitting in the keyring, and both buttons
-/// reported it missing. Putting the connection into a group fixed it, because
-/// then the two keys differed *and* the resolver's second, legacy key happened to
-/// cover the miss.
-///
-/// `group_id` of `None` means the connection is ungrouped — it does not mean the
-/// key should drop the `RustConn/` prefix. That decision is made here now, once,
-/// instead of at each caller.
-pub fn generate_store_key_for_connection(
-    conn_name: &str,
-    conn_host: &str,
-    protocol_str: &str,
-    backend_type: rustconn_core::config::SecretBackendType,
-    group_id: Option<uuid::Uuid>,
-    groups: &[rustconn_core::models::ConnectionGroup],
-) -> String {
-    let group_path = group_id
-        .map(|gid| {
-            rustconn_core::secret::KeePassHierarchy::resolve_group_path(gid, groups).join("/")
-        })
-        .unwrap_or_default();
-    generate_store_key_with_group(
-        conn_name,
-        conn_host,
-        protocol_str,
-        backend_type,
-        Some(&group_path),
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use rustconn_core::config::{SecretBackendType, SecretSettings};
     use rustconn_core::models::{Connection, ConnectionGroup};
+    use rustconn_core::secret::generate_store_key_with_group;
 
     use super::*;
 
@@ -3368,6 +3193,41 @@ mod tests {
             enable_fallback: false,
             ..Default::default()
         }
+    }
+
+    // ── lookup_identity (issue #353) ─────────────────────────────────
+
+    /// The reporter's Bitwarden case: the only root-search candidate used to be
+    /// `rustconn/hanfile03`, because the connect path and both editor buttons
+    /// went through a retrieve that carried no name or host. A `RetrieveFor`
+    /// must reach the backend with both, so an entry titled `hanfile03` matches.
+    #[test]
+    fn retrieve_for_hands_the_backend_the_connections_name_and_host() {
+        let op = VaultOp::RetrieveFor {
+            name: "hanfile03",
+            host: "hanfile03.aag.local",
+        };
+        let identity = lookup_identity("rustconn/hanfile03", &op);
+        assert_eq!(identity.key, "rustconn/hanfile03");
+        assert_eq!(identity.aliases(), vec!["hanfile03.aag.local", "hanfile03"]);
+    }
+
+    /// Every other retrieve — variables, renames, group keys — keeps reading by
+    /// its key alone.
+    #[test]
+    fn plain_retrieve_still_passes_no_aliases() {
+        let identity = lookup_identity("rustconn/var/token", &VaultOp::Retrieve);
+        assert_eq!(identity.key, "rustconn/var/token");
+        assert!(identity.aliases().is_empty());
+    }
+
+    #[test]
+    fn retrieve_for_drops_a_blank_host() {
+        let op = VaultOp::RetrieveFor {
+            name: "web",
+            host: "  ",
+        };
+        assert_eq!(lookup_identity("rustconn/web", &op).aliases(), vec!["web"]);
     }
 
     // ── vault_op_timeout ─────────────────────────────────────────────

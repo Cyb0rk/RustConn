@@ -414,6 +414,9 @@ pub fn show_edit_group_dialog(
         } else {
             format!("group:{}", group_name_for_load.replace('/', "-"))
         };
+        let group_name = grp
+            .as_ref()
+            .map_or_else(|| group_name_for_load.clone(), |g| g.name.clone());
 
         // The KDBX entry NAME (no `RustConn/` prefix): the core read/write
         // helpers add that prefix themselves. Passing the full path here is what
@@ -459,16 +462,20 @@ pub fn show_edit_group_dialog(
             let db_password = settings.secrets.kdbx_password.clone();
             let key_file = settings.secrets.kdbx_key_file.clone();
             let yubikey_slot = settings.secrets.kdbx_yubikey_slot.clone();
+            let root_search = settings.secrets.kdbx_root_search;
 
             crate::utils::spawn_blocking_with_callback(
                 move || {
                     let key_file_path = key_file.as_ref().map(std::path::Path::new);
-                    rustconn_core::secret::KeePassStatus::get_password_from_kdbx_with_key(
+                    // No protocol for groups. Root search included, as the
+                    // Inherit connect path does for a group (issue #353).
+                    rustconn_core::secret::KeePassStatus::get_password_from_kdbx_scoped_then_root(
                         std::path::Path::new(&kdbx_path),
                         db_password.as_ref(),
                         key_file_path,
                         &group_path,
-                        None, // No protocol for groups
+                        &[group_name.as_str()],
+                        root_search,
                         yubikey_slot.as_deref(),
                     )
                 },
@@ -499,10 +506,15 @@ pub fn show_edit_group_dialog(
             let secret_settings = settings.secrets.clone();
             crate::utils::spawn_blocking_with_callback(
                 move || {
+                    // The group's name rides along so root search can match an
+                    // entry titled by it — the key itself is a UUID (#353).
                     crate::state::dispatch_vault_op(
                         &secret_settings,
                         &lookup_key,
-                        crate::state::VaultOp::Retrieve,
+                        crate::state::VaultOp::RetrieveFor {
+                            name: &group_name,
+                            host: "",
+                        },
                     )
                 },
                 move |result: Result<Option<Credentials>, String>| {

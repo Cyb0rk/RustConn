@@ -1,6 +1,6 @@
 # RustConn User Guide
 
-**Version 0.23.16** | GTK4/libadwaita Connection Manager for Linux
+**Version 0.23.17** | GTK4/libadwaita Connection Manager for Linux
 
 RustConn is a modern connection manager designed for Linux with Wayland-first approach. It supports SSH, RDP, VNC, SPICE, MOSH, SFTP, Telnet, Serial, Kubernetes, Web protocols and Zero Trust integrations through a native GTK4/libadwaita interface.
 
@@ -3928,7 +3928,7 @@ RustConn can automatically fill SSH password prompts using credentials stored in
 
 2. **Store the password in your vault** — use the "Load from vault" button (📂) to verify the password is retrievable. The lookup key format depends on your backend:
    - **KeePass/KDBX**: `RustConn/GroupName/ConnectionName (protocol)` — hierarchical path matching your group structure
-   - **Keyring (libsecret)**: `ConnectionName (protocol)` — e.g. "MyServer (ssh)"
+   - **Keyring (libsecret)**: `RustConn/GroupName/ConnectionName (protocol)` — e.g. "RustConn/Production/MyServer (ssh)", or "RustConn/MyServer (ssh)" for a connection in no group
    - **Bitwarden/1Password/Passbolt/Pass**: `rustconn/ConnectionName`
 
 3. **Test before connecting** — click the ✓ button next to the password field to run a credential resolution test. It shows the exact lookup key used and whether the vault returned a password.

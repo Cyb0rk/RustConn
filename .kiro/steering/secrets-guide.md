@@ -18,7 +18,10 @@ You are editing a file that handles credentials.
 
 ## Timeouts
 
-- Vault operations (store/retrieve/delete) → 10s timeout
+- Vault operations (store/retrieve/delete) → 10s timeout for local backends
+  (keyring, KDBX, encrypted files); 45s for the CLI-backed ones (Bitwarden,
+  1Password, Passbolt, pass) — `vault_op_timeout` in `vault_ops.rs`, measured in
+  issue #312
 - Credential resolution → 30s timeout
 - Bitwarden auto_unlock → 30s timeout
 - has_secret_backend / refresh_cache → 5s timeout

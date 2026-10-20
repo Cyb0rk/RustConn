@@ -616,9 +616,53 @@ impl BitwardenBackend {
         format!("rustconn://{connection_id}")
     }
 
-    /// Finds an item by connection ID
+    /// Finds RustConn's own item for `connection_id`: the one titled
+    /// `RustConn: {id}`, never a root-search match.
+    ///
+    /// `store` and `delete` use this, and must. They used to go through the
+    /// root-widened [`Self::find_item_with_aliases`], so with root search on a
+    /// write could land on an entry the user keeps outside RustConn — `store`
+    /// overwrote and renamed it, `delete` removed it. Root search widens reads
+    /// only.
     async fn find_item(&self, connection_id: &str) -> SecretResult<Option<BitwardenItem>> {
-        self.find_item_with_aliases(connection_id, &[]).await
+        let search_term = Self::entry_name(connection_id);
+        tracing::debug!(
+            search_term = %search_term,
+            connection_id = %connection_id,
+            "Bitwarden find_item: searching vault"
+        );
+
+        let output = self
+            .run_command(&["list", "items", "--search", &search_term])
+            .await?;
+
+        // Position, not the serde `Display`. `bw list items` includes
+        // `login.password`, and serde reports a type mismatch by quoting the value
+        // it choked on — a numeric password comes back as `invalid type: integer
+        // \`1234\`, expected a string`, which `vault_ops` then logs and shows.
+        let items: Vec<BitwardenItem> = serde_json::from_str(&output).map_err(|e| {
+            SecretError::RetrieveFailed(format!(
+                "Failed to parse items: {} error at line {}, column {}",
+                serde_error_kind(&e),
+                e.line(),
+                e.column()
+            ))
+        })?;
+
+        tracing::debug!(
+            items_count = items.len(),
+            search_term = %search_term,
+            "Bitwarden find_item: parsed results"
+        );
+
+        let result = items.into_iter().find(|item| item.name == search_term);
+        if result.is_none() {
+            tracing::debug!(
+                search_term = %search_term,
+                "Bitwarden find_item: no exact match found"
+            );
+        }
+        Ok(result)
     }
 
     /// The bare candidate titles a root-search fallback may match, in priority
@@ -662,47 +706,9 @@ impl BitwardenBackend {
         connection_id: &str,
         aliases: &[&str],
     ) -> SecretResult<Option<BitwardenItem>> {
-        let search_term = Self::entry_name(connection_id);
-        tracing::debug!(
-            search_term = %search_term,
-            connection_id = %connection_id,
-            "Bitwarden find_item: searching vault"
-        );
-
-        let output = self
-            .run_command(&["list", "items", "--search", &search_term])
-            .await?;
-
-        // Position, not the serde `Display`. `bw list items` includes
-        // `login.password`, and serde reports a type mismatch by quoting the value
-        // it choked on — a numeric password comes back as `invalid type: integer
-        // \`1234\`, expected a string`, which `vault_ops` then logs and shows.
-        let items: Vec<BitwardenItem> = serde_json::from_str(&output).map_err(|e| {
-            SecretError::RetrieveFailed(format!(
-                "Failed to parse items: {} error at line {}, column {}",
-                serde_error_kind(&e),
-                e.line(),
-                e.column()
-            ))
-        })?;
-
-        tracing::debug!(
-            items_count = items.len(),
-            search_term = %search_term,
-            "Bitwarden find_item: parsed results"
-        );
-
-        // Find exact match by name
-        let result = items.into_iter().find(|item| item.name == search_term);
-
-        if let Some(item) = result {
+        if let Some(item) = self.find_item(connection_id).await? {
             return Ok(Some(item));
         }
-
-        tracing::debug!(
-            search_term = %search_term,
-            "Bitwarden find_item: no exact match found"
-        );
 
         // Root-search fallback: an entry the user keeps outside RustConn's
         // naming convention is titled by the bare connection id — or, for issue
@@ -728,6 +734,15 @@ impl BitwardenBackend {
                     .into_iter()
                     .find(|item| Self::root_search_matches(&item.name, &candidates))
                 {
+                    // A root-search hit hands a password RustConn did not store
+                    // to a connection; say which one, so a wrong match can be
+                    // traced.
+                    tracing::info!(
+                        matched = %item.name,
+                        via = %term,
+                        %connection_id,
+                        "Bitwarden root search matched an item outside RustConn"
+                    );
                     return Ok(Some(item));
                 }
             }
@@ -1681,6 +1696,18 @@ async fn try_relogin_and_unlock(
 pub async fn auto_unlock(
     settings: &crate::config::SecretSettings,
 ) -> SecretResult<BitwardenBackend> {
+    // One unlock at a time, process-wide. The GUI's startup unlock runs on a
+    // thread of its own, outside the vault-op lock, so a connect made while it
+    // was still going started a second `bw status` / `bw unlock` / `bw sync`
+    // alongside it — every step twice in the issue #353 logs, each `bw` call
+    // seconds long. Waiting here instead lets the second caller find the
+    // session the first one just stored and take the fast path.
+    //
+    // A tokio mutex because the guard is held across the `bw` awaits; it is not
+    // tied to a runtime, which matters because each caller brings its own.
+    static UNLOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let _one_at_a_time = UNLOCK.lock().await;
+
     // One place for the toggles: the unlock below has many return points, and
     // each used to hand back a backend with read-only off.
     unlock_with_saved_credentials(settings)

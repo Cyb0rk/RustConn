@@ -16,7 +16,6 @@ use libadwaita as adw;
 use super::ConnectionDialog;
 use crate::alert;
 use crate::i18n::{i18n, i18n_f};
-use crate::vault_ops::{BITWARDEN_UNLOCK_TIMEOUT, VAULT_RETRIEVE_TIMEOUT};
 
 impl ConnectionDialog {
     /// Updates password row visibility based on password source
@@ -230,8 +229,11 @@ impl ConnectionDialog {
                     let kdbx_password = kdbx_password.clone();
                     let kdbx_key_file = kdbx_key_file.clone();
                     let kdbx_yubikey_slot = secret_settings.kdbx_yubikey_slot.clone();
+                    let kdbx_root_search = secret_settings.kdbx_root_search;
                     let lookup_key = lookup_key.clone();
                     let flat_lookup_key = flat_lookup_key.clone();
+                    let conn_name = conn_name.clone();
+                    let conn_host = conn_host.clone();
 
                     btn.set_sensitive(false);
                     btn.set_icon_name("content-loading-symbolic");
@@ -253,13 +255,17 @@ impl ConnectionDialog {
 
                             spawn_blocking_with_callback(
                                 move || {
+                                    // Same scoped-then-root read as a connect, so
+                                    // this button finds what connecting finds
+                                    // (issue #353).
                                     rustconn_core::secret::KeePassStatus
-                                        ::get_password_from_kdbx_with_key(
+                                        ::get_password_from_kdbx_scoped_then_root(
                                             &kdbx_path,
                                             db_password.as_ref(),
                                             key_file.as_deref(),
                                             &lookup_key,
-                                            None,
+                                            &[conn_host.as_str(), conn_name.as_str()],
+                                            kdbx_root_search,
                                             yubikey_slot.as_deref(),
                                         )
                                 },
@@ -304,153 +310,22 @@ impl ConnectionDialog {
                             );
                         }
                     } else {
-                        // Non-KeePass backend — dispatch based on
-                        // preferred_backend
+                        // Every other backend goes through the shared dispatcher,
+                        // the one a connect uses. This used to build each backend
+                        // inline and call a plain `retrieve`, which handed a
+                        // root-searching backend no name or host to match, and
+                        // ran a Bitwarden unlock outside the vault lock (#353).
                         let secret_settings = secret_settings.clone();
                         spawn_blocking_with_callback(
                             move || {
-                                use rustconn_core::config::SecretBackendType;
-                                use rustconn_core::secret::SecretBackend;
-
-                                let backend_type =
-                                    crate::state::select_backend_for_load(&secret_settings);
-
-                                match backend_type {
-                                    SecretBackendType::Bitwarden => {
-                                        crate::async_utils::with_runtime(|rt| {
-                                            let backend = rt.block_on(async {
-                                                tokio::time::timeout(
-                                                    BITWARDEN_UNLOCK_TIMEOUT,
-                                                    rustconn_core::secret::auto_unlock(
-                                                        &secret_settings,
-                                                    ),
-                                                )
-                                                .await
-                                                .map_err(|_| {
-                                                    "Bitwarden auto-unlock timed out".to_string()
-                                                })?
-                                                .map_err(|e| format!("{e}"))
-                                            })?;
-                                            rt.block_on(async {
-                                                tokio::time::timeout(
-                                                    VAULT_RETRIEVE_TIMEOUT,
-                                                    backend.retrieve(&flat_lookup_key),
-                                                )
-                                                .await
-                                                .map_err(|_| "Vault retrieve timed out".to_string())?
-                                                .map_err(|e| format!("{e}"))
-                                            })
-                                        })?
-                                    }
-                                    SecretBackendType::OnePassword => {
-                                        let backend =
-                                            rustconn_core::secret::OnePasswordBackend::from_secret_settings(
-                                                &secret_settings,
-                                            );
-                                        crate::async_utils::with_runtime(|rt| {
-                                            rt.block_on(async {
-                                                tokio::time::timeout(
-                                                    VAULT_RETRIEVE_TIMEOUT,
-                                                    backend.retrieve(&flat_lookup_key),
-                                                )
-                                                .await
-                                                .map_err(|_| "Vault retrieve timed out".to_string())?
-                                                .map_err(|e| format!("{e}"))
-                                            })
-                                        })?
-                                    }
-                                    SecretBackendType::Passbolt => {
-                                        let backend =
-                                            rustconn_core::secret::PassboltBackend::from_secret_settings(
-                                                &secret_settings,
-                                            );
-                                        crate::async_utils::with_runtime(|rt| {
-                                            rt.block_on(async {
-                                                tokio::time::timeout(
-                                                    VAULT_RETRIEVE_TIMEOUT,
-                                                    backend.retrieve(&flat_lookup_key),
-                                                )
-                                                .await
-                                                .map_err(|_| "Vault retrieve timed out".to_string())?
-                                                .map_err(|e| format!("{e}"))
-                                            })
-                                        })?
-                                    }
-                                    SecretBackendType::Pass => {
-                                        let backend =
-                                            rustconn_core::secret::PassBackend::from_secret_settings(
-                                                &secret_settings,
-                                            );
-                                        crate::async_utils::with_runtime(|rt| {
-                                            rt.block_on(async {
-                                                tokio::time::timeout(
-                                                    VAULT_RETRIEVE_TIMEOUT,
-                                                    backend.retrieve(&flat_lookup_key),
-                                                )
-                                                .await
-                                                .map_err(|_| "Vault retrieve timed out".to_string())?
-                                                .map_err(|e| format!("{e}"))
-                                            })
-                                        })?
-                                    }
-                                    SecretBackendType::LibSecret
-                                    | SecretBackendType::MacOsKeychain
-                                    | SecretBackendType::KeePassXc
-                                    | SecretBackendType::KdbxFile => {
-                                        // macOS uses the Keychain; LibSecretBackend
-                                        // (oo7) is not compiled there (R10.1, R10.2).
-                                        #[cfg(target_os = "macos")]
-                                        let backend =
-                                            rustconn_core::secret::MacOsKeychainBackend::new();
-                                        #[cfg(not(target_os = "macos"))]
-                                        let backend = rustconn_core::secret::LibSecretBackend::new(
-                                            "rustconn",
-                                        );
-                                        crate::async_utils::with_runtime(|rt| {
-                                            rt.block_on(async {
-                                                tokio::time::timeout(
-                                                    VAULT_RETRIEVE_TIMEOUT,
-                                                    backend.retrieve(&flat_lookup_key),
-                                                )
-                                                .await
-                                                .map_err(|_| "Vault retrieve timed out".to_string())?
-                                                .map_err(|e| format!("{e}"))
-                                            })
-                                        })?
-                                    }
-                                    SecretBackendType::EncryptedFile => {
-                                        // Application-managed encrypted file:
-                                        // retrieve by the flat lookup key, same
-                                        // key scheme as the other app-managed
-                                        // backends.
-                                        let backend =
-                                            rustconn_core::secret::EncryptedFileBackend::new();
-                                        crate::async_utils::with_runtime(|rt| {
-                                            rt.block_on(async {
-                                                tokio::time::timeout(
-                                                    VAULT_RETRIEVE_TIMEOUT,
-                                                    backend.retrieve(&flat_lookup_key),
-                                                )
-                                                .await
-                                                .map_err(|_| "Vault retrieve timed out".to_string())?
-                                                .map_err(|e| format!("{e}"))
-                                            })
-                                        })?
-                                    }
-                                    SecretBackendType::PortableEncryptedFile => {
-                                        // Portable encrypted file: same flat key
-                                        // scheme, but the backend has to be
-                                        // unlocked with the session passphrase.
-                                        let backend =
-                                            crate::vault_ops::portable_backend_from_settings(
-                                                &secret_settings,
-                                            );
-                                        crate::async_utils::with_runtime(|rt| {
-                                            rt.block_on(backend.retrieve(&flat_lookup_key))
-                                                .map_err(|e| format!("{e}"))
-                                        })?
-                                    }
-                                }
+                                crate::state::dispatch_vault_op(
+                                    &secret_settings,
+                                    &flat_lookup_key,
+                                    crate::state::VaultOp::RetrieveFor {
+                                        name: &conn_name,
+                                        host: &conn_host,
+                                    },
+                                )
                             },
                             move |result: Result<
                                 Option<rustconn_core::models::Credentials>,
@@ -647,15 +522,20 @@ impl ConnectionDialog {
                     let db_password = kdbx_password.clone();
                     let key_file = kdbx_key_file.clone();
                     let yubikey_slot = secret_settings.kdbx_yubikey_slot.clone();
+                    let root_search = secret_settings.kdbx_root_search;
 
                     spawn_blocking_with_callback(
                         move || {
-                            rustconn_core::secret::KeePassStatus::get_password_from_kdbx_with_key(
+                            // The read a connect does, root search included —
+                            // a test that skips it fails for an entry the
+                            // connect then finds (issue #353).
+                            rustconn_core::secret::KeePassStatus::get_password_from_kdbx_scoped_then_root(
                                 &kdbx_path,
                                 db_password.as_ref(),
                                 key_file.as_deref(),
                                 &lookup_key,
-                                None,
+                                &[conn_host.as_str(), conn_name.as_str()],
+                                root_search,
                                 yubikey_slot.as_deref(),
                             )
                         },
@@ -717,7 +597,10 @@ impl ConnectionDialog {
                         crate::state::dispatch_vault_op(
                             &secret_settings,
                             &flat_lookup_key,
-                            crate::state::VaultOp::Retrieve,
+                            crate::state::VaultOp::RetrieveFor {
+                                name: &conn_name,
+                                host: &conn_host,
+                            },
                         )
                     },
                     move |result: Result<

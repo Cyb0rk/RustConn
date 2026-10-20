@@ -307,9 +307,15 @@ impl PassboltBackend {
             || (root_search && super::backend::root_alias_eq(name, connection_id))
     }
 
-    /// Finds a resource by connection ID (searches by name)
+    /// Finds RustConn's own resource for `connection_id`, named
+    /// `RustConn: {id}` — never a root-search match.
+    ///
+    /// `store` and `delete` use this, and must. They used to go through the
+    /// root-widened lookup, so with root search on a write could land on a
+    /// resource the user keeps outside RustConn — `delete` removed it for good.
+    /// Root search widens reads only.
     async fn find_resource(&self, connection_id: &str) -> SecretResult<Option<PassboltResource>> {
-        self.find_resource_with_aliases(connection_id, &[]).await
+        self.find_resource_in(connection_id, &[], false).await
     }
 
     /// Alias-aware form of [`Self::find_resource`] (issue #353). The scoped
@@ -322,6 +328,18 @@ impl PassboltBackend {
         connection_id: &str,
         aliases: &[&str],
     ) -> SecretResult<Option<PassboltResource>> {
+        self.find_resource_in(connection_id, aliases, self.root_search)
+            .await
+    }
+
+    /// One `passbolt list resource`, matched by name: `RustConn: {id}` first,
+    /// then — only when `widen` — a bare `id` or alias.
+    async fn find_resource_in(
+        &self,
+        connection_id: &str,
+        aliases: &[&str],
+        widen: bool,
+    ) -> SecretResult<Option<PassboltResource>> {
         let output = self.run_command(&["list", "resource"]).await;
 
         // If command fails, assume no resources
@@ -331,7 +349,23 @@ impl PassboltBackend {
         };
 
         let resources: Vec<PassboltResource> = serde_json::from_str(&output).unwrap_or_default();
+        Ok(Self::pick_resource(
+            resources,
+            connection_id,
+            aliases,
+            widen,
+        ))
+    }
 
+    /// The name match behind [`Self::find_resource_in`], apart from the CLI so
+    /// it can be tested: `RustConn: {id}` wins; a bare id or alias counts only
+    /// when `widen` — which `store` and `delete` never pass.
+    fn pick_resource(
+        resources: Vec<PassboltResource>,
+        connection_id: &str,
+        aliases: &[&str],
+        widen: bool,
+    ) -> Option<PassboltResource> {
         // Candidate order for the bare match: id first (back-compat), then the
         // supplied aliases; de-duplicated case-insensitively, blanks dropped.
         let mut bare_candidates: Vec<&str> = Vec::with_capacity(1 + aliases.len());
@@ -353,12 +387,12 @@ impl PassboltBackend {
         let mut bare_fallback: Option<PassboltResource> = None;
         for resource in resources {
             if resource.name == scoped_name {
-                return Ok(Some(resource));
+                return Some(resource);
             }
             // Keep the first resource whose name matches any bare candidate when
             // root-search is on.
             if bare_fallback.is_none()
-                && self.root_search
+                && widen
                 && bare_candidates
                     .iter()
                     .any(|cand| super::backend::root_alias_eq(&resource.name, cand))
@@ -367,7 +401,16 @@ impl PassboltBackend {
             }
         }
 
-        Ok(bare_fallback)
+        // A root-search hit hands a password RustConn did not store to a
+        // connection; say which one, so a wrong match can be traced.
+        if let Some(ref resource) = bare_fallback {
+            tracing::info!(
+                matched = %resource.name,
+                %connection_id,
+                "Passbolt root search matched a resource outside RustConn"
+            );
+        }
+        bare_fallback
     }
 
     /// Gets full resource details including password
@@ -907,5 +950,43 @@ mod root_search_tests {
         // An unrelated name never matches either way.
         assert!(!PassboltBackend::name_matches("conn-1", "other", false));
         assert!(!PassboltBackend::name_matches("conn-1", "other", true));
+    }
+
+    fn resources(names: &[&str]) -> Vec<PassboltResource> {
+        let json: Vec<String> = names
+            .iter()
+            .enumerate()
+            .map(|(i, n)| format!(r#"{{"id":"r{i}","name":"{n}"}}"#))
+            .collect();
+        serde_json::from_str(&format!("[{}]", json.join(","))).unwrap()
+    }
+
+    /// `store` and `delete` look up without widening, so a user's own resource
+    /// titled by the bare key or the connection name is never theirs to edit or
+    /// remove — the issue #353 review found `delete` doing exactly that.
+    #[test]
+    fn a_write_lookup_never_matches_a_bare_or_alias_title() {
+        let list = resources(&["rustconn/web", "web", "web.example.com"]);
+        let got = PassboltBackend::pick_resource(
+            list,
+            "rustconn/web",
+            &["web.example.com", "web"],
+            false,
+        );
+        assert!(got.is_none());
+    }
+
+    /// A read with root search on finds the alias-titled resource, and still
+    /// prefers RustConn's own one when both exist.
+    #[test]
+    fn a_widened_read_matches_an_alias_but_prefers_the_scoped_resource() {
+        let alias_only = resources(&["web.example.com"]);
+        let got =
+            PassboltBackend::pick_resource(alias_only, "rustconn/web", &["web.example.com"], true);
+        assert_eq!(got.unwrap().id, "r0");
+
+        let both = resources(&["web.example.com", "RustConn: rustconn/web"]);
+        let got = PassboltBackend::pick_resource(both, "rustconn/web", &["web.example.com"], true);
+        assert_eq!(got.unwrap().id, "r1");
     }
 }
