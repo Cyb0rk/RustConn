@@ -859,8 +859,12 @@ impl TemplateDialog {
         resolution_row.add_suffix(&res_box);
         display_group.add(&resolution_row);
 
-        // Color depth
+        // Color depth. Index 0 is "Negotiate": it stores `None`, so no `/bpp:`
+        // is sent and FreeRDP negotiates the depth with the server. Some servers
+        // (KRdp, and the hosts in #381) answer an explicit `/bpp:` with
+        // DEACTIVATE_ALL.
         let color_items: Vec<String> = vec![
+            i18n("Negotiate (server default)"),
             i18n("32-bit (True Color)"),
             i18n("24-bit"),
             i18n("16-bit (High Color)"),
@@ -2468,25 +2472,19 @@ impl TemplateDialog {
             rustconn_core::models::RdpDisplayMode::FitScreen
         };
 
-        let color_depth: u8 = match color_dropdown.selected() {
-            1 => 24,
-            2 => 16,
-            3 => 15,
-            4 => 8,
-            _ => 32,
+        // Index 0 ("Negotiate") stores `None`, so no `/bpp:` reaches FreeRDP
+        // (see #381): 0->None, 1->32, 2->24, 3->16, 4->15, 5->8.
+        let color_depth: Option<u8> = match color_dropdown.selected() {
+            2 => Some(24),
+            3 => Some(16),
+            4 => Some(15),
+            5 => Some(8),
+            0 => None,
+            _ => Some(32),
         };
 
         let gateway_text = gateway_entry.text();
-        let custom_args_text = custom_args_entry.text();
-
-        let custom_args: Vec<String> = if custom_args_text.is_empty() {
-            Vec::new()
-        } else {
-            custom_args_text
-                .split_whitespace()
-                .map(String::from)
-                .collect()
-        };
+        let custom_args = rustconn_core::dialog_utils::parse_args(&custom_args_entry.text());
 
         ProtocolConfig::Rdp(RdpConfig {
             client_mode,
@@ -2494,7 +2492,7 @@ impl TemplateDialog {
             graphics_mode: rustconn_core::rdp_client::graphics::GraphicsMode::default(),
             external_display_mode,
             resolution,
-            color_depth: Some(color_depth),
+            color_depth,
             audio_redirect: RdpAudioMode::from_index(audio_mode_dropdown.selected())
                 .is_local_playback(),
             audio_mode: Some(RdpAudioMode::from_index(audio_mode_dropdown.selected())),
@@ -2568,16 +2566,7 @@ impl TemplateDialog {
         };
 
         let encoding = encoding_entry.text();
-        let custom_args_text = custom_args_entry.text();
-
-        let custom_args: Vec<String> = if custom_args_text.is_empty() {
-            Vec::new()
-        } else {
-            custom_args_text
-                .split_whitespace()
-                .map(String::from)
-                .collect()
-        };
+        let custom_args = rustconn_core::dialog_utils::parse_args(&custom_args_entry.text());
 
         #[expect(
             clippy::cast_sign_loss,
@@ -2677,15 +2666,7 @@ impl TemplateDialog {
         generic_command: &Entry,
         custom_args: &Entry,
     ) -> ProtocolConfig {
-        let custom_args_text = custom_args.text();
-        let custom_args_vec: Vec<String> = if custom_args_text.is_empty() {
-            Vec::new()
-        } else {
-            custom_args_text
-                .split_whitespace()
-                .map(String::from)
-                .collect()
-        };
+        let custom_args_vec = rustconn_core::dialog_utils::parse_args(&custom_args.text());
 
         let provider_config = match provider_dropdown.selected() {
             0 => ZeroTrustProviderConfig::AwsSsm(AwsSsmConfig {
@@ -2904,12 +2885,15 @@ impl TemplateDialog {
             self.rdp_width_spin.set_value(f64::from(res.width));
             self.rdp_height_spin.set_value(f64::from(res.height));
         }
+        // Inverse of the save mapping: None->0 ("Negotiate"), 32->1, 24->2,
+        // 16->3, 15->4, 8->5.
         let color_idx = match config.color_depth {
-            Some(24) => 1,
-            Some(16) => 2,
-            Some(15) => 3,
-            Some(8) => 4,
-            _ => 0,
+            None => 0,
+            Some(24) => 2,
+            Some(16) => 3,
+            Some(15) => 4,
+            Some(8) => 5,
+            _ => 1, // Some(32) and any other explicit value
         };
         self.rdp_color_dropdown.set_selected(color_idx);
         self.rdp_audio_mode_dropdown

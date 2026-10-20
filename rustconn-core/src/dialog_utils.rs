@@ -105,9 +105,18 @@ pub fn format_custom_options(options: &HashMap<String, String>) -> String {
     pairs.join(", ")
 }
 
-/// Parses a space-separated string into a vector of arguments.
+/// Parses a command-line argument string into a vector of arguments,
+/// honouring POSIX shell quoting and escaping.
 ///
-/// Note: This is a simple parser that doesn't handle quoted strings.
+/// Uses [`shell_words::split`], so quoted arguments survive intact — a
+/// FreeRDP drive mapping like `/drive:docs,"/home/u/My Docs"` or a flag whose
+/// value contains a space is split into the tokens the user meant, not on
+/// every space. An unbalanced quote falls back to a plain whitespace split so
+/// the caller still gets usable tokens rather than nothing.
+///
+/// This is the single parser the connection and template editors route their
+/// custom/extra-args fields through; do not reintroduce a bare
+/// `split_whitespace()` at a call site.
 ///
 /// # Examples
 /// ```
@@ -115,6 +124,10 @@ pub fn format_custom_options(options: &HashMap<String, String>) -> String {
 ///
 /// let args = parse_args("/fullscreen /sound:sys:alsa");
 /// assert_eq!(args, vec!["/fullscreen", "/sound:sys:alsa"]);
+///
+/// // A quoted value with a space stays one argument.
+/// let args = parse_args(r#"/drive:docs,"/home/u/My Docs""#);
+/// assert_eq!(args, vec!["/drive:docs,/home/u/My Docs"]);
 /// ```
 #[must_use]
 pub fn parse_args(text: &str) -> Vec<String> {
