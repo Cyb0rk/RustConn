@@ -1175,11 +1175,9 @@ impl ConnectionManager {
     /// Case-insensitive matching.
     #[must_use]
     pub fn filter_by_tag(&self, tag: &str) -> Vec<&Connection> {
-        let tag_lower = tag.to_lowercase();
-
         self.connections
             .values()
-            .filter(|conn| conn.tags.iter().any(|t| t.to_lowercase() == tag_lower))
+            .filter(|conn| conn.tags.iter().any(|t| eq_ignore_case(t, tag)))
             .collect()
     }
 
@@ -1188,14 +1186,11 @@ impl ConnectionManager {
     /// Returns connections that have ALL specified tags.
     #[must_use]
     pub fn filter_by_tags(&self, tags: &[String]) -> Vec<&Connection> {
-        let tags_lower: Vec<String> = tags.iter().map(|t| t.to_lowercase()).collect();
-
         self.connections
             .values()
             .filter(|conn| {
-                let conn_tags_lower: Vec<String> =
-                    conn.tags.iter().map(|t| t.to_lowercase()).collect();
-                tags_lower.iter().all(|tag| conn_tags_lower.contains(tag))
+                tags.iter()
+                    .all(|wanted| conn.tags.iter().any(|t| eq_ignore_case(t, wanted)))
             })
             .collect()
     }
@@ -2040,6 +2035,25 @@ impl ConnectionManager {
     }
 }
 
+/// Case-insensitive string equality without allocating.
+///
+/// Used by the tag filters, which compare a user's tag against every tag on
+/// every connection. The previous `a.to_lowercase() == b.to_lowercase()`
+/// allocated a `String` per tag per call; this compares the two
+/// `char::to_lowercase` expansions directly. Unicode-aware (so `"Ä" == "ä"`),
+/// unlike `eq_ignore_ascii_case`, matching the old `to_lowercase` behaviour.
+fn eq_ignore_case(a: &str, b: &str) -> bool {
+    let mut a_lower = a.chars().flat_map(char::to_lowercase);
+    let mut b_lower = b.chars().flat_map(char::to_lowercase);
+    loop {
+        match (a_lower.next(), b_lower.next()) {
+            (Some(x), Some(y)) if x == y => {}
+            (None, None) => return true,
+            _ => return false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use tempfile::TempDir;
@@ -2803,5 +2817,45 @@ mod tests {
             }))
         );
         assert_eq!(stored(inherits), Some(None));
+    }
+
+    #[test]
+    fn eq_ignore_case_matches_to_lowercase_semantics() {
+        // ASCII case folding.
+        assert!(eq_ignore_case("Prod", "prod"));
+        assert!(eq_ignore_case("WEB", "web"));
+        // Unicode case folding, where eq_ignore_ascii_case would wrongly differ.
+        assert!(eq_ignore_case("Ä", "ä"));
+        assert!(eq_ignore_case("Київ", "київ"));
+        // Different lengths and different content must not match.
+        assert!(!eq_ignore_case("prod", "production"));
+        assert!(!eq_ignore_case("prod", "stage"));
+        assert!(eq_ignore_case("", ""));
+        assert!(!eq_ignore_case("", "x"));
+    }
+
+    #[tokio::test]
+    async fn filter_by_tag_is_case_insensitive() {
+        let (mut manager, _temp) = create_test_manager();
+        let mut conn = Connection::new_ssh("srv".to_string(), "h".to_string(), 22);
+        conn.tags = vec!["Production".to_string(), "Київ".to_string()];
+        manager.create_connection_from(conn).unwrap();
+
+        assert_eq!(manager.filter_by_tag("production").len(), 1);
+        assert_eq!(manager.filter_by_tag("PRODUCTION").len(), 1);
+        assert_eq!(manager.filter_by_tag("київ").len(), 1);
+        assert_eq!(manager.filter_by_tag("missing").len(), 0);
+        assert_eq!(
+            manager
+                .filter_by_tags(&["production".to_string(), "київ".to_string()])
+                .len(),
+            1
+        );
+        assert_eq!(
+            manager
+                .filter_by_tags(&["production".to_string(), "missing".to_string()])
+                .len(),
+            0
+        );
     }
 }
