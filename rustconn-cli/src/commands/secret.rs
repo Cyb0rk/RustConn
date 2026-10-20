@@ -29,6 +29,33 @@ impl rustconn_core::secret::TouchObserver for StderrTouchCue {
     fn touch_finished(&self) {}
 }
 
+/// Returns the one Tokio runtime shared by every async secret backend call in
+/// this process.
+///
+/// The `secret get`/`set`/`delete` commands each touch one backend, often
+/// through several `block_on` calls; building a fresh `Runtime` for each was
+/// wasteful. A single current-thread runtime, created on first use and reused,
+/// is enough — the CLI runs one command and never needs a worker pool.
+///
+/// # Errors
+///
+/// Returns [`CliError::Secret`] if the runtime cannot be created.
+#[cfg(feature = "secret-management")]
+fn secret_runtime() -> Result<&'static tokio::runtime::Runtime, CliError> {
+    use std::sync::OnceLock;
+    static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+    if let Some(rt) = RUNTIME.get() {
+        return Ok(rt);
+    }
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+    // Another caller may have initialised it between the get and here; keep
+    // whichever won and drop ours.
+    Ok(RUNTIME.get_or_init(|| rt))
+}
+
 /// Creates a `PassBackend` from the current app settings.
 #[cfg(feature = "secret-management")]
 fn create_pass_backend(
@@ -448,8 +475,7 @@ fn cmd_secret_get(
 
     match backend_type {
         SecretBackendType::LibSecret | SecretBackendType::MacOsKeychain => {
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             // macOS routes the keyring backend to the system Keychain;
             // LibSecretBackend is not compiled there (R10.1, R10.2).
@@ -548,8 +574,7 @@ fn cmd_secret_get(
         SecretBackendType::Bitwarden => {
             use rustconn_core::secret::BitwardenBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = BitwardenBackend::new().with_settings_toggles(&settings.secrets);
             let result: Result<Option<Credentials>, _> =
@@ -581,8 +606,7 @@ fn cmd_secret_get(
         SecretBackendType::OnePassword => {
             use rustconn_core::secret::OnePasswordBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             // Token plus the read-only / root-search toggles from settings.
             let backend = OnePasswordBackend::from_secret_settings(&settings.secrets);
@@ -615,8 +639,7 @@ fn cmd_secret_get(
         SecretBackendType::Passbolt => {
             use rustconn_core::secret::PassboltBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             // Server, passphrase and the read-only / root-search toggles.
             let backend = PassboltBackend::from_secret_settings(&settings.secrets);
@@ -647,8 +670,7 @@ fn cmd_secret_get(
             }
         }
         SecretBackendType::Pass => {
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = create_pass_backend(&settings);
             let result: Result<Option<Credentials>, _> =
@@ -680,8 +702,7 @@ fn cmd_secret_get(
         SecretBackendType::EncryptedFile => {
             use rustconn_core::secret::EncryptedFileBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = EncryptedFileBackend::new();
             let result: Result<Option<Credentials>, _> =
@@ -712,8 +733,7 @@ fn cmd_secret_get(
         }
         SecretBackendType::PortableEncryptedFile => {
             let backend = open_portable_backend(&settings.secrets)?;
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
             let result: Result<Option<Credentials>, _> =
                 rt.block_on(retrieve_connection_credentials(&backend, &keys, connection));
 
@@ -849,8 +869,7 @@ fn cmd_secret_set(
             use rustconn_core::models::Credentials;
             use rustconn_core::secret::SecretBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             // macOS routes the keyring backend to the system Keychain;
             // LibSecretBackend is not compiled there (R10.1, R10.2).
@@ -918,8 +937,7 @@ fn cmd_secret_set(
             use rustconn_core::models::Credentials;
             use rustconn_core::secret::{BitwardenBackend, SecretBackend};
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = BitwardenBackend::new().with_settings_toggles(&settings.secrets);
             let creds = Credentials {
@@ -943,8 +961,7 @@ fn cmd_secret_set(
             use rustconn_core::models::Credentials;
             use rustconn_core::secret::{OnePasswordBackend, SecretBackend};
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             // Token plus the read-only / root-search toggles from settings.
             let backend = OnePasswordBackend::from_secret_settings(&settings.secrets);
@@ -969,8 +986,7 @@ fn cmd_secret_set(
             use rustconn_core::models::Credentials;
             use rustconn_core::secret::{PassboltBackend, SecretBackend};
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             // Server, passphrase and the read-only / root-search toggles.
             let backend = PassboltBackend::from_secret_settings(&settings.secrets);
@@ -995,8 +1011,7 @@ fn cmd_secret_set(
             use rustconn_core::models::Credentials;
             use rustconn_core::secret::SecretBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = create_pass_backend(&settings);
             let creds = Credentials {
@@ -1020,8 +1035,7 @@ fn cmd_secret_set(
             use rustconn_core::models::Credentials;
             use rustconn_core::secret::{EncryptedFileBackend, SecretBackend};
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = EncryptedFileBackend::new();
             let creds = Credentials {
@@ -1045,8 +1059,7 @@ fn cmd_secret_set(
             use rustconn_core::models::Credentials;
             use rustconn_core::secret::SecretBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = open_portable_backend(&settings.secrets)?;
             let creds = Credentials {
@@ -1146,8 +1159,7 @@ fn cmd_secret_delete(
 
     match backend_type {
         SecretBackendType::LibSecret | SecretBackendType::MacOsKeychain => {
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             // macOS routes the keyring backend to the system Keychain;
             // LibSecretBackend is not compiled there (R10.1, R10.2).
@@ -1193,8 +1205,7 @@ fn cmd_secret_delete(
         SecretBackendType::Bitwarden => {
             use rustconn_core::secret::BitwardenBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = BitwardenBackend::new().with_settings_toggles(&settings.secrets);
             rt.block_on(delete_connection_credentials(&backend, &keys))
@@ -1209,8 +1220,7 @@ fn cmd_secret_delete(
         SecretBackendType::OnePassword => {
             use rustconn_core::secret::OnePasswordBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             // Token plus the read-only / root-search toggles from settings.
             let backend = OnePasswordBackend::from_secret_settings(&settings.secrets);
@@ -1226,8 +1236,7 @@ fn cmd_secret_delete(
         SecretBackendType::Passbolt => {
             use rustconn_core::secret::PassboltBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             // Server, passphrase and the read-only / root-search toggles.
             let backend = PassboltBackend::from_secret_settings(&settings.secrets);
@@ -1241,8 +1250,7 @@ fn cmd_secret_delete(
             Ok(())
         }
         SecretBackendType::Pass => {
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = create_pass_backend(&settings);
             rt.block_on(delete_connection_credentials(&backend, &keys))
@@ -1254,8 +1262,7 @@ fn cmd_secret_delete(
         SecretBackendType::EncryptedFile => {
             use rustconn_core::secret::EncryptedFileBackend;
 
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
 
             let backend = EncryptedFileBackend::new();
             rt.block_on(delete_connection_credentials(&backend, &keys))
@@ -1269,8 +1276,7 @@ fn cmd_secret_delete(
         }
         SecretBackendType::PortableEncryptedFile => {
             let backend = open_portable_backend(&settings.secrets)?;
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
+            let rt = secret_runtime()?;
             rt.block_on(delete_connection_credentials(&backend, &keys))
                 .map_err(|e| CliError::Secret(format!("Portable file error: {e}")))?;
 
@@ -1397,7 +1403,7 @@ fn restore_portable_passphrase(
         return None;
     }
 
-    let rt = tokio::runtime::Runtime::new().ok()?;
+    let rt = secret_runtime().ok()?;
     match rt.block_on(async {
         tokio::time::timeout(
             std::time::Duration::from_secs(5),
