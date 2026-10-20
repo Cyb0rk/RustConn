@@ -140,6 +140,18 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.18" date="2026-10-21">
+      <description>
+        <p>Version 0.23.18 - an RDP colour-depth option, SSH credential-handling hardening, and import/export and performance fixes:</p>
+        <ul>
+          <li>Added a "Negotiate (server default)" choice to the RDP Color Depth setting, so RustConn no longer always sends a colour depth to FreeRDP; some servers only accept a connection when it is left unset (issue #381)</li>
+          <li>SSH jump-host passwords are passed to the helper through an owner-only file instead of the process environment, where they were readable for the life of the process</li>
+          <li>Custom RDP, VNC, Telnet, Serial and Zero Trust arguments now survive quotes and spaces instead of being split on every space</li>
+          <li>Asbru-CM import keeps passwords in protected memory, and Asbru export no longer writes entries for protocols it cannot read back</li>
+          <li>Faster tag filtering and CSV export, and the command-line secret commands reuse one async runtime</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.17" date="2026-10-20">
       <description>
         <p>Version 0.23.17 - "Search from vault root" fixes for every password manager, matching vault keys in the command-line tool, and dependency updates:</p>

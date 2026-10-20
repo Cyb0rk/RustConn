@@ -5,7 +5,7 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.23.18] - 2026-10-20
+## [0.23.18] - 2026-10-21
 
 ### Improved
 - **`rustconn-cli secret get/set/delete` build one Tokio runtime per command, not one per backend branch** — each backend arm created its own `tokio::runtime::Runtime::new()` before its single `block_on`, so a command spun up (and tore down) a fresh multi-thread runtime for one call. The three commands now share one lazily-created current-thread runtime through a `secret_runtime()` helper (22 call sites), which is all a one-shot CLI needs. Behaviour is unchanged. (`rustconn-cli/src/commands/secret.rs`)
@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **RDP Color Depth can now be set to "Negotiate (server default)", which stops RustConn from sending `/bpp:` to FreeRDP (issue #381)** — the colour-depth dropdown in the connection editor and the template dialog always resolved to an explicit value (index 0 was 32-bit), so every GUI-configured RDP connection stored `color_depth = Some(..)` and the external/embedded FreeRDP launcher always emitted `/bpp:`. Some servers answer an explicit `/bpp:` by tearing the session down — KRdp replies to `/bpp:32` with `PDU_TYPE_DEACTIVATE_ALL` (already worked around internally for #366), and the hosts in #381 connect from `wlfreerdp3`/`sdl-freerdp3` only when `/bpp` is omitted. A new first dropdown entry, **Negotiate (server default)**, stores `color_depth = None`, so no `/bpp:` reaches FreeRDP and it negotiates the depth with the server — matching what a bare `xfreerdp /v:… ` does. The save and load mappings in both dialogs shift accordingly (None→index 0, 32→1, 24→2, 16→3, 15→4, 8→5), and because a new connection's model default is already `None`, new connections now default to Negotiate. The native IronRDP path is unaffected (it still drives its own 32-bit framebuffer for AWS EC2 compatibility). (`rustconn/src/dialogs/connection/rdp.rs`, `rustconn/src/dialogs/connection/builders.rs`, `rustconn/src/dialogs/connection/dialog/populate.rs`, `rustconn/src/dialogs/template.rs`)
 
 ### Dependencies
+- **Updated**: ksni 0.3.6 → 0.3.7 (system-tray backend; pulls in arc-swap 1.9.3 and crossbeam-queue 0.3.14 transitively). Semver-compatible; `cargo-sources.json` regenerated for the Flatpak/Flathub manifests. No security advisories affected.
 - **Documented five accepted *unmaintained* transitive advisories in `deny.toml`** — `cargo audit` reports `unsafe-libyaml` (via `serde_yaml_ng`), `zbus_names`/`zvariant`/`zvariant_derive` (via the `zbus` 5.19 desktop-integration stack — ashpd/ksni/oo7) and `atomic-polyfill` (deep under the ironrdp→sspi smartcard chain through `heapless` 0.7) as unmaintained. None is a vulnerability and each is pinned by an upstream RustConn does not control, so the fix is an upstream release in every case. `cargo-deny` already passes (`unmaintained = "workspace"` fails only on workspace-direct crates, so none is in `ignore`); the provenance and upgrade path of each are now recorded in `deny.toml` so a future audit recognises them as tracked rather than new. (`deny.toml`)
 
 ## [0.23.17] - 2026-10-20

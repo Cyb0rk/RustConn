@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.17
+Version:        0.23.18
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,16 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Wed Oct 21 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.18-0
+- Version bump to 0.23.18
+- Added RDP Color Depth "Negotiate (server default)" option, which stops RustConn from always sending /bpp: to FreeRDP; some servers only accept a connection when the colour depth is left unset (issue #381)
+- Fixed SSH jump-host passwords travelling in the process environment: they are now passed to the SSH_ASKPASS helper through an owner-only file, never /proc/<pid>/environ
+- Fixed custom RDP, VNC, Telnet, Serial and Zero Trust arguments being split on every space; quoted arguments and values with spaces now survive
+- Fixed Asbru-CM import keeping passwords as a plain String, and Asbru export writing a dead entry for a protocol it cannot read back
+- Improved performance: tag filtering no longer allocates a String per tag, CSV export deduplicates its field mapper and indexes group lookups, and the command-line secret commands share one async runtime
+- Added guard tests that the Debug output of five password-bearing types does not leak the plaintext
+- Documentation: corrected the command-line reference for connection delete in non-interactive mode, and documented five accepted unmaintained transitive advisories in deny.toml
+
 * Tue Oct 20 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.17-0
 - Version bump to 0.23.17
 - Fixed "Search from vault root" for Bitwarden, 1Password, Passbolt and pass: connect and the connection editor's load and test buttons now pass the connection's name and host, so an entry titled by either is found (issue #353)

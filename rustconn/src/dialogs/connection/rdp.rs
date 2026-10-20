@@ -224,8 +224,11 @@ pub(super) fn create_rdp_options() -> (
     });
     resolution_row.set_visible(RdpDisplayMode::default().uses_stored_resolution());
 
-    // Color depth
+    // Color depth. Index 0 is "Negotiate": it stores `None`, so no `/bpp:` is
+    // sent and FreeRDP negotiates the depth with the server. Some servers (KRdp,
+    // and the hosts in #381) answer an explicit `/bpp:` with DEACTIVATE_ALL.
     let color_items: Vec<String> = vec![
+        i18n("Negotiate (server default)"),
         i18n("32-bit (True Color)"),
         i18n("24-bit"),
         i18n("16-bit (High Color)"),
