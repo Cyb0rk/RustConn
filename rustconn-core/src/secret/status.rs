@@ -709,7 +709,8 @@ fn classify_write_failure(stderr: &str) -> SecretError {
 mod algorithm_tests {
     use super::{
         parse_version_major_minor, required_group_levels, root_match_entry_path,
-        root_match_entry_path_multi, version_supports_edit,
+        root_match_entry_path_multi, root_search_candidates, scoped_then_root,
+        version_supports_edit,
     };
 
     #[test]
@@ -955,6 +956,80 @@ Servers/kp353-test\n";
         );
         // A candidate present nowhere misses cleanly rather than panicking.
         assert_eq!(root_match_entry_path_multi(listing, &["відсутній"]), None);
+    }
+
+    /// Issue #353, the reporter's own data: a connection `han_file02` in groups
+    /// `AME/DE/11`, an entry titled `han_file02` outside `RustConn/`. The
+    /// candidates the shared scoped-then-root reader builds from the editor's
+    /// lookup key, host and name must land on that entry — the editor buttons
+    /// used to skip the root search, so this match never ran from there.
+    #[test]
+    fn root_search_candidates_find_the_reporters_entry_by_name() {
+        let listing = "RustConn/\nServers/han_file02\nServers/other\n";
+        let candidates = root_search_candidates(
+            "AME/DE/11/han_file02 (rdp)",
+            &["hanfile02.aag.local", "han_file02"],
+        );
+        assert_eq!(
+            root_match_entry_path_multi(listing, &candidates),
+            Some("Servers/han_file02".to_string())
+        );
+    }
+
+    fn found(p: &str) -> crate::error::SecretResult<Option<secrecy::SecretString>> {
+        Ok(Some(secrecy::SecretString::from(p)))
+    }
+
+    fn unreadable() -> crate::error::SecretResult<Option<secrecy::SecretString>> {
+        Err(crate::error::SecretError::KeePassXC(
+            "cannot read".to_string(),
+        ))
+    }
+
+    /// A scoped hit is the answer; the whole-database listing is never run.
+    #[test]
+    fn scoped_hit_skips_the_root_listing() {
+        use secrecy::ExposeSecret;
+        let got = scoped_then_root(true, || found("scoped"), || panic!("root ran"));
+        assert_eq!(got.unwrap().unwrap().expose_secret(), "scoped");
+    }
+
+    /// With root search off, a miss stays a miss — no listing.
+    #[test]
+    fn root_search_off_never_lists_the_database() {
+        let got = scoped_then_root(false, || Ok(None), || panic!("root ran"));
+        assert!(got.unwrap().is_none());
+    }
+
+    /// A scoped miss with root search on is what the root pass is for.
+    #[test]
+    fn scoped_miss_falls_through_to_root() {
+        use secrecy::ExposeSecret;
+        let got = scoped_then_root(true, || Ok(None), || found("root"));
+        assert_eq!(got.unwrap().unwrap().expose_secret(), "root");
+    }
+
+    /// An unreadable database is reported, from either pass, never turned into
+    /// "not found" — and a scoped failure does not go on to list.
+    #[test]
+    fn read_failures_propagate_from_either_pass() {
+        assert!(scoped_then_root(true, unreadable, || panic!("root ran")).is_err());
+        assert!(scoped_then_root(true, || Ok(None), unreadable).is_err());
+    }
+
+    /// The scoped key stays the first candidate, so an entry titled by it still
+    /// wins over one titled by the host — the order the connect path always had.
+    #[test]
+    fn root_search_candidates_keep_the_lookup_key_first() {
+        assert_eq!(
+            root_search_candidates("key", &["host", "", "name"]),
+            vec!["key", "host", "", "name"]
+        );
+        let listing = "A/host\nB/key\n";
+        assert_eq!(
+            root_match_entry_path_multi(listing, &root_search_candidates("key", &["host"])),
+            Some("B/key".to_string())
+        );
     }
 
     // --- Behaviour of save_in_place / rename_or_move_in_place via a fake CLI ---
@@ -1474,6 +1549,31 @@ fn candidate_entry_paths(entry_name: &str, protocol: Option<&str>) -> Vec<String
 #[cfg(test)]
 fn root_match_entry_path(listing: &str, connection_id: &str) -> Option<String> {
     root_match_entry_path_multi(listing, &[connection_id])
+}
+
+/// The order behind [`KeePassStatus::get_password_from_kdbx_scoped_then_root`],
+/// apart from the CLI so it can be tested: `scoped` always runs; `root` runs
+/// only when `root_search` is on and `scoped` found nothing. Either one's error
+/// is returned as is — a database that could not be read is not a miss.
+fn scoped_then_root(
+    root_search: bool,
+    scoped: impl FnOnce() -> SecretResult<Option<SecretString>>,
+    root: impl FnOnce() -> SecretResult<Option<SecretString>>,
+) -> SecretResult<Option<SecretString>> {
+    let found = scoped()?;
+    if found.is_some() || !root_search {
+        return Ok(found);
+    }
+    root()
+}
+
+/// The titles a root search tries for one connection, in priority order: the
+/// scoped lookup key first (back-compat), then the connection's aliases (host,
+/// name). Blank aliases are left in — [`root_match_entry_path_multi`] skips them.
+fn root_search_candidates<'a>(lookup_key: &'a str, aliases: &[&'a str]) -> Vec<&'a str> {
+    std::iter::once(lookup_key)
+        .chain(aliases.iter().copied())
+        .collect()
 }
 
 /// Candidate-aware variant of `root_match_entry_path` for issue #353.
@@ -2805,6 +2905,57 @@ impl KeePassStatus {
             key_file,
             &entry_path,
             yubikey_slot,
+        )
+    }
+
+    /// Reads a connection's password the way a connect does: the `RustConn/`
+    /// scoped entry under `lookup_key` first, then — only when `root_search` is
+    /// on and the scoped read missed — the whole database, matching entry titles
+    /// against `lookup_key` and the connection's `aliases` (host, name).
+    ///
+    /// Exists because the order and the candidate list were written out per
+    /// caller, and the callers drifted: in 0.23.16 the connect path searched from
+    /// root while the connection editor's **Load password from vault** and **Test
+    /// credential resolution** buttons did not, so the same entry was found on
+    /// connect and reported missing from the editor (issue #353). The connect
+    /// path keeps its own copy only because it treats a failed root listing as a
+    /// miss (and goes on to the encrypted-file fallback); this propagates it.
+    ///
+    /// Read-widening only, like [`Self::get_password_from_kdbx_root`].
+    ///
+    /// # Errors
+    /// Returns [`SecretError::KeePassXC`] if `keepassxc-cli` is missing, the
+    /// path is invalid, or the database cannot be unlocked or listed.
+    pub fn get_password_from_kdbx_scoped_then_root(
+        kdbx_path: &Path,
+        db_password: Option<&SecretString>,
+        key_file: Option<&Path>,
+        lookup_key: &str,
+        aliases: &[&str],
+        root_search: bool,
+        yubikey_slot: Option<&str>,
+    ) -> SecretResult<Option<SecretString>> {
+        scoped_then_root(
+            root_search,
+            || {
+                Self::get_password_from_kdbx_with_key(
+                    kdbx_path,
+                    db_password,
+                    key_file,
+                    lookup_key,
+                    None,
+                    yubikey_slot,
+                )
+            },
+            || {
+                Self::get_password_from_kdbx_root(
+                    kdbx_path,
+                    db_password,
+                    key_file,
+                    &root_search_candidates(lookup_key, aliases),
+                    yubikey_slot,
+                )
+            },
         )
     }
 

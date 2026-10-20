@@ -334,9 +334,29 @@ impl OnePasswordBackend {
         format!("RustConn: {connection_id}")
     }
 
-    /// Finds an item by connection ID using tags
+    /// Finds RustConn's own item for `connection_id`: `RustConn: {id}` in the
+    /// RustConn vault, tagged `rustconn` — never a root-search match.
+    ///
+    /// `store` and `delete` use this, and must. They used to go through the
+    /// root-widened [`Self::find_item_with_aliases`], so with root search on a
+    /// write could land on an item the user keeps outside RustConn. Root search
+    /// widens reads only.
     async fn find_item(&self, connection_id: &str) -> SecretResult<Option<OnePasswordItem>> {
-        self.find_item_with_aliases(connection_id, &[]).await
+        let title = Self::entry_title(connection_id);
+        self.find_item_in(
+            &title,
+            &[],
+            &[
+                "item",
+                "list",
+                "--vault",
+                &self.vault_name,
+                "--tags",
+                "rustconn",
+            ],
+            /* match_bare_id */ false,
+        )
+        .await
     }
 
     /// The bare candidate titles a root-search fallback may match, in priority
@@ -389,28 +409,12 @@ impl OnePasswordBackend {
         connection_id: &str,
         aliases: &[&str],
     ) -> SecretResult<Option<OnePasswordItem>> {
-        let title = Self::entry_title(connection_id);
-
         // Primary pass: the RustConn vault, tagged items only — the historical,
         // narrow scope. No bare-id/alias matching here.
-        if let Some(item) = self
-            .find_item_in(
-                &title,
-                &[],
-                &[
-                    "item",
-                    "list",
-                    "--vault",
-                    &self.vault_name,
-                    "--tags",
-                    "rustconn",
-                ],
-                /* match_bare_id */ false,
-            )
-            .await?
-        {
+        if let Some(item) = self.find_item(connection_id).await? {
             return Ok(Some(item));
         }
+        let title = Self::entry_title(connection_id);
 
         // Root-search fallback: widen to the whole account (no vault, no tag
         // filter) and accept either the `RustConn: {id}` title or the bare
@@ -464,6 +468,15 @@ impl OnePasswordBackend {
 
         for item in items {
             if Self::title_matches(title, &item.title, match_bare_id, candidates) {
+                // A root-search hit on anything but RustConn's own title hands a
+                // password RustConn did not store to a connection; say which,
+                // so a wrong match can be traced.
+                if item.title != title {
+                    tracing::info!(
+                        matched = %item.title,
+                        "1Password root search matched an item outside RustConn"
+                    );
+                }
                 // Get full item details with fields. The item may live in any
                 // vault here, so look it up by id without a --vault constraint.
                 let details = self.run_command(&["item", "get", &item.id]).await?;

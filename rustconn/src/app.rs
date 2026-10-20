@@ -872,13 +872,27 @@ fn build_ui(app: &adw::Application, tray_manager: SharedTrayManager) {
                     }
                 };
 
-                match rt.block_on(rustconn_core::secret::auto_unlock(&secret_settings)) {
-                    Ok(_) => {
+                // Bounded like the connect path's unlock. `auto_unlock` runs one
+                // caller at a time, so an unbounded startup unlock would hold up
+                // every connect queued behind it for as long as `bw` took.
+                let unlock = rt.block_on(async {
+                    tokio::time::timeout(
+                        std::time::Duration::from_secs(30),
+                        rustconn_core::secret::auto_unlock(&secret_settings),
+                    )
+                    .await
+                });
+                match unlock {
+                    Ok(Ok(_)) => {
                         tracing::info!("Bitwarden vault unlocked at startup");
                         let _ = tx.send(true);
                     }
-                    Err(e) => {
+                    Ok(Err(e)) => {
                         tracing::warn!("Bitwarden auto-unlock at startup failed: {e}");
+                        let _ = tx.send(false);
+                    }
+                    Err(_) => {
+                        tracing::warn!("Bitwarden auto-unlock at startup timed out after 30s");
                         let _ = tx.send(false);
                     }
                 }

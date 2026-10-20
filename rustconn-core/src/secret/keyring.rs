@@ -52,7 +52,7 @@ fn build_attributes(key: &str) -> HashMap<String, String> {
 /// every round-trip they make, and it cannot say which step stalled.
 ///
 /// Ten seconds is the project's standard vault budget (`secrets-guide.md`, and
-/// `VAULT_RETRIEVE_TIMEOUT` in the GUI's connection dialogs): far longer than a
+/// the local-backend tier of `vault_op_timeout` in the GUI): far longer than a
 /// healthy round-trip (~12 ms for the DH handshake), short enough to fail while
 /// the user is still watching.
 #[cfg(all(feature = "system-keyring", not(target_os = "macos")))]

@@ -35,6 +35,7 @@ mod resolver;
 pub mod script_resolver;
 pub mod serde_helpers;
 mod status;
+mod store_key;
 mod touch;
 mod verification;
 
@@ -42,7 +43,7 @@ pub use async_resolver::{
     AsyncCredentialResolver, AsyncCredentialResult, CancellationToken, PendingCredentialResolution,
     resolve_with_callback, spawn_credential_resolution,
 };
-pub use backend::{BackendAvailability, SecretBackend};
+pub use backend::{BackendAvailability, LookupIdentity, SecretBackend};
 pub use bitwarden::{
     BitwardenBackend, BitwardenVersion, auto_unlock, clear_session_key, configure_server,
     delete_api_credentials_from_keyring, delete_master_password_from_keyring,
@@ -102,6 +103,10 @@ pub use portable_encrypted_file::{
 };
 pub use resolver::CredentialResolver;
 pub use status::{KeePassStatus, parse_keepassxc_version};
+pub use store_key::{
+    generate_store_key, generate_store_key_for_connection, generate_store_key_with_group,
+    vault_keys_for_connection,
+};
 pub use touch::{TouchObserver, set_touch_observer};
 pub use verification::{
     CredentialStatus, CredentialVerificationManager, DialogPreFillData, VerifiedCredentials,

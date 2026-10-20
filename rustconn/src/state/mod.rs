@@ -1703,7 +1703,17 @@ impl AppState {
                     "[resolve_credentials_blocking] Vault (non-KeePass): resolving"
                 );
 
-                match dispatch_vault_op(&secret_settings, lookup_key, VaultOp::Retrieve) {
+                // `RetrieveFor`, not `Retrieve`: a backend searching from the
+                // vault root also needs the name and host to match an entry
+                // titled by either (issue #353).
+                match dispatch_vault_op(
+                    &secret_settings,
+                    lookup_key,
+                    VaultOp::RetrieveFor {
+                        name: &connection.name,
+                        host: &connection.host,
+                    },
+                ) {
                     // An entry holding an empty password is not a hit. Older
                     // releases left such entries behind under the flat key, and
                     // accepting one would end the search before the key that
@@ -1979,7 +1989,17 @@ impl AppState {
                         group_key
                     );
 
-                    match dispatch_vault_op(&secret_settings, &group_key, VaultOp::Retrieve) {
+                    // The key is the group's UUID; its name rides along so a
+                    // backend searching from root can match an entry titled
+                    // by it, as the KeePass Inherit branch above does (#353).
+                    match dispatch_vault_op(
+                        &secret_settings,
+                        &group_key,
+                        VaultOp::RetrieveFor {
+                            name: &group.name,
+                            host: "",
+                        },
+                    ) {
                         Ok(Some(mut creds)) => {
                             tracing::debug!(
                                 "[resolve_credentials_blocking] Found inherited password from group '{}'",

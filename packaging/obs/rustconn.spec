@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.16
+Version:        0.23.17
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,15 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Tue Oct 20 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.17-0
+- Version bump to 0.23.17
+- Fixed "Search from vault root" for Bitwarden, 1Password, Passbolt and pass: connect and the connection editor's load and test buttons now pass the connection's name and host, so an entry titled by either is found (issue #353)
+- Fixed root search letting a vault write (save or delete) touch an entry RustConn did not create; root search now widens reads only (issue #353)
+- Fixed the KeePass connection editor's Load password from vault and Test credential resolution buttons skipping root search (issue #353)
+- Fixed group password loads and inherited credentials ignoring root search; they now match an entry titled by the group's name (issue #353)
+- Fixed rustconn-cli secret get/set/delete using different vault keys from the GUI; the keys older releases wrote are still read and deleted
+- Fixed Bitwarden unlocking twice when a connect starts during the startup unlock; the startup unlock is bounded to 30 s (issue #353)
+- Updated tokio 1.54.0, rustls-webpki, crc32fast, typed-path (compatible bumps)
 * Mon Oct 19 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.16-0
 - Version bump to 0.23.16
 - Fixed embedded RDP to a Linux server that offers only Standard RDP Security dying silently: the STANDARD_RDP_SECURITY downselect from ironrdp-connector 0.10 is now classified as SecurityUnsupported and handed to the external FreeRDP client (issue #366)

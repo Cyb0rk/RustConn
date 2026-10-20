@@ -1355,9 +1355,19 @@ impl CredentialResolver {
                                 }
                             }
                             _ => {
+                                // The key is the UUID; the name rides along so a
+                                // backend searching from root can match an entry
+                                // titled by it, as the GUI's Inherit path does
+                                // (issue #353).
                                 let group_id_str = group.id.to_string();
+                                let name = group.name.trim();
+                                let identity = LookupIdentity {
+                                    key: &group_id_str,
+                                    name: (!name.is_empty()).then_some(name),
+                                    host: None,
+                                };
                                 if let Some(creds) =
-                                    self.secret_manager.retrieve(&group_id_str).await?
+                                    self.secret_manager.retrieve_identity(identity).await?
                                 {
                                     return Ok(Some(self.merge_group_credentials(creds, group)));
                                 }

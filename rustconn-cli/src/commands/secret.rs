@@ -37,6 +37,177 @@ fn create_pass_backend(
     rustconn_core::secret::PassBackend::from_app_settings(settings)
 }
 
+/// Where a connection's credential lives in a backend other than KeePass.
+///
+/// `primary` is the key the GUI saves and resolves under —
+/// `RustConn/{group path}/{name} ({protocol})` for the system keyring,
+/// `rustconn/{name}` for everything else. Until 0.23.17 this command used
+/// `{name} ({protocol})` for all of them, and the connection UUID for a
+/// 1Password store and for Passbolt. So `secret get` never found a password the
+/// GUI had saved, and a connect never found one `secret set` had saved.
+///
+/// `legacy` is the rest of the GUI's key list for the connection
+/// ([`rustconn_core::secret::vault_keys_for_connection`]), plus the keys older
+/// releases of this command wrote, so their credentials are still read and still
+/// deleted. Every backend's `delete` matches only RustConn's own entries, so a
+/// legacy key that was never written deletes nothing.
+#[cfg(feature = "secret-management")]
+#[derive(Debug, PartialEq, Eq)]
+struct VaultKeys {
+    primary: String,
+    legacy: Vec<String>,
+}
+
+#[cfg(feature = "secret-management")]
+fn vault_keys(
+    connection: &rustconn_core::models::Connection,
+    groups: &[rustconn_core::models::ConnectionGroup],
+    backend: rustconn_core::config::SecretBackendType,
+) -> VaultKeys {
+    use rustconn_core::config::SecretBackendType;
+
+    // The GUI's list, the same function its save, rename and cleanup use.
+    let mut keys = rustconn_core::secret::vault_keys_for_connection(
+        groups,
+        connection,
+        // The protocol the GUI keys by. `connection.protocol` is a second
+        // persisted copy that nothing keeps in step on load.
+        connection.protocol_config.protocol_type().as_str(),
+        backend,
+    );
+    // Plus what this command alone used to write, on the backends it wrote it
+    // to. 1Password and Passbolt are left out: the old command stored those
+    // under the UUID, which the GUI list already ends with.
+    if !matches!(
+        backend,
+        SecretBackendType::OnePassword | SecretBackendType::Passbolt
+    ) {
+        keys.push(format!(
+            "{} ({})",
+            connection.name,
+            connection.protocol.as_str()
+        ));
+    }
+    let primary = keys.remove(0);
+    let mut legacy: Vec<String> = Vec::with_capacity(keys.len());
+    for key in keys {
+        if key != primary && !legacy.contains(&key) {
+            legacy.push(key);
+        }
+    }
+    VaultKeys { primary, legacy }
+}
+
+/// The other connections whose credential lives under `primary` too.
+///
+/// `rustconn/{name}` carries no group or protocol, so same-named connections
+/// share it — in the GUI as well. A `set` or `delete` here changes it for all
+/// of them, and the user only named one.
+#[cfg(feature = "secret-management")]
+fn connections_sharing_key<'a>(
+    primary: &str,
+    target: &rustconn_core::models::Connection,
+    connections: &'a [rustconn_core::models::Connection],
+    groups: &[rustconn_core::models::ConnectionGroup],
+    backend: rustconn_core::config::SecretBackendType,
+) -> Vec<&'a rustconn_core::models::Connection> {
+    connections
+        .iter()
+        .filter(|c| c.id != target.id && vault_keys(c, groups, backend).primary == primary)
+        .collect()
+}
+
+/// Tells the user, on stderr, that a `set`/`delete` also affects the
+/// connections that share the key. Not an error: the GUI shares it the same way.
+///
+/// Silent for KeePass: its entry path carries the group and the protocol, so
+/// same-named connections do not share it, and `primary` (`rustconn/{name}`) is
+/// not the key KeePass is addressed by.
+#[cfg(feature = "secret-management")]
+fn warn_shared_key(
+    backend: rustconn_core::config::SecretBackendType,
+    primary: &str,
+    others: &[&rustconn_core::models::Connection],
+) {
+    use rustconn_core::config::SecretBackendType;
+
+    if others.is_empty()
+        || matches!(
+            backend,
+            SecretBackendType::KdbxFile | SecretBackendType::KeePassXc
+        )
+    {
+        return;
+    }
+    let names: Vec<String> = others
+        .iter()
+        .map(|c| format!("'{}' ({})", c.name, c.protocol.as_str()))
+        .collect();
+    eprintln!(
+        "Warning: the vault key '{primary}' is shared with {}; this changes their \
+         stored credential too.",
+        names.join(", ")
+    );
+}
+
+/// The key plus the connection's name and host, so a backend searching from
+/// the vault root can match an entry titled by either — the read a connect does
+/// (issue #353). A plain `retrieve(key)` gives root search nothing to match but
+/// the key itself.
+#[cfg(feature = "secret-management")]
+fn identity_of<'a>(
+    key: &'a str,
+    connection: &'a rustconn_core::models::Connection,
+) -> rustconn_core::secret::LookupIdentity<'a> {
+    let non_blank = |s: &'a str| Some(s).filter(|s| !s.trim().is_empty());
+    rustconn_core::secret::LookupIdentity {
+        key,
+        name: non_blank(&connection.name),
+        host: non_blank(&connection.host),
+    }
+}
+
+/// Reads a connection's credential: the GUI's key first, root search included,
+/// then each legacy key by plain lookup.
+#[cfg(feature = "secret-management")]
+async fn retrieve_connection_credentials(
+    backend: &dyn rustconn_core::secret::SecretBackend,
+    keys: &VaultKeys,
+    connection: &rustconn_core::models::Connection,
+) -> rustconn_core::error::SecretResult<Option<rustconn_core::models::Credentials>> {
+    if let Some(creds) = backend
+        .retrieve_identity(identity_of(&keys.primary, connection))
+        .await?
+    {
+        return Ok(Some(creds));
+    }
+    for key in &keys.legacy {
+        if let Some(creds) = backend.retrieve(key).await? {
+            return Ok(Some(creds));
+        }
+    }
+    Ok(None)
+}
+
+/// Deletes a connection's credential under the GUI's key, then under every
+/// legacy key.
+///
+/// The primary key's error fails the command. A legacy key's does not: most of
+/// them hold nothing, and the credential the user asked about is the primary.
+#[cfg(feature = "secret-management")]
+async fn delete_connection_credentials(
+    backend: &dyn rustconn_core::secret::SecretBackend,
+    keys: &VaultKeys,
+) -> rustconn_core::error::SecretResult<()> {
+    backend.delete(&keys.primary).await?;
+    for key in &keys.legacy {
+        if let Err(e) = backend.delete(key).await {
+            tracing::debug!(%key, error = %e, "secret delete: legacy key not deleted");
+        }
+    }
+    Ok(())
+}
+
 /// Secret command handler
 ///
 /// # Errors
@@ -243,7 +414,7 @@ fn cmd_secret_get(
 ) -> Result<(), CliError> {
     use rustconn_core::config::SecretBackendType;
     use rustconn_core::models::Credentials;
-    use rustconn_core::secret::{KeePassHierarchy, KeePassStatus, SecretBackend};
+    use rustconn_core::secret::{KeePassHierarchy, KeePassStatus};
 
     let config_manager = create_config_manager(config_path)?;
 
@@ -256,7 +427,6 @@ fn cmd_secret_get(
         .map_err(|e| CliError::Config(format!("Failed to load groups: {e}")))?;
 
     let connection = find_connection(&connections, connection_name)?;
-    let lookup_key = format!("{} ({})", connection.name, connection.protocol.as_str());
     let keepass_base = KeePassHierarchy::build_entry_path(connection, &groups);
     let keepass_key = format!(
         "{} ({})",
@@ -274,6 +444,7 @@ fn cmd_secret_get(
         .map(parse_backend)
         .transpose()?
         .unwrap_or(settings.secrets.preferred_backend);
+    let keys = vault_keys(connection, &groups, backend_type);
 
     match backend_type {
         SecretBackendType::LibSecret | SecretBackendType::MacOsKeychain => {
@@ -286,7 +457,8 @@ fn cmd_secret_get(
             let backend = rustconn_core::secret::MacOsKeychainBackend::new();
             #[cfg(not(target_os = "macos"))]
             let backend = rustconn_core::secret::LibSecretBackend::new("rustconn");
-            let result: Result<Option<Credentials>, _> = rt.block_on(backend.retrieve(&lookup_key));
+            let result: Result<Option<Credentials>, _> =
+                rt.block_on(retrieve_connection_credentials(&backend, &keys, connection));
 
             match result {
                 Ok(Some(creds)) => {
@@ -380,7 +552,8 @@ fn cmd_secret_get(
                 .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
 
             let backend = BitwardenBackend::new().with_settings_toggles(&settings.secrets);
-            let result: Result<Option<Credentials>, _> = rt.block_on(backend.retrieve(&lookup_key));
+            let result: Result<Option<Credentials>, _> =
+                rt.block_on(retrieve_connection_credentials(&backend, &keys, connection));
 
             match result {
                 Ok(Some(creds)) => {
@@ -413,7 +586,8 @@ fn cmd_secret_get(
 
             // Token plus the read-only / root-search toggles from settings.
             let backend = OnePasswordBackend::from_secret_settings(&settings.secrets);
-            let result: Result<Option<Credentials>, _> = rt.block_on(backend.retrieve(&lookup_key));
+            let result: Result<Option<Credentials>, _> =
+                rt.block_on(retrieve_connection_credentials(&backend, &keys, connection));
 
             match result {
                 Ok(Some(creds)) => {
@@ -446,8 +620,8 @@ fn cmd_secret_get(
 
             // Server, passphrase and the read-only / root-search toggles.
             let backend = PassboltBackend::from_secret_settings(&settings.secrets);
-            let pb_key = connection.id.to_string();
-            let result: Result<Option<Credentials>, _> = rt.block_on(backend.retrieve(&pb_key));
+            let result: Result<Option<Credentials>, _> =
+                rt.block_on(retrieve_connection_credentials(&backend, &keys, connection));
 
             match result {
                 Ok(Some(creds)) => {
@@ -477,7 +651,8 @@ fn cmd_secret_get(
                 .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
 
             let backend = create_pass_backend(&settings);
-            let result: Result<Option<Credentials>, _> = rt.block_on(backend.retrieve(&lookup_key));
+            let result: Result<Option<Credentials>, _> =
+                rt.block_on(retrieve_connection_credentials(&backend, &keys, connection));
 
             match result {
                 Ok(Some(creds)) => {
@@ -509,7 +684,8 @@ fn cmd_secret_get(
                 .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
 
             let backend = EncryptedFileBackend::new();
-            let result: Result<Option<Credentials>, _> = rt.block_on(backend.retrieve(&lookup_key));
+            let result: Result<Option<Credentials>, _> =
+                rt.block_on(retrieve_connection_credentials(&backend, &keys, connection));
 
             match result {
                 Ok(Some(creds)) => {
@@ -538,7 +714,8 @@ fn cmd_secret_get(
             let backend = open_portable_backend(&settings.secrets)?;
             let rt = tokio::runtime::Runtime::new()
                 .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
-            let result: Result<Option<Credentials>, _> = rt.block_on(backend.retrieve(&lookup_key));
+            let result: Result<Option<Credentials>, _> =
+                rt.block_on(retrieve_connection_credentials(&backend, &keys, connection));
 
             match result {
                 Ok(Some(creds)) => {
@@ -605,7 +782,6 @@ fn cmd_secret_set(
         .map_err(|e| CliError::Config(format!("Failed to load groups: {e}")))?;
 
     let connection = find_connection(&connections, connection_name)?;
-    let lookup_key = format!("{} ({})", connection.name, connection.protocol.as_str());
     let keepass_base = KeePassHierarchy::build_entry_path(connection, &groups);
     let keepass_key = format!(
         "{} ({})",
@@ -623,6 +799,18 @@ fn cmd_secret_set(
         .map(parse_backend)
         .transpose()?
         .unwrap_or(settings.secrets.preferred_backend);
+    let keys = vault_keys(connection, &groups, backend_type);
+    warn_shared_key(
+        backend_type,
+        &keys.primary,
+        &connections_sharing_key(
+            &keys.primary,
+            connection,
+            &connections,
+            &groups,
+            backend_type,
+        ),
+    );
 
     let password_value = if let Some(pwd) = password_zeroizing {
         secrecy::SecretString::from(pwd.as_str())
@@ -677,7 +865,7 @@ fn cmd_secret_set(
                 domain: connection.domain.clone(),
             };
 
-            rt.block_on(backend.store(&lookup_key, &creds))
+            rt.block_on(backend.store(&keys.primary, &creds))
                 .map_err(|e| CliError::Secret(format!("Keyring error: {e}")))?;
 
             println!(
@@ -741,7 +929,7 @@ fn cmd_secret_set(
                 domain: connection.domain.clone(),
             };
 
-            rt.block_on(backend.store(&lookup_key, &creds))
+            rt.block_on(backend.store(&keys.primary, &creds))
                 .map_err(|e| CliError::Secret(format!("Bitwarden error: {e}")))?;
 
             println!(
@@ -767,8 +955,7 @@ fn cmd_secret_set(
                 domain: connection.domain.clone(),
             };
 
-            let op_key = connection.id.to_string();
-            rt.block_on(backend.store(&op_key, &creds))
+            rt.block_on(backend.store(&keys.primary, &creds))
                 .map_err(|e| CliError::Secret(format!("1Password error: {e}")))?;
 
             println!(
@@ -794,8 +981,7 @@ fn cmd_secret_set(
                 domain: connection.domain.clone(),
             };
 
-            let pb_key = connection.id.to_string();
-            rt.block_on(backend.store(&pb_key, &creds))
+            rt.block_on(backend.store(&keys.primary, &creds))
                 .map_err(|e| CliError::Secret(format!("Passbolt error: {e}")))?;
 
             println!(
@@ -820,7 +1006,7 @@ fn cmd_secret_set(
                 domain: connection.domain.clone(),
             };
 
-            rt.block_on(backend.store(&lookup_key, &creds))
+            rt.block_on(backend.store(&keys.primary, &creds))
                 .map_err(|e| CliError::Secret(format!("Pass error: {e}")))?;
 
             println!(
@@ -845,7 +1031,7 @@ fn cmd_secret_set(
                 domain: connection.domain.clone(),
             };
 
-            rt.block_on(backend.store(&lookup_key, &creds))
+            rt.block_on(backend.store(&keys.primary, &creds))
                 .map_err(|e| CliError::Secret(format!("Encrypted file error: {e}")))?;
 
             println!(
@@ -870,7 +1056,7 @@ fn cmd_secret_set(
                 domain: connection.domain.clone(),
             };
 
-            rt.block_on(backend.store(&lookup_key, &creds))
+            rt.block_on(backend.store(&keys.primary, &creds))
                 .map_err(|e| CliError::Secret(format!("Portable file error: {e}")))?;
 
             println!(
@@ -917,7 +1103,7 @@ fn cmd_secret_delete(
     backend: Option<&str>,
 ) -> Result<(), CliError> {
     use rustconn_core::config::SecretBackendType;
-    use rustconn_core::secret::{KeePassHierarchy, KeePassStatus, SecretBackend};
+    use rustconn_core::secret::{KeePassHierarchy, KeePassStatus};
 
     let config_manager = create_config_manager(config_path)?;
 
@@ -930,7 +1116,6 @@ fn cmd_secret_delete(
         .map_err(|e| CliError::Config(format!("Failed to load groups: {e}")))?;
 
     let connection = find_connection(&connections, connection_name)?;
-    let lookup_key = format!("{} ({})", connection.name, connection.protocol.as_str());
     let keepass_base = KeePassHierarchy::build_entry_path(connection, &groups);
     let keepass_entry_path = format!(
         "{} ({})",
@@ -946,6 +1131,18 @@ fn cmd_secret_delete(
         .map(parse_backend)
         .transpose()?
         .unwrap_or(settings.secrets.preferred_backend);
+    let keys = vault_keys(connection, &groups, backend_type);
+    warn_shared_key(
+        backend_type,
+        &keys.primary,
+        &connections_sharing_key(
+            &keys.primary,
+            connection,
+            &connections,
+            &groups,
+            backend_type,
+        ),
+    );
 
     match backend_type {
         SecretBackendType::LibSecret | SecretBackendType::MacOsKeychain => {
@@ -958,7 +1155,7 @@ fn cmd_secret_delete(
             let backend = rustconn_core::secret::MacOsKeychainBackend::new();
             #[cfg(not(target_os = "macos"))]
             let backend = rustconn_core::secret::LibSecretBackend::new("rustconn");
-            rt.block_on(backend.delete(&lookup_key))
+            rt.block_on(delete_connection_credentials(&backend, &keys))
                 .map_err(|e| CliError::Secret(format!("Keyring error: {e}")))?;
 
             println!("Deleted credentials for '{}' from Keyring", connection.name);
@@ -1000,7 +1197,7 @@ fn cmd_secret_delete(
                 .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
 
             let backend = BitwardenBackend::new().with_settings_toggles(&settings.secrets);
-            rt.block_on(backend.delete(&lookup_key))
+            rt.block_on(delete_connection_credentials(&backend, &keys))
                 .map_err(|e| CliError::Secret(format!("Bitwarden error: {e}")))?;
 
             println!(
@@ -1017,8 +1214,7 @@ fn cmd_secret_delete(
 
             // Token plus the read-only / root-search toggles from settings.
             let backend = OnePasswordBackend::from_secret_settings(&settings.secrets);
-            let op_key = connection.id.to_string();
-            rt.block_on(backend.delete(&op_key))
+            rt.block_on(delete_connection_credentials(&backend, &keys))
                 .map_err(|e| CliError::Secret(format!("1Password error: {e}")))?;
 
             println!(
@@ -1035,8 +1231,7 @@ fn cmd_secret_delete(
 
             // Server, passphrase and the read-only / root-search toggles.
             let backend = PassboltBackend::from_secret_settings(&settings.secrets);
-            let pb_key = connection.id.to_string();
-            rt.block_on(backend.delete(&pb_key))
+            rt.block_on(delete_connection_credentials(&backend, &keys))
                 .map_err(|e| CliError::Secret(format!("Passbolt error: {e}")))?;
 
             println!(
@@ -1050,7 +1245,7 @@ fn cmd_secret_delete(
                 .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
 
             let backend = create_pass_backend(&settings);
-            rt.block_on(backend.delete(&lookup_key))
+            rt.block_on(delete_connection_credentials(&backend, &keys))
                 .map_err(|e| CliError::Secret(format!("Pass error: {e}")))?;
 
             println!("Deleted credentials for '{}' from Pass", connection.name);
@@ -1063,7 +1258,7 @@ fn cmd_secret_delete(
                 .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
 
             let backend = EncryptedFileBackend::new();
-            rt.block_on(backend.delete(&lookup_key))
+            rt.block_on(delete_connection_credentials(&backend, &keys))
                 .map_err(|e| CliError::Secret(format!("Encrypted file error: {e}")))?;
 
             println!(
@@ -1076,7 +1271,7 @@ fn cmd_secret_delete(
             let backend = open_portable_backend(&settings.secrets)?;
             let rt = tokio::runtime::Runtime::new()
                 .map_err(|e| CliError::Secret(format!("Runtime error: {e}")))?;
-            rt.block_on(backend.delete(&lookup_key))
+            rt.block_on(delete_connection_credentials(&backend, &keys))
                 .map_err(|e| CliError::Secret(format!("Portable file error: {e}")))?;
 
             println!(
@@ -1278,4 +1473,115 @@ fn cmd_secret_verify_keepass(
     }
 
     Ok(())
+}
+#[cfg(all(test, feature = "secret-management"))]
+mod vault_key_tests {
+    use rustconn_core::config::SecretBackendType;
+    use rustconn_core::models::{Connection, ConnectionGroup};
+
+    use super::{VaultKeys, connections_sharing_key, vault_keys};
+
+    /// The reporter's connection from issue #353: `hanfile03` in groups
+    /// `AME/DE/11`.
+    fn grouped_rdp() -> (Connection, Vec<ConnectionGroup>) {
+        let ame = ConnectionGroup::new("AME".to_string());
+        let de = ConnectionGroup::with_parent("DE".to_string(), ame.id);
+        let eleven = ConnectionGroup::with_parent("11".to_string(), de.id);
+        let mut conn = Connection::new_rdp(
+            "hanfile03".to_string(),
+            "hanfile03.aag.local".to_string(),
+            3389,
+        );
+        conn.group_id = Some(eleven.id);
+        (conn, vec![ame, de, eleven])
+    }
+
+    /// `secret get` reads, and `secret set` writes, under the key the GUI saves
+    /// and resolves with — `rustconn/{name}` — and not under `{name} (rdp)`,
+    /// which only this command ever used.
+    #[test]
+    fn cli_backends_use_the_guis_flat_key() {
+        let (conn, groups) = grouped_rdp();
+        for backend in [
+            SecretBackendType::Bitwarden,
+            SecretBackendType::OnePassword,
+            SecretBackendType::Passbolt,
+            SecretBackendType::Pass,
+            SecretBackendType::EncryptedFile,
+            SecretBackendType::PortableEncryptedFile,
+        ] {
+            assert_eq!(
+                vault_keys(&conn, &groups, backend).primary,
+                "rustconn/hanfile03",
+                "{backend:?}"
+            );
+        }
+    }
+
+    /// Credentials an older release wrote stay reachable: the GUI's UUID key,
+    /// and the `{name} ({protocol})` key the old `secret set` used.
+    #[test]
+    fn older_cli_keys_are_kept_as_legacy() {
+        let (conn, groups) = grouped_rdp();
+        let keys = vault_keys(&conn, &groups, SecretBackendType::Bitwarden);
+        assert_eq!(
+            keys,
+            VaultKeys {
+                primary: "rustconn/hanfile03".to_string(),
+                legacy: vec![conn.id.to_string(), "hanfile03 (rdp)".to_string()],
+            }
+        );
+    }
+
+    /// The old command never wrote `{name} ({protocol})` to 1Password or
+    /// Passbolt — it used the UUID — so `delete` must not go looking for it
+    /// there.
+    #[test]
+    fn onepassword_and_passbolt_get_no_name_protocol_key() {
+        let (conn, groups) = grouped_rdp();
+        for backend in [SecretBackendType::OnePassword, SecretBackendType::Passbolt] {
+            assert_eq!(
+                vault_keys(&conn, &groups, backend).legacy,
+                vec![conn.id.to_string()],
+                "{backend:?}"
+            );
+        }
+    }
+
+    /// The keyring key is the one the GUI saves under (group path, no import
+    /// sanitising), and the legacy list is the GUI's cleanup list.
+    #[test]
+    fn keyring_uses_the_guis_key_list() {
+        let (conn, groups) = grouped_rdp();
+        let keys = vault_keys(&conn, &groups, SecretBackendType::LibSecret);
+        assert_eq!(keys.primary, "RustConn/AME/DE/11/hanfile03 (rdp)");
+        assert_eq!(
+            keys.legacy,
+            vec![
+                "hanfile03 (rdp)".to_string(),
+                "rustconn/hanfile03".to_string(),
+                conn.id.to_string(),
+            ]
+        );
+    }
+
+    /// Two connections with one name share `rustconn/{name}`, so `set`/`delete`
+    /// on one must say it reaches the other. A different name does not.
+    #[test]
+    fn same_named_connections_are_reported_as_sharing_the_key() {
+        let (conn, groups) = grouped_rdp();
+        let twin = Connection::new_ssh("hanfile03".to_string(), "other".to_string(), 22);
+        let other = Connection::new_ssh("web".to_string(), "web".to_string(), 22);
+        let all = vec![conn.clone(), twin.clone(), other];
+        let keys = vault_keys(&conn, &groups, SecretBackendType::Bitwarden);
+        let sharing = connections_sharing_key(
+            &keys.primary,
+            &conn,
+            &all,
+            &groups,
+            SecretBackendType::Bitwarden,
+        );
+        assert_eq!(sharing.len(), 1);
+        assert_eq!(sharing[0].id, twin.id);
+    }
 }

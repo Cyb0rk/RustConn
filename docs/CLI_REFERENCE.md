@@ -1,6 +1,6 @@
 # RustConn CLI Reference
 
-**Version 0.23.16** | Command-line interface for RustConn connection management
+**Version 0.23.17** | Command-line interface for RustConn connection management
 
 The `rustconn-cli` binary provides headless connection management from the terminal. It shares the same configuration files as the GUI (`~/.config/rustconn/`), so changes made in either tool are immediately visible to the other. The default build is the minimal headless path; desktop/client-launch and secret-management commands are enabled with optional features.
 
@@ -844,11 +844,24 @@ rustconn-cli secret verify-keepass --database ~/vault.kdbx --yubikey 2       # Y
 > `rustconn-cli add` followed by `secret set` produces a connection that resolves
 > its own credential, with no extra step.
 
-> **`secret get --backend keepass` honours "Search from vault root".** When that
-> option is on in Settings → Secrets and the scoped `RustConn/` lookup misses,
-> the command widens to a whole-database search keyed by the connection's name
-> and host — the same fallback the GUI uses at connect — so `secret get` reports
-> exactly what a connect would find.
+> **`secret get` honours "Search from vault root".** When that option is on in
+> Settings → Secrets for the backend in use (KeePass, Bitwarden, 1Password,
+> Passbolt or pass) and RustConn's own entry is missing, the command widens to a
+> whole-vault search for an entry titled by the connection's name or host — the
+> same fallback the GUI uses at connect — so `secret get` reports exactly what a
+> connect would find. Root search widens reads only; `set` and `delete` touch
+> RustConn's own entry and nothing else.
+
+> **Keys are the GUI's.** `secret get/set/delete` address a credential under the
+> key the GUI saves it under: `rustconn/<name>` for Bitwarden, 1Password,
+> Passbolt, pass and the encrypted files, and
+> `RustConn/<group path>/<name> (<protocol>)` for the system keyring. Before
+> 0.23.17 the CLI used `<name> (<protocol>)` (and the connection UUID for
+> 1Password and Passbolt); `get` still reads those keys and `delete` still
+> removes them. `rustconn/<name>` carries no group or protocol, so connections
+> with the same name share one credential — `set` and `delete` list the others
+> they affect on stderr (KeePass entries carry the group and protocol, so they
+> are not shared and no warning is printed).
 
 Backend aliases:
 
