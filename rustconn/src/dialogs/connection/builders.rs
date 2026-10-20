@@ -979,9 +979,8 @@ impl ConnectionDialogData<'_> {
             return None;
         }
 
-        // Parse args from space-separated string
-        let args_text = self.postpend_args_entry.text().to_string();
-        let args: Vec<String> = args_text.split_whitespace().map(str::to_string).collect();
+        // Quote-aware split so a postpend arg with a space survives intact.
+        let args = Self::parse_args(&self.postpend_args_entry.text());
 
         Some(rustconn_core::models::PostpendCommand {
             command,
@@ -1164,15 +1163,7 @@ impl ConnectionDialogData<'_> {
     }
 
     fn build_telnet_config(&self) -> rustconn_core::models::TelnetConfig {
-        let custom_args_text = self.telnet_custom_args_entry.text();
-        let custom_args: Vec<String> = if custom_args_text.trim().is_empty() {
-            Vec::new()
-        } else {
-            custom_args_text
-                .split_whitespace()
-                .map(String::from)
-                .collect()
-        };
+        let custom_args = Self::parse_args(&self.telnet_custom_args_entry.text());
         let backspace_sends = rustconn_core::models::BackspaceSends::from_index(
             self.telnet_backspace_dropdown.selected(),
         );
@@ -1187,15 +1178,7 @@ impl ConnectionDialogData<'_> {
 
     fn build_serial_config(&self) -> rustconn_core::models::SerialConfig {
         let device = self.serial_device_entry.text().trim().to_string();
-        let custom_args_text = self.serial_custom_args_entry.text();
-        let custom_args: Vec<String> = if custom_args_text.trim().is_empty() {
-            Vec::new()
-        } else {
-            custom_args_text
-                .split_whitespace()
-                .map(String::from)
-                .collect()
-        };
+        let custom_args = Self::parse_args(&self.serial_custom_args_entry.text());
         rustconn_core::models::SerialConfig {
             device,
             baud_rate: rustconn_core::SerialBaudRate::from_index(
@@ -1607,14 +1590,17 @@ impl ConnectionDialogData<'_> {
             )
         });
 
-        // Map dropdown index to color depth: 0->32, 1->24, 2->16, 3->15, 4->8
-        let color_depth = Some(match self.rdp_color_dropdown.selected() {
-            1 => 24,
-            2 => 16,
-            3 => 15,
-            4 => 8,
-            _ => 32, // 0 and any other value default to 32
-        });
+        // Map dropdown index to color depth. Index 0 ("Negotiate") stores
+        // `None`, so no `/bpp:` reaches FreeRDP (see #381): 0->None, 1->32,
+        // 2->24, 3->16, 4->15, 5->8.
+        let color_depth = match self.rdp_color_dropdown.selected() {
+            2 => Some(24),
+            3 => Some(16),
+            4 => Some(15),
+            5 => Some(8),
+            0 => None,
+            _ => Some(32), // 1 and any other value default to 32
+        };
 
         let gateway = {
             let text = self.rdp_gateway_entry.text();
@@ -1883,12 +1869,7 @@ impl ConnectionDialogData<'_> {
     }
 
     fn parse_args(text: &str) -> Vec<String> {
-        if text.trim().is_empty() {
-            return Vec::new();
-        }
-        text.split_whitespace()
-            .map(std::string::ToString::to_string)
-            .collect()
+        rustconn_core::dialog_utils::parse_args(text)
     }
 
     /// Builds elevated credentials from the SSH privilege escalation settings.

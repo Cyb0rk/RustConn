@@ -1,4 +1,28 @@
 -------------------------------------------------------------------
+Wed Oct 21 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.18
+
+- Version bump to 0.23.18
+- Added: RDP Color Depth can be set to "Negotiate (server default)", which
+  stops RustConn from always sending /bpp: to FreeRDP; some servers only accept
+  a connection when the colour depth is left unset (issue #381)
+- Fixed: SSH jump-host passwords are passed to the SSH_ASKPASS helper through an
+  owner-only file instead of the process environment, where they were readable
+  via /proc/<pid>/environ for the life of the process
+- Fixed: custom RDP, VNC, Telnet, Serial and Zero Trust arguments now survive
+  quotes and spaces instead of being split on every space
+- Fixed: Asbru-CM import holds passwords as SecretString rather than a plain
+  String, and Asbru export no longer writes a dead entry for a protocol it
+  cannot read back
+- Improved: tag filtering no longer allocates a String per tag, CSV export
+  deduplicates its field mapper and indexes group lookups, and the command-line
+  secret commands share one async runtime
+- Added guard tests that the Debug output of five password-bearing types does
+  not leak the plaintext
+- Documentation: corrected the command-line reference for connection delete in
+  non-interactive mode, and documented five accepted unmaintained transitive
+  advisories in deny.toml
+
+-------------------------------------------------------------------
 Tue Oct 20 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.17
 
 - Version bump to 0.23.17

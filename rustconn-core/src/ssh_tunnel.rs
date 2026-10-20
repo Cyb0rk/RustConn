@@ -31,7 +31,8 @@ pub type SshTunnelResult<T> = Result<T, SshTunnelError>;
 /// A running SSH tunnel (`ssh -N -L ...`).
 ///
 /// The tunnel process is killed when this struct is dropped.
-/// If a temporary askpass script was created, it is zeroized and deleted.
+/// If a temporary askpass script or secret file was created, it is zeroized
+/// and deleted.
 pub struct SshTunnel {
     /// The child SSH process.
     child: Child,
@@ -41,6 +42,10 @@ pub struct SshTunnel {
     stderr_output: Arc<Mutex<String>>,
     /// Path to the temporary askpass script (cleaned up on drop).
     askpass_script: Option<std::path::PathBuf>,
+    /// Path to the owner-only file holding the jump-host password (cleaned up
+    /// on drop). The password lives here, not in the child's environment; the
+    /// env carries only this path, matching the multi-hop askpass convention.
+    secret_file: Option<std::path::PathBuf>,
 }
 
 impl SshTunnel {
@@ -112,6 +117,11 @@ impl Drop for SshTunnel {
         if let Some(ref path) = self.askpass_script {
             cleanup_askpass_script(path);
         }
+        if let Some(ref path) = self.secret_file {
+            // Same zeroize-then-unlink the askpass script gets: the password
+            // byte s lived here in plaintext.
+            cleanup_askpass_script(path);
+        }
     }
 }
 
@@ -138,17 +148,30 @@ pub struct SshTunnelParams {
     pub extra_args: Vec<String>,
 }
 
-/// Environment variable name used to pass the password to the askpass script.
-/// Intentionally obscure to reduce exposure in `/proc/PID/environ`.
-const TUNNEL_ASKPASS_ENV_VAR: &str = "_RC_TUN_PW";
+/// Environment variable name carrying the *path* to the owner-only file that
+/// holds the jump-host password — never the password itself.
+///
+/// This matches the multi-hop askpass convention (`_RC_JH_PW_FILE`, issue
+/// #203): the env is visible in `/proc/<pid>/environ` to the same user, so it
+/// must not carry a secret value. The helper script opens the file this names
+/// and prints its contents, so the plaintext stays in an owner-only file the
+/// tunnel removes on drop, not in the SSH process environment.
+pub(crate) const TUNNEL_ASKPASS_ENV_VAR: &str = "_RC_TUN_PW_FILE";
 
-/// Creates a temporary `SSH_ASKPASS` helper script that echoes the password
-/// from [`TUNNEL_ASKPASS_ENV_VAR`]. The script is created with mode 0700.
+/// Creates a temporary `SSH_ASKPASS` helper script that prints the contents of
+/// the file named by [`TUNNEL_ASKPASS_ENV_VAR`]. The script is created with
+/// mode 0700.
+///
+/// The script reads the secret from a file rather than straight from the
+/// environment so the password value never enters `/proc/<pid>/environ`; the
+/// env carries only the file path. It deliberately does not unlink the file —
+/// cleanup is owned by [`SshTunnel`]'s `Drop` — so a second askpass invocation
+/// (OpenSSH may call the helper more than once) still finds it.
 ///
 /// # Errors
 ///
 /// Returns a human-readable error string on failure.
-fn create_tunnel_askpass_script() -> Result<std::path::PathBuf, String> {
+pub(crate) fn create_tunnel_askpass_script() -> Result<std::path::PathBuf, String> {
     use std::io::Write;
 
     let dir = std::env::temp_dir();
@@ -157,7 +180,17 @@ fn create_tunnel_askpass_script() -> Result<std::path::PathBuf, String> {
         uuid::Uuid::new_v4().as_hyphenated()
     ));
 
-    let script = format!("#!/bin/sh\necho \"${TUNNEL_ASKPASS_ENV_VAR}\"\n");
+    // Read the secret from the owner-only file whose path the env var carries,
+    // rather than echoing the env value directly — the env is visible in
+    // `/proc/<pid>/environ`, the file is not. Mirrors the target/jump-host
+    // helper in `rustconn/src/window/protocols_ssh.rs::askpass_script_contents`.
+    let script = format!(
+        "#!/bin/sh\n\
+         secret_file=\"${{{TUNNEL_ASKPASS_ENV_VAR}}}\"\n\
+         [ -n \"$secret_file\" ] || exit 1\n\
+         exec 3<\"$secret_file\" || exit 1\n\
+         cat <&3\n"
+    );
 
     let mut file = std::fs::File::create(&path)
         .map_err(|e| format!("Failed to create tunnel askpass script: {e}"))?;
@@ -174,8 +207,51 @@ fn create_tunnel_askpass_script() -> Result<std::path::PathBuf, String> {
     Ok(path)
 }
 
-/// Cleans up a temporary askpass script, zeroizing its content first.
-fn cleanup_askpass_script(path: &std::path::Path) {
+/// Writes `password` to a fresh owner-only (mode 0600) file and returns its path.
+///
+/// The file lives in `$XDG_RUNTIME_DIR` (tmpfs) when available, falling back to
+/// the system temp dir only when no runtime dir exists — the same resolver the
+/// GUI's askpass secret files use. The caller owns the path and must remove it
+/// (`SshTunnel`'s `Drop` does, zeroizing first). The password reaches the SSH
+/// askpass helper through this file, never through the process environment.
+///
+/// # Errors
+///
+/// Returns a human-readable error string if the file cannot be created or written.
+pub(crate) fn create_tunnel_secret_file(
+    password: &SecretString,
+) -> Result<std::path::PathBuf, String> {
+    use std::io::Write;
+
+    let directory = crate::secret_file_dir().unwrap_or_else(std::env::temp_dir);
+    let path = directory.join(format!(
+        "rc-tun-secret-{}",
+        uuid::Uuid::new_v4().as_hyphenated()
+    ));
+
+    let mut options = std::fs::OpenOptions::new();
+    options.create_new(true).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+
+    let mut file = options
+        .open(&path)
+        .map_err(|e| format!("Failed to create tunnel secret file: {e}"))?;
+    if let Err(e) = file.write_all(password.expose_secret().as_bytes()) {
+        drop(file);
+        let _ = std::fs::remove_file(&path);
+        return Err(format!("Failed to write tunnel secret file: {e}"));
+    }
+    drop(file);
+    Ok(path)
+}
+
+/// Cleans up a temporary askpass script or secret file, zeroizing its content
+/// first.
+pub(crate) fn cleanup_askpass_script(path: &std::path::Path) {
     // Overwrite with zeros before deletion to prevent recovery
     if let Ok(metadata) = std::fs::metadata(path) {
         let size = metadata.len() as usize;
@@ -250,6 +326,10 @@ pub fn create_socks_tunnel(params: &SshTunnelParams) -> SshTunnelResult<SshTunne
 /// `["-D", port]`); `remote_desc` is a human-readable destination for the log.
 /// Everything else — jump-host port, identity, askpass, Flatpak known_hosts,
 /// `ExitOnForwardFailure`, stderr capture — is identical between the two.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one linear ssh-command assembly: flags, file-based askpass setup, spawn and stderr capture read top-to-bottom; splitting it would scatter the single command builder across helpers"
+)]
 fn spawn_tunnel(
     params: &SshTunnelParams,
     local_port: u16,
@@ -309,32 +389,51 @@ fn spawn_tunnel(
     // SSH_ASKPASS for password-authenticated jump hosts, or BatchMode
     // when no password is available (prevents SSH from hanging on a
     // TTY prompt that nobody can answer).
-    let askpass_script_path = if let Some(ref pw) = params.password {
-        match create_tunnel_askpass_script() {
-            Ok(script_path) => {
+    // Writes the password to an owner-only file and passes its *path* in the
+    // environment, so the secret never lands in `/proc/<pid>/environ`. Both the
+    // script and the secret file are torn down by `SshTunnel`'s `Drop`.
+    let (askpass_script_path, secret_file_path) = if let Some(ref pw) = params.password {
+        match (
+            create_tunnel_askpass_script(),
+            create_tunnel_secret_file(pw),
+        ) {
+            (Ok(script_path), Ok(secret_path)) => {
                 cmd.env("SSH_ASKPASS", &script_path);
                 cmd.env("SSH_ASKPASS_REQUIRE", "force");
-                cmd.env(TUNNEL_ASKPASS_ENV_VAR, pw.expose_secret());
+                cmd.env(TUNNEL_ASKPASS_ENV_VAR, &secret_path);
                 // Ensure DISPLAY is set so SSH considers ASKPASS
                 if std::env::var("DISPLAY").is_err() {
                     cmd.env("DISPLAY", "");
                 }
-                Some(script_path)
+                (Some(script_path), Some(secret_path))
             }
-            Err(e) => {
+            (script_result, secret_result) => {
+                // Either helper failed. Clean up whichever one succeeded so a
+                // stray script or plaintext file is not left behind, then fall
+                // back to BatchMode (password auth will fail, but nothing hangs).
+                if let Ok(ref path) = script_result {
+                    cleanup_askpass_script(path);
+                }
+                if let Ok(ref path) = secret_result {
+                    cleanup_askpass_script(path);
+                }
+                let error = script_result
+                    .err()
+                    .or_else(|| secret_result.err())
+                    .unwrap_or_default();
                 tracing::error!(
-                    error = %e,
-                    "Failed to create SSH_ASKPASS script for tunnel; \
+                    %error,
+                    "Failed to set up SSH_ASKPASS for tunnel; \
                      falling back to BatchMode (password auth will fail)"
                 );
                 cmd.arg("-o").arg("BatchMode=yes");
-                None
+                (None, None)
             }
         }
     } else {
         // No password — prevent SSH from reading stdin
         cmd.arg("-o").arg("BatchMode=yes");
-        None
+        (None, None)
     };
 
     // Exit if the forwarding fails (e.g. port already in use)
@@ -394,6 +493,7 @@ fn spawn_tunnel(
         local_port,
         stderr_output,
         askpass_script: askpass_script_path,
+        secret_file: secret_file_path,
     })
 }
 
@@ -1658,6 +1758,59 @@ mod tests {
              SSH_ASKPASS_REQUIRE=force ssh -W %h:%p -o StrictHostKeyChecking=accept-new far' near"
         );
     }
+
+    /// The single-hop tunnel askpass helper must read the password from the
+    /// file named by its env var, not carry the secret in the environment
+    /// (issue: align single-hop with the multi-hop file-based convention).
+    #[test]
+    fn tunnel_askpass_script_reads_secret_from_a_file_not_the_env() {
+        let script_path = create_tunnel_askpass_script().expect("askpass script must be creatable");
+        let body = std::fs::read_to_string(&script_path).expect("script readable");
+        cleanup_askpass_script(&script_path);
+
+        // The env var carries a file path; the script dereferences it.
+        assert!(
+            body.contains(TUNNEL_ASKPASS_ENV_VAR),
+            "script must reference the path env var: {body}"
+        );
+        assert!(
+            body.contains("secret_file=") && body.contains("cat <&3"),
+            "script must read the secret from the file it names, not echo the env: {body}"
+        );
+        // The old implementation printed the env value directly; guard against
+        // a regression to that shape.
+        assert!(
+            !body.contains("echo \"$_RC_TUN_PW\""),
+            "script must not echo the password straight from the environment: {body}"
+        );
+    }
+
+    /// `create_tunnel_secret_file` writes the password to an owner-only file;
+    /// the password value must live there, never in the env the child sees.
+    #[cfg(unix)]
+    #[test]
+    fn tunnel_secret_file_is_owner_only_and_holds_the_password() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let password = secrecy::SecretString::from("hunter2-tunnel-fsecret");
+        let path = create_tunnel_secret_file(&password).expect("secret file must be creatable");
+        let mode = std::fs::metadata(&path)
+            .expect("file was just created")
+            .permissions()
+            .mode()
+            & 0o777;
+        let body = std::fs::read_to_string(&path).expect("secret file readable");
+        cleanup_askpass_script(&path);
+
+        assert_eq!(
+            mode, 0o600,
+            "secret file must be readable only by its owner"
+        );
+        assert_eq!(
+            body, "hunter2-tunnel-fsecret",
+            "the secret file holds exactly the password bytes"
+        );
+    }
 }
 
 #[cfg(test)]
@@ -1697,5 +1850,27 @@ mod proxy_detection_tests {
         assert!(!ssh_g_output_declares_proxy(
             "proxyusepdisc no\nproxyjumpsomething value\n"
         ));
+    }
+
+    /// `SshTunnelParams` derives `Debug` while holding a jump-host password
+    /// (`SecretString`); the rendered Debug must never contain the plaintext
+    /// (M-PUBLIC-DEBUG). `secrecy` redacts itself today, but this guards a
+    /// future field or a switch to a manual impl from silently leaking.
+    #[test]
+    fn ssh_tunnel_params_debug_does_not_leak_password() {
+        let params = crate::ssh_tunnel::SshTunnelParams {
+            jump_host: "user@bastion.example.com".to_string(),
+            jump_port: 22,
+            remote_host: "10.0.0.5".to_string(),
+            remote_port: 3389,
+            identity_file: None,
+            password: Some(secrecy::SecretString::from("hunter2-tunnel-secret")),
+            extra_args: Vec::new(),
+        };
+        let rendered = format!("{params:?}");
+        assert!(
+            !rendered.contains("hunter2-tunnel-secret"),
+            "Debug output must not contain the plaintext jump-host password: {rendered}"
+        );
     }
 }

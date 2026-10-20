@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 
-use secrecy::ExposeSecret;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -67,6 +66,26 @@ struct RunningTunnel {
     child: Child,
     stderr_output: Arc<Mutex<String>>,
     status: TunnelStatus,
+    /// Path to the temporary askpass script, removed when the tunnel is dropped.
+    askpass_script: Option<std::path::PathBuf>,
+    /// Path to the owner-only file holding the jump-host password, removed when
+    /// the tunnel is dropped. The password lives here, not in the child's
+    /// environment — the env carries only this path (matching `ssh_tunnel`).
+    secret_file: Option<std::path::PathBuf>,
+}
+
+impl Drop for RunningTunnel {
+    fn drop(&mut self) {
+        // Every path that stops a tunnel removes it from `running`, dropping this
+        // value — so the askpass script and the plaintext secret file are cleaned
+        // up here once, zeroized first, rather than at each call site.
+        if let Some(ref path) = self.askpass_script {
+            crate::ssh_tunnel::cleanup_askpass_script(path);
+        }
+        if let Some(ref path) = self.secret_file {
+            crate::ssh_tunnel::cleanup_askpass_script(path);
+        }
+    }
 }
 
 /// Maximum number of automatic reconnect attempts before giving up
@@ -184,25 +203,43 @@ impl TunnelManager {
             }
         }
 
-        // Password via SSH_ASKPASS or BatchMode
-        if let Some(pw) = password {
-            if let Ok(script_path) = create_askpass_script() {
-                cmd.env("SSH_ASKPASS", &script_path);
-                cmd.env("SSH_ASKPASS_REQUIRE", "force");
-                cmd.env(ASKPASS_ENV_VAR, pw.expose_secret());
-                if std::env::var("DISPLAY").is_err() {
-                    cmd.env("DISPLAY", "");
+        // Password via SSH_ASKPASS or BatchMode. The password is written to an
+        // owner-only file and only its *path* goes in the environment, so the
+        // secret never lands in `/proc/<pid>/environ`. Shared with the embedded
+        // tunnel path in `ssh_tunnel`.
+        let (askpass_script, secret_file) = if let Some(pw) = password {
+            match (
+                crate::ssh_tunnel::create_tunnel_askpass_script(),
+                crate::ssh_tunnel::create_tunnel_secret_file(pw),
+            ) {
+                (Ok(script_path), Ok(secret_path)) => {
+                    cmd.env("SSH_ASKPASS", &script_path);
+                    cmd.env("SSH_ASKPASS_REQUIRE", "force");
+                    cmd.env(crate::ssh_tunnel::TUNNEL_ASKPASS_ENV_VAR, &secret_path);
+                    if std::env::var("DISPLAY").is_err() {
+                        cmd.env("DISPLAY", "");
+                    }
+                    (Some(script_path), Some(secret_path))
                 }
-            } else {
-                tracing::error!(
-                    tunnel = %tunnel.name,
-                    "Failed to create SSH_ASKPASS script; falling back to BatchMode"
-                );
-                cmd.arg("-o").arg("BatchMode=yes");
+                (script_result, secret_result) => {
+                    if let Ok(ref path) = script_result {
+                        crate::ssh_tunnel::cleanup_askpass_script(path);
+                    }
+                    if let Ok(ref path) = secret_result {
+                        crate::ssh_tunnel::cleanup_askpass_script(path);
+                    }
+                    tracing::error!(
+                        tunnel = %tunnel.name,
+                        "Failed to set up SSH_ASKPASS; falling back to BatchMode"
+                    );
+                    cmd.arg("-o").arg("BatchMode=yes");
+                    (None, None)
+                }
             }
         } else {
             cmd.arg("-o").arg("BatchMode=yes");
-        }
+            (None, None)
+        };
 
         // Destination: user@host
         let destination = if let Some(ref user) = connection.username {
@@ -262,6 +299,8 @@ impl TunnelManager {
                 child,
                 stderr_output,
                 status: TunnelStatus::Starting,
+                askpass_script,
+                secret_file,
             },
         );
 
@@ -459,42 +498,6 @@ fn classify_spawn_error(error: std::io::Error, program: &str) -> TunnelManagerEr
     }
 }
 
-/// Environment variable name used to pass the password to the askpass script.
-const ASKPASS_ENV_VAR: &str = "_RC_TUN_PW";
-
-/// Creates a temporary `SSH_ASKPASS` helper script that echoes the password.
-///
-/// # Errors
-///
-/// Returns a human-readable error string on failure.
-fn create_askpass_script() -> Result<std::path::PathBuf, String> {
-    use std::io::Write;
-
-    let dir = std::env::temp_dir();
-    // Unique per-tunnel filename: concurrent tunnels must not share one path, or a
-    // second `File::create` truncates the script while the first ssh is still reading it.
-    let path = dir.join(format!(
-        "rc_tun_askpass_{}_{}",
-        std::process::id(),
-        Uuid::new_v4()
-    ));
-
-    let script = format!("#!/bin/sh\necho \"${ASKPASS_ENV_VAR}\"\n");
-
-    let mut file = std::fs::File::create(&path).map_err(|e| e.to_string())?;
-    file.write_all(script.as_bytes())
-        .map_err(|e| e.to_string())?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700))
-            .map_err(|e| e.to_string())?;
-    }
-
-    Ok(path)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -596,42 +599,11 @@ mod tests {
         assert!(matches!(denied, TunnelManagerError::SpawnFailed(_)));
     }
 
-    #[cfg(unix)]
-    #[test]
-    fn the_askpass_script_is_readable_only_by_its_owner() {
-        use std::os::unix::fs::PermissionsExt;
-
-        let path = create_askpass_script().expect("temp dir should be writable");
-        let mode = std::fs::metadata(&path)
-            .expect("script was just created")
-            .permissions()
-            .mode();
-
-        // It echoes a password, so group and other must have nothing.
-        assert_eq!(mode & 0o777, 0o700, "mode was {:o}", mode & 0o777);
-
-        let body = std::fs::read_to_string(&path).expect("script is readable");
-        assert!(body.starts_with("#!/bin/sh"));
-        // The password travels in the environment, never in the file.
-        assert!(body.contains(ASKPASS_ENV_VAR));
-        assert!(!body.contains("hunter2"));
-
-        let _ = std::fs::remove_file(&path);
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn each_askpass_script_gets_its_own_path() {
-        // Two concurrent tunnels sharing one path means the second File::create
-        // truncates the script while the first ssh is still reading it.
-        let first = create_askpass_script().expect("temp dir should be writable");
-        let second = create_askpass_script().expect("temp dir should be writable");
-
-        assert_ne!(first, second);
-
-        let _ = std::fs::remove_file(&first);
-        let _ = std::fs::remove_file(&second);
-    }
+    // The askpass script and secret-file helpers now live in `ssh_tunnel` and
+    // are covered by its tests (`tunnel_askpass_script_reads_secret_from_a_file_not_the_env`,
+    // `tunnel_secret_file_is_owner_only_and_holds_the_password`). This module
+    // reuses them, so the duplicate local tests were removed with the duplicate
+    // local function.
 
     /// Exercises the path the visibility fix is about: a tunnel that starts and
     /// then exits on its own must be reported, and must keep saying so.

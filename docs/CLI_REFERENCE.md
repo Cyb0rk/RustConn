@@ -1,6 +1,6 @@
 # RustConn CLI Reference
 
-**Version 0.23.17** | Command-line interface for RustConn connection management
+**Version 0.23.18** | Command-line interface for RustConn connection management
 
 The `rustconn-cli` binary provides headless connection management from the terminal. It shares the same configuration files as the GUI (`~/.config/rustconn/`), so changes made in either tool are immediately visible to the other. The default build is the minimal headless path; desktop/client-launch and secret-management commands are enabled with optional features.
 
@@ -477,7 +477,9 @@ rustconn-cli delete "My Server"              # Prompts for confirmation
 rustconn-cli delete "My Server" --force      # Skip confirmation
 ```
 
-In non-interactive mode (piped stdin), confirmation is automatically assumed.
+In non-interactive mode (piped stdin) without `--force`, the command aborts
+and deletes nothing — the safe default for scripts. Pass `--force` to delete
+unattended.
 
 ### duplicate — Duplicate a connection
 

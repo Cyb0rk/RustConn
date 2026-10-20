@@ -1298,17 +1298,17 @@ impl ConnectionDialog {
             self.rdp_width_spin.set_value(f64::from(res.width));
             self.rdp_height_spin.set_value(f64::from(res.height));
         }
-        if let Some(depth) = rdp.color_depth {
-            // Map color depth to dropdown index: 32->0, 24->1, 16->2, 15->3, 8->4
-            let idx = match depth {
-                24 => 1,
-                16 => 2,
-                15 => 3,
-                8 => 4,
-                _ => 0, // 32 and any other value default to 0
-            };
-            self.rdp_color_dropdown.set_selected(idx);
-        }
+        // Map color depth to dropdown index. Index 0 is "Negotiate" (`None`):
+        // None->0, 32->1, 24->2, 16->3, 15->4, 8->5.
+        let color_idx = match rdp.color_depth {
+            None => 0,
+            Some(24) => 2,
+            Some(16) => 3,
+            Some(15) => 4,
+            Some(8) => 5,
+            _ => 1, // Some(32) and any other explicit value
+        };
+        self.rdp_color_dropdown.set_selected(color_idx);
         self.rdp_scale_override_dropdown
             .set_selected(rdp.scale_override.index());
         self.rdp_audio_mode_dropdown

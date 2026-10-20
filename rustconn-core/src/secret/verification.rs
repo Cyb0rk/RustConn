@@ -573,4 +573,21 @@ mod tests {
         assert!(!deserialized.is_verified(id2));
         assert_eq!(deserialized.get_status(id2).failure_count, 1);
     }
+
+    /// `VerifiedCredentials` derives `Debug` while holding a password
+    /// (`SecretString`); the rendered Debug must never contain the plaintext
+    /// (M-PUBLIC-DEBUG).
+    #[test]
+    fn verified_credentials_debug_does_not_leak_password() {
+        let creds = VerifiedCredentials::from_verified(
+            Some("admin".to_string()),
+            Some(SecretString::from("hunter2-verified-secret")),
+            None,
+        );
+        let rendered = format!("{creds:?}");
+        assert!(
+            !rendered.contains("hunter2-verified-secret"),
+            "Debug output must not contain the plaintext password: {rendered}"
+        );
+    }
 }

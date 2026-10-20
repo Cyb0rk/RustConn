@@ -6,15 +6,17 @@
 //! interactive shell.
 //!
 //! Password authentication uses the `SSH_ASKPASS` mechanism instead of
-//! `sshpass`: a temporary script echoes the password from an environment
-//! variable, and `SSH_ASKPASS_REQUIRE=force` tells OpenSSH to use it
-//! even without a TTY. This eliminates the `sshpass` external dependency.
+//! `sshpass`: a temporary script reads the password from an owner-only file
+//! whose path is passed in the environment, and `SSH_ASKPASS_REQUIRE=force`
+//! tells OpenSSH to use it even without a TTY. The password value never enters
+//! the SSH process environment. This eliminates the `sshpass` external
+//! dependency.
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use futures::stream::StreamExt;
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::SecretString;
 use tokio::process::Command;
 
 /// Default timeout for SSH monitoring commands (seconds)
@@ -156,10 +158,6 @@ fn glob_socket_exists(prefix: &str) -> bool {
             .starts_with(file_prefix_str.as_ref())
     })
 }
-
-/// Environment variable name used to pass the password to the askpass script.
-/// Intentionally obscure to reduce exposure in `/proc/PID/environ`.
-const ASKPASS_ENV_VAR: &str = "_RC_MON_PW";
 
 /// Closes the SSH ControlMaster socket for a given host/port.
 ///
@@ -429,51 +427,32 @@ pub async fn close_dead_control_sockets() -> u32 {
 
 /// RAII wrapper for the temporary `SSH_ASKPASS` script.
 ///
-/// Deletes the script file when the last `Arc<AskpassScript>` reference is dropped
-/// (i.e. when the monitoring session ends and the factory closure is freed).
-struct AskpassScript(std::path::PathBuf);
+/// Deletes the script and the owner-only secret file when the last
+/// `Arc<AskpassScript>` reference is dropped (i.e. when the monitoring session
+/// ends and the factory closure is freed).
+///
+/// `script` is the helper OpenSSH runs; `secret_file` holds the password bytes.
+/// The password lives in `secret_file`, not in the SSH process environment —
+/// the env carries only its path. Both are torn down together, zeroizing the
+/// secret file first.
+struct AskpassScript {
+    script: std::path::PathBuf,
+    secret_file: std::path::PathBuf,
+}
 
 impl Drop for AskpassScript {
     fn drop(&mut self) {
-        if let Err(e) = std::fs::remove_file(&self.0) {
+        // Zeroize-then-unlink the secret file (it held the plaintext); the
+        // script carries no secret, so a plain remove is enough.
+        crate::ssh_tunnel::cleanup_askpass_script(&self.secret_file);
+        if let Err(e) = std::fs::remove_file(&self.script) {
             tracing::debug!(
-                path = %self.0.display(),
+                path = %self.script.display(),
                 error = %e,
                 "Failed to clean up askpass script"
             );
         }
     }
-}
-
-/// Creates a temporary `SSH_ASKPASS` helper script that echoes the password
-/// from `ASKPASS_ENV_VAR`. The script is created with mode 0700 and lives
-/// in the system temp directory.
-///
-/// Returns the path to the script on success.
-fn create_askpass_script() -> Result<std::path::PathBuf, String> {
-    use std::io::Write;
-
-    let dir = std::env::temp_dir();
-    let path = dir.join(format!(
-        "rc-askpass-{}",
-        uuid::Uuid::new_v4().as_hyphenated()
-    ));
-
-    let script = format!("#!/bin/sh\necho \"${ASKPASS_ENV_VAR}\"\n");
-
-    let mut file = std::fs::File::create(&path)
-        .map_err(|e| format!("Failed to create askpass script: {e}"))?;
-    file.write_all(script.as_bytes())
-        .map_err(|e| format!("Failed to write askpass script: {e}"))?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700))
-            .map_err(|e| format!("Failed to set askpass script permissions: {e}"))?;
-    }
-
-    Ok(path)
 }
 
 /// Builds jump host arguments for the SSH monitoring command.
@@ -555,6 +534,10 @@ async fn wait_for_control_socket(control_path: &str) -> bool {
 /// * `identity_file` - Optional path to SSH private key
 /// * `password` - Optional password (as `SecretString`) for SSH_ASKPASS auth
 /// * `jump_host` - Optional jump host chain for `-J` flag (e.g. `"user@bastion:22"`)
+#[expect(
+    clippy::too_many_lines,
+    reason = "factory sets up the file-based askpass helper once, then returns one closure that assembles the full ssh command; both halves read linearly and splitting them would hide the per-invocation command shape"
+)]
 pub fn ssh_exec_factory(
     host: String,
     port: u16,
@@ -567,23 +550,40 @@ pub fn ssh_exec_factory(
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send>>
 + Send
 + 'static {
-    // Create the askpass script once at factory creation time.
-    // It is reused for every monitoring command invocation.
-    // Wrapped in Arc<AskpassScript> so the file is deleted when the factory is dropped.
-    let askpass_script = if password.is_some() {
-        match create_askpass_script() {
-            Ok(p) => Some(Arc::new(AskpassScript(p))),
-            Err(e) => {
+    // Create the askpass script and the owner-only secret file once at factory
+    // creation time; both are reused for every monitoring command invocation
+    // and removed together when the factory (and its last Arc) is dropped. The
+    // password reaches OpenSSH through the file, never the environment. Shared
+    // with the embedded tunnel path in `ssh_tunnel`.
+    let askpass_script = match password.as_ref() {
+        Some(pw) => match (
+            crate::ssh_tunnel::create_tunnel_askpass_script(),
+            crate::ssh_tunnel::create_tunnel_secret_file(pw),
+        ) {
+            (Ok(script), Ok(secret_file)) => Some(Arc::new(AskpassScript {
+                script,
+                secret_file,
+            })),
+            (script_result, secret_result) => {
+                if let Ok(ref path) = script_result {
+                    crate::ssh_tunnel::cleanup_askpass_script(path);
+                }
+                if let Ok(ref path) = secret_result {
+                    crate::ssh_tunnel::cleanup_askpass_script(path);
+                }
+                let error = script_result
+                    .err()
+                    .or_else(|| secret_result.err())
+                    .unwrap_or_default();
                 tracing::error!(
-                    error = %e,
-                    "Failed to create SSH_ASKPASS script; \
+                    %error,
+                    "Failed to create SSH_ASKPASS helper; \
                      password auth will not work for monitoring"
                 );
                 None
             }
-        }
-    } else {
-        None
+        },
+        None => None,
     };
 
     move |command: String| {
@@ -617,13 +617,17 @@ pub fn ssh_exec_factory(
             }
             cmd.arg("-o").arg(format!("ControlPath={control_path}"));
 
-            if let (Some(pw), Some(script)) = (&password, &askpass_script) {
-                // SSH_ASKPASS mechanism: OpenSSH calls the script to get
-                // the password. DISPLAY must be set (even empty) and
-                // SSH_ASKPASS_REQUIRE=force skips the TTY check.
-                cmd.env("SSH_ASKPASS", &script.0);
+            if let Some(script) = &askpass_script {
+                // SSH_ASKPASS mechanism: OpenSSH calls the script, which reads
+                // the password from the owner-only secret file. The env carries
+                // only that file's path, never the password. DISPLAY must be set
+                // (even empty) and SSH_ASKPASS_REQUIRE=force skips the TTY check.
+                cmd.env("SSH_ASKPASS", &script.script);
                 cmd.env("SSH_ASKPASS_REQUIRE", "force");
-                cmd.env(ASKPASS_ENV_VAR, pw.expose_secret());
+                cmd.env(
+                    crate::ssh_tunnel::TUNNEL_ASKPASS_ENV_VAR,
+                    &script.secret_file,
+                );
                 // Ensure DISPLAY is set so SSH considers ASKPASS
                 if std::env::var("DISPLAY").is_err() {
                     cmd.env("DISPLAY", "");

@@ -112,8 +112,16 @@ impl CsvExporter {
         }
     }
 
-    /// Builds the full group path for a connection by walking the group hierarchy.
-    fn resolve_group_name(conn: &Connection, groups: &[ConnectionGroup]) -> String {
+    /// Builds the full group path for a connection by walking the group
+    /// hierarchy, looking each ancestor up in a prebuilt index.
+    ///
+    /// `index` maps every group id to its group, so each hop is O(1); the caller
+    /// builds it once per export rather than this scanning the whole group slice
+    /// for every connection (which was O(connections × groups)).
+    fn resolve_group_name(
+        conn: &Connection,
+        index: &std::collections::HashMap<uuid::Uuid, &ConnectionGroup>,
+    ) -> String {
         let Some(group_id) = conn.group_id else {
             return String::new();
         };
@@ -122,7 +130,7 @@ impl CsvExporter {
         let mut current_id = Some(group_id);
 
         while let Some(id) = current_id {
-            if let Some(group) = groups.iter().find(|g| g.id == id) {
+            if let Some(group) = index.get(&id) {
                 path_parts.push(group.name.clone());
                 current_id = group.parent_id;
             } else {
@@ -134,7 +142,36 @@ impl CsvExporter {
         path_parts.join("/")
     }
 
+    /// Renders one field of one connection to its raw (unquoted) CSV value.
+    ///
+    /// The single place the per-field mapping lives, shared by the bulk
+    /// `export_to_string` and the single-connection `export_connection` so the
+    /// two cannot drift. `group_name` is the already-resolved group path (empty
+    /// for the single-connection path, which has no group context).
+    fn field_value(field: CsvExportField, conn: &Connection, group_name: &str) -> String {
+        match field {
+            CsvExportField::Name => conn.name.clone(),
+            CsvExportField::Host => conn.host.clone(),
+            CsvExportField::Port => conn.port.to_string(),
+            CsvExportField::Protocol => conn.protocol.as_str().to_string(),
+            CsvExportField::Username => conn.username.clone().unwrap_or_default(),
+            CsvExportField::GroupName => group_name.to_string(),
+            CsvExportField::Tags => {
+                // Filter out the "imported:csv" tag for clean round-trip.
+                let user_tags: Vec<&str> = conn
+                    .tags
+                    .iter()
+                    .filter(|t| !t.starts_with("imported:"))
+                    .map(String::as_str)
+                    .collect();
+                user_tags.join(";")
+            }
+            CsvExportField::Description => conn.description.clone().unwrap_or_default(),
+        }
+    }
+
     /// Exports connections to a CSV string.
+    #[must_use]
     pub fn export_to_string(
         &self,
         connections: &[Connection],
@@ -149,30 +186,18 @@ impl CsvExporter {
         output.push_str(&headers.join(&delimiter.to_string()));
         output.push('\n');
 
+        // Index groups by id once so each group-path hop is O(1) instead of a
+        // linear scan of `groups` per connection.
+        let index: std::collections::HashMap<uuid::Uuid, &ConnectionGroup> =
+            groups.iter().map(|g| (g.id, g)).collect();
+
         // Data rows
         for conn in connections {
+            let group_name = Self::resolve_group_name(conn, &index);
             let values: Vec<String> = fields
                 .iter()
                 .map(|field| {
-                    let raw = match field {
-                        CsvExportField::Name => conn.name.clone(),
-                        CsvExportField::Host => conn.host.clone(),
-                        CsvExportField::Port => conn.port.to_string(),
-                        CsvExportField::Protocol => conn.protocol.as_str().to_string(),
-                        CsvExportField::Username => conn.username.clone().unwrap_or_default(),
-                        CsvExportField::GroupName => Self::resolve_group_name(conn, groups),
-                        CsvExportField::Tags => {
-                            // Filter out the "imported:csv" tag for clean round-trip
-                            let user_tags: Vec<&str> = conn
-                                .tags
-                                .iter()
-                                .filter(|t| !t.starts_with("imported:"))
-                                .map(String::as_str)
-                                .collect();
-                            user_tags.join(";")
-                        }
-                        CsvExportField::Description => conn.description.clone().unwrap_or_default(),
-                    };
+                    let raw = Self::field_value(*field, conn, &group_name);
                     csv_quote(&raw, self.options.delimiter)
                 })
                 .collect();
@@ -216,29 +241,12 @@ impl ExportTarget for CsvExporter {
     fn export_connection(&self, connection: &Connection) -> ExportOperationResult<String> {
         let fields = self.effective_fields();
         let delimiter = self.options.delimiter as char;
+        // No group context on the single-connection path, so the group path is
+        // empty — same behaviour as before, now through the shared mapper.
         let values: Vec<String> = fields
             .iter()
             .map(|field| {
-                let raw = match field {
-                    CsvExportField::Name => connection.name.clone(),
-                    CsvExportField::Host => connection.host.clone(),
-                    CsvExportField::Port => connection.port.to_string(),
-                    CsvExportField::Protocol => connection.protocol.as_str().to_string(),
-                    CsvExportField::Username => connection.username.clone().unwrap_or_default(),
-                    CsvExportField::GroupName => String::new(),
-                    CsvExportField::Tags => {
-                        let user_tags: Vec<&str> = connection
-                            .tags
-                            .iter()
-                            .filter(|t| !t.starts_with("imported:"))
-                            .map(String::as_str)
-                            .collect();
-                        user_tags.join(";")
-                    }
-                    CsvExportField::Description => {
-                        connection.description.clone().unwrap_or_default()
-                    }
-                };
+                let raw = Self::field_value(*field, connection, "");
                 csv_quote(&raw, self.options.delimiter)
             })
             .collect();

@@ -13,6 +13,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -54,11 +55,18 @@ struct AsbruEntry {
     /// Password field - may be plain text or encrypted
     /// Asbru-CM stores passwords as "pass" in YAML
     /// Currently parsed for YAML completeness but not imported by default for security
+    ///
+    /// Held as [`SecretString`] rather than a plain `String` so the plaintext
+    /// Ásbrú stores in its YAML is wrapped the moment it is parsed, redacts
+    /// itself in `Debug`, and zeroises on drop — matching the RDM importer
+    /// (`rdm.rs`) and `secrets-guide.md` rule #6.
     #[serde(default)]
-    pass: Option<String>,
-    /// Alternative password field name used in some Asbru versions
+    pass: Option<SecretString>,
+    /// Alternative password field name used in some Asbru versions.
+    ///
+    /// Same [`SecretString`] handling as [`Self::pass`].
     #[serde(default)]
-    password: Option<String>,
+    password: Option<SecretString>,
     #[serde(default, rename = "type")]
     protocol_type: Option<String>,
     #[serde(default)]
@@ -593,7 +601,7 @@ impl AsbruImporter {
                 .pass
                 .as_ref()
                 .or(entry.password.as_ref())
-                .is_some_and(|p| !p.is_empty());
+                .is_some_and(|p| !p.expose_secret().is_empty());
 
             if has_password {
                 // Mark as having a password that needs to be entered
@@ -623,11 +631,11 @@ impl AsbruImporter {
     /// Extracts the password from an Asbru entry if password import is enabled.
     ///
     /// Returns `None` if password import is disabled or no password is present.
-    ///
-    /// **Security Note:** The returned password should be immediately stored in a
-    /// secure backend and not kept in memory longer than necessary.
+    /// The value is returned as a [`SecretString`] so the plaintext never
+    /// leaves this crate as a plain `String`; store it in a secure backend and
+    /// drop it as soon as possible.
     #[must_use]
-    pub fn extract_password(&self, entry_key: &str, content: &str) -> Option<String> {
+    pub fn extract_password(&self, entry_key: &str, content: &str) -> Option<SecretString> {
         if !self.import_passwords {
             return None;
         }
@@ -641,14 +649,20 @@ impl AsbruImporter {
             && let Some(entry_value) = env_map.get(serde_yaml::Value::String(entry_key.to_string()))
             && let Ok(entry) = serde_yaml::from_value::<AsbruEntry>(entry_value.clone())
         {
-            return entry.pass.or(entry.password).filter(|p| !p.is_empty());
+            return entry
+                .pass
+                .or(entry.password)
+                .filter(|p| !p.expose_secret().is_empty());
         }
 
         // Check top-level
         if let Some(entry_value) = raw_config.get(entry_key)
             && let Ok(entry) = serde_yaml::from_value::<AsbruEntry>(entry_value.clone())
         {
-            return entry.pass.or(entry.password).filter(|p| !p.is_empty());
+            return entry
+                .pass
+                .or(entry.password)
+                .filter(|p| !p.expose_secret().is_empty());
         }
 
         None
@@ -1472,7 +1486,10 @@ server-uuid:
 "#;
 
         let password = importer.extract_password("server-uuid", yaml);
-        assert_eq!(password, Some("my_secret_password".to_string()));
+        assert_eq!(
+            password.as_ref().map(ExposeSecret::expose_secret),
+            Some("my_secret_password")
+        );
     }
 
     #[test]
@@ -1490,7 +1507,10 @@ environments:
 "#;
 
         let password = importer.extract_password("server-uuid", yaml);
-        assert_eq!(password, Some("env_password".to_string()));
+        assert_eq!(
+            password.as_ref().map(ExposeSecret::expose_secret),
+            Some("env_password")
+        );
     }
 
     #[test]
@@ -1507,7 +1527,7 @@ server-uuid:
 "#;
 
         let password = importer.extract_password("server-uuid", yaml);
-        assert_eq!(password, None);
+        assert!(password.is_none());
     }
 
     #[test]

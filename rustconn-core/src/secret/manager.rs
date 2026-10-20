@@ -1075,6 +1075,24 @@ mod debug_tests {
             "Debug should not render password field: {rendered}"
         );
     }
+
+    /// `CredentialUpdate` derives `Debug` while carrying a new password
+    /// (`SecretString`); the rendered Debug must never contain the plaintext
+    /// (M-PUBLIC-DEBUG).
+    #[test]
+    fn credential_update_debug_does_not_leak_password() {
+        let update = CredentialUpdate {
+            username: Some("admin".to_string()),
+            password: Some(SecretString::from("hunter2-update-secret")),
+            domain: None,
+            clear_password: false,
+        };
+        let rendered = format!("{update:?}");
+        assert!(
+            !rendered.contains("hunter2-update-secret"),
+            "Debug output must not contain the plaintext password: {rendered}"
+        );
+    }
 }
 
 #[cfg(test)]
