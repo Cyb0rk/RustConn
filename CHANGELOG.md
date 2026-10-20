@@ -5,6 +5,14 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.18] - 2026-10-20
+
+### Fixed
+- **Ásbrú import now holds passwords as `SecretString`, not plain `String`** — the `AsbruEntry.pass`/`password` fields and the public `AsbruImporter::extract_password` returned a bare `String`, so a password read from an Ásbrú YAML file lingered in a plain heap allocation that was neither redacted in `Debug` nor zeroised on drop, diverging from the RDM importer (`rdm.rs`), which already wraps the same field in `SecretString` per `secrets-guide.md` rule #6. Both fields and the extractor return value are now `Option<secrecy::SecretString>`; `secrecy` deserialises straight from the YAML, so the plaintext never materialises as a long-lived `String`. Password import stays off by default and still only marks the connection `PasswordSource::Prompt`. (`rustconn-core/src/import/asbru.rs`)
+
+### Added
+- **RDP Color Depth can now be set to "Negotiate (server default)", which stops RustConn from sending `/bpp:` to FreeRDP (issue #381)** — the colour-depth dropdown in the connection editor and the template dialog always resolved to an explicit value (index 0 was 32-bit), so every GUI-configured RDP connection stored `color_depth = Some(..)` and the external/embedded FreeRDP launcher always emitted `/bpp:`. Some servers answer an explicit `/bpp:` by tearing the session down — KRdp replies to `/bpp:32` with `PDU_TYPE_DEACTIVATE_ALL` (already worked around internally for #366), and the hosts in #381 connect from `wlfreerdp3`/`sdl-freerdp3` only when `/bpp` is omitted. A new first dropdown entry, **Negotiate (server default)**, stores `color_depth = None`, so no `/bpp:` reaches FreeRDP and it negotiates the depth with the server — matching what a bare `xfreerdp /v:… ` does. The save and load mappings in both dialogs shift accordingly (None→index 0, 32→1, 24→2, 16→3, 15→4, 8→5), and because a new connection's model default is already `None`, new connections now default to Negotiate. The native IronRDP path is unaffected (it still drives its own 32-bit framebuffer for AWS EC2 compatibility). (`rustconn/src/dialogs/connection/rdp.rs`, `rustconn/src/dialogs/connection/builders.rs`, `rustconn/src/dialogs/connection/dialog/populate.rs`, `rustconn/src/dialogs/template.rs`)
+
 ## [0.23.17] - 2026-10-20
 
 ### Fixed
