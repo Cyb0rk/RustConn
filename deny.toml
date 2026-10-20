@@ -36,6 +36,29 @@ yanked = "warn"
 # call sound is the call site — `main()`, ahead of GTK/tokio/tracing; the guard
 # is defence-in-depth against that ordering regressing. Do not re-add the
 # ignore — if this advisory reappears, something regressed.
+#
+# Accepted *unmaintained* transitive crates (informational — `cargo audit`
+# lists these as warnings; `unmaintained = "workspace"` below means cargo-deny
+# does not fail on a transitive unmaintained crate, only a workspace-direct one,
+# so none of these is in `ignore`). They are tracked here so an audit does not
+# re-discover them as unknowns. None is a vulnerability; each is pinned by an
+# upstream we do not control, and the fix is an upstream release:
+# - unsafe-libyaml 0.2.11 — via serde_yaml_ng 0.10 (our YAML config/import
+#   parser). serde_yaml_ng is the maintained successor to the archived
+#   serde_yaml; its own libyaml port carries the advisory. Fix: serde_yaml_ng
+#   replaces the bundled port, or a maintained YAML stack lands.
+# - zbus_names 4.3.5, zvariant 5.15.1, zvariant_derive 5.15.1 — via zbus 5.19,
+#   pulled by the desktop-integration stack (ashpd portals, ksni tray, oo7
+#   Secret Service). The zbus project split these crates out and the advisory
+#   DB flags the standalone crates as unmaintained ahead of a reshuffle. Fix: a
+#   zbus release that folds them back in or renames them.
+# - atomic-polyfill 1.0.3 — deep under the RDP smartcard path
+#   (ironrdp -> ironrdp-connector -> sspi -> winscard -> iso7816 -> heapless).
+#   heapless 0.7 depends on it; heapless 0.8 dropped it. Fix: sspi's winscard
+#   chain moves to heapless 0.8.
+# Last reviewed: 2026-10-20
+# Next review: when serde_yaml_ng, zbus, or the sspi/ironrdp stack releases a
+# new major version.
 ignore = [
     "RUSTSEC-2023-0071",
 ]
