@@ -63,8 +63,17 @@ impl AsbruExporter {
             output.push('\n');
         }
 
-        // Export connections
+        // Export connections. Skip any protocol with no round-trippable Asbru
+        // `method:` here too, not only in the `ExportTarget::export` wrapper: a
+        // dead `method: "SPICE"` entry that neither Asbru-CM nor our own
+        // importer can read back must never be written, whichever entry point a
+        // caller (or a test) reaches this builder through. The trait wrapper
+        // still skips+warns before this point, so a connection filtered there
+        // never arrives; this guard covers a direct call.
         for conn in connections {
+            if !Self::protocol_round_trips(conn.protocol) {
+                continue;
+            }
             let asbru_uuid = generate_asbru_uuid();
             let entry = Self::connection_to_entry(conn, &group_uuid_map);
             let _ = writeln!(output, "{asbru_uuid}:");
@@ -73,6 +82,28 @@ impl AsbruExporter {
         }
 
         output
+    }
+
+    /// Whether `protocol` has an Asbru `method:` that round-trips through both
+    /// Asbru-CM and our own importer.
+    ///
+    /// This is the single source of truth behind [`Self::supports_protocol`]
+    /// (the `ExportTarget` method, which cannot be called from the inherent
+    /// `export`/`export_connection` associated functions) and the skip guard in
+    /// the raw [`Self::export`] builder. SPICE, Serial, Kubernetes, Mosh and Web
+    /// have no round-trippable `method:`; ZeroTrust and SFTP export as SSH,
+    /// which does round-trip.
+    #[must_use]
+    pub(crate) fn protocol_round_trips(protocol: ProtocolType) -> bool {
+        matches!(
+            protocol,
+            ProtocolType::Ssh
+                | ProtocolType::ZeroTrust
+                | ProtocolType::Rdp
+                | ProtocolType::Vnc
+                | ProtocolType::Telnet
+                | ProtocolType::Sftp
+        )
     }
 
     /// Converts a connection to an Asbru YAML entry.
@@ -185,7 +216,12 @@ impl AsbruExporter {
             | ProtocolConfig::Kubernetes(_)
             | ProtocolConfig::Mosh(_)
             | ProtocolConfig::Web(_) => {
-                // VNC, SPICE, Telnet, ZeroTrust, Kubernetes don't have additional fields
+                // VNC, Telnet and ZeroTrust (exported as SSH) carry no extra
+                // Asbru fields beyond the common ones above. SPICE, Serial,
+                // Kubernetes, Mosh and Web are filtered out before this builder
+                // runs (`protocol_round_trips`), so those arms are only reached
+                // by a direct call with an unsupported protocol and likewise
+                // emit nothing protocol-specific.
             }
             ProtocolConfig::Sftp(ssh_config) => {
                 // SFTP reuses SSH config — export SSH auth fields
@@ -361,16 +397,9 @@ impl ExportTarget for AsbruExporter {
         // `method:` that round-trips — the importer's protocol match has no arm
         // for them and skips them as "Unsupported protocol" — so exporting them
         // would write entries neither Asbru nor RustConn can re-read. ZeroTrust
-        // and SFTP are exported as SSH, which does round-trip.
-        matches!(
-            protocol,
-            ProtocolType::Ssh
-                | ProtocolType::ZeroTrust
-                | ProtocolType::Rdp
-                | ProtocolType::Vnc
-                | ProtocolType::Telnet
-                | ProtocolType::Sftp
-        )
+        // and SFTP are exported as SSH, which does round-trip. One source of
+        // truth with the raw `export` builder's skip guard.
+        Self::protocol_round_trips(*protocol)
     }
 }
 
@@ -518,6 +547,29 @@ mod tests {
         assert!(output.contains("name: \"web1\""));
         assert!(output.contains("name: \"web2\""));
         assert!(output.contains("_is_group: 0"));
+    }
+
+    #[test]
+    fn test_export_skips_unsupported_protocol_in_raw_builder() {
+        // The raw `export` builder must not write a dead `method: "SPICE"`
+        // entry even when reached directly (not through the ExportTarget
+        // wrapper that pre-filters). The SSH connection survives; the SPICE one
+        // is skipped entirely.
+        let connections = vec![
+            create_ssh_connection("web1", "192.168.1.1", 22),
+            Connection::new_spice("vm1".to_string(), "192.168.1.9".to_string(), 5900),
+        ];
+        let output = AsbruExporter::export(&connections, &[]);
+
+        assert!(output.contains("name: \"web1\""));
+        assert!(
+            !output.contains("name: \"vm1\""),
+            "SPICE connection must be skipped, not written: {output}"
+        );
+        assert!(
+            !output.contains("SPICE"),
+            "no dead SPICE method may be emitted: {output}"
+        );
     }
 
     #[test]
