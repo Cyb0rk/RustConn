@@ -274,4 +274,17 @@ mod vnc_config_tests {
         // Password should not appear in JSON (skip_serializing)
         assert!(!json.contains("secret"));
     }
+
+    /// `VncClientConfig` derives `Debug` while holding a password
+    /// (`SecretString`); the rendered Debug must never contain the plaintext
+    /// (M-PUBLIC-DEBUG).
+    #[test]
+    fn config_debug_does_not_leak_password() {
+        let config = VncClientConfig::new("localhost").with_password("hunter2-vnc-secret");
+        let rendered = format!("{config:?}");
+        assert!(
+            !rendered.contains("hunter2-vnc-secret"),
+            "Debug output must not contain the plaintext password: {rendered}"
+        );
+    }
 }

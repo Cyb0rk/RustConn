@@ -308,4 +308,23 @@ mod tests {
         assert!(xml.contains("Server 1"));
         assert!(xml.contains("user1"));
     }
+
+    /// `KdbxEntry` derives `Debug` while holding a password (`SecretString`);
+    /// the rendered Debug must never contain the plaintext (M-PUBLIC-DEBUG).
+    #[test]
+    fn kdbx_entry_debug_does_not_leak_password() {
+        let entry = KdbxEntry {
+            title: "Server 1".to_string(),
+            username: Some("user1".to_string()),
+            password: Some(secrecy::SecretString::from("hunter2-kdbx-secret")),
+            url: None,
+            notes: None,
+            group: "RustConn/SSH".to_string(),
+        };
+        let rendered = format!("{entry:?}");
+        assert!(
+            !rendered.contains("hunter2-kdbx-secret"),
+            "Debug output must not contain the plaintext password: {rendered}"
+        );
+    }
 }

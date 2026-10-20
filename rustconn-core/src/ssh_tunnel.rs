@@ -1698,4 +1698,26 @@ mod proxy_detection_tests {
             "proxyusepdisc no\nproxyjumpsomething value\n"
         ));
     }
+
+    /// `SshTunnelParams` derives `Debug` while holding a jump-host password
+    /// (`SecretString`); the rendered Debug must never contain the plaintext
+    /// (M-PUBLIC-DEBUG). `secrecy` redacts itself today, but this guards a
+    /// future field or a switch to a manual impl from silently leaking.
+    #[test]
+    fn ssh_tunnel_params_debug_does_not_leak_password() {
+        let params = crate::ssh_tunnel::SshTunnelParams {
+            jump_host: "user@bastion.example.com".to_string(),
+            jump_port: 22,
+            remote_host: "10.0.0.5".to_string(),
+            remote_port: 3389,
+            identity_file: None,
+            password: Some(secrecy::SecretString::from("hunter2-tunnel-secret")),
+            extra_args: Vec::new(),
+        };
+        let rendered = format!("{params:?}");
+        assert!(
+            !rendered.contains("hunter2-tunnel-secret"),
+            "Debug output must not contain the plaintext jump-host password: {rendered}"
+        );
+    }
 }

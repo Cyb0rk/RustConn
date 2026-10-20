@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.23.18] - 2026-10-20
 
+### Improved
+- **M-PUBLIC-DEBUG guard tests for five more password-bearing types** — `SshTunnelParams`, `VncClientConfig`, `VerifiedCredentials`, `KdbxEntry` and `CredentialUpdate` each derive `Debug` while holding a `pub password: Option<SecretString>` but had no test proving the derived output does not leak the plaintext. `secrecy` redacts itself today, so there is no leak now, but a future field or a switch to a manual `Debug` could silently start leaking; these tests make that a compile-and-test guarantee, matching the guards `RdpClientConfig`/`SpiceClientConfig` and the secret backends already carry. (`rustconn-core/src/ssh_tunnel.rs`, `rustconn-core/src/secret/kdbx.rs`, `rustconn-core/src/secret/verification.rs`, `rustconn-core/src/secret/manager.rs`, `rustconn-core/tests/properties/vnc_client_tests.rs`)
+
 ### Fixed
 - **Ásbrú import now holds passwords as `SecretString`, not plain `String`** — the `AsbruEntry.pass`/`password` fields and the public `AsbruImporter::extract_password` returned a bare `String`, so a password read from an Ásbrú YAML file lingered in a plain heap allocation that was neither redacted in `Debug` nor zeroised on drop, diverging from the RDM importer (`rdm.rs`), which already wraps the same field in `SecretString` per `secrets-guide.md` rule #6. Both fields and the extractor return value are now `Option<secrecy::SecretString>`; `secrecy` deserialises straight from the YAML, so the plaintext never materialises as a long-lived `String`. Password import stays off by default and still only marks the connection `PasswordSource::Prompt`. (`rustconn-core/src/import/asbru.rs`)
 
