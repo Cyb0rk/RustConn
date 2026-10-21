@@ -2848,3 +2848,312 @@ proptest! {
         prop_assert_eq!(deserialized.pin_order, 0, "pin_order should default to 0");
     }
 }
+
+/// Regression test for the sidebar sort bug: alternating between the two sort
+/// modes must re-apply each mode's own order.
+///
+/// Before the fix, `sort_by_recent()` reordered connections but left the
+/// `is_sorted` optimisation flag set, so the next `sort_all()` short-circuited
+/// on its `if self.is_sorted { return Ok(()) }` guard and did nothing. The
+/// sidebar therefore stayed in recency order and "Sort alphabetically" appeared
+/// to do nothing (the user-reported defect).
+///
+/// This deterministic test picks names whose alphabetical order is the reverse
+/// of their recency order, then drives A-Z -> recent -> A-Z and asserts each
+/// transition re-imposes the expected order. It fails against the buggy code at
+/// the final A-Z assertion and passes once the flag is reset.
+#[test]
+fn alternating_sort_modes_each_reapply_their_order() {
+    let (mut manager, _temp, _runtime) = create_test_manager();
+
+    // Names chosen so alphabetical order (alpha, mike, zebra) is the exact
+    // reverse of recency order (zebra most recent, alpha least recent).
+    let alpha = manager
+        .create_connection(
+            "alpha".to_string(),
+            "host.example.com".to_string(),
+            22,
+            ProtocolConfig::Ssh(SshConfig::default()),
+        )
+        .expect("Should create alpha");
+    let mike = manager
+        .create_connection(
+            "mike".to_string(),
+            "host.example.com".to_string(),
+            22,
+            ProtocolConfig::Ssh(SshConfig::default()),
+        )
+        .expect("Should create mike");
+    let zebra = manager
+        .create_connection(
+            "zebra".to_string(),
+            "host.example.com".to_string(),
+            22,
+            ProtocolConfig::Ssh(SshConfig::default()),
+        )
+        .expect("Should create zebra");
+
+    // Recency: zebra newest, mike middle, alpha oldest.
+    let now = chrono::Utc::now();
+    manager
+        .get_connection_mut(zebra)
+        .expect("zebra exists")
+        .last_connected = Some(now);
+    manager
+        .get_connection_mut(mike)
+        .expect("mike exists")
+        .last_connected = Some(now - chrono::Duration::hours(1));
+    manager
+        .get_connection_mut(alpha)
+        .expect("alpha exists")
+        .last_connected = Some(now - chrono::Duration::hours(2));
+
+    // Helper: current display order (connection names ordered by sort_order).
+    let order_by_sort = |manager: &ConnectionManager| -> Vec<String> {
+        let mut conns = manager.list_connections();
+        conns.sort_by_key(|c| c.sort_order);
+        conns.into_iter().map(|c| c.name.clone()).collect()
+    };
+
+    let alphabetical = vec!["alpha".to_string(), "mike".to_string(), "zebra".to_string()];
+    let by_recent = vec!["zebra".to_string(), "mike".to_string(), "alpha".to_string()];
+
+    // (a) A-Z produces alphabetical order.
+    manager.sort_all().expect("Should sort all");
+    assert_eq!(
+        order_by_sort(&manager),
+        alphabetical,
+        "sort_all should produce alphabetical order"
+    );
+
+    // (b) By-recent produces recency order, which differs from alphabetical.
+    manager.sort_by_recent().expect("Should sort by recent");
+    assert_eq!(
+        order_by_sort(&manager),
+        by_recent,
+        "sort_by_recent should produce recency order"
+    );
+    assert_ne!(
+        by_recent, alphabetical,
+        "recency order must differ from alphabetical for this test to be meaningful"
+    );
+
+    // (c) A-Z AGAIN must re-impose alphabetical order. This is the assertion
+    // that fails before the fix, because the stale `is_sorted` flag makes
+    // `sort_all()` return early and leave the recency order in place.
+    manager.sort_all().expect("Should sort all again");
+    assert_eq!(
+        order_by_sort(&manager),
+        alphabetical,
+        "sort_all after sort_by_recent must re-impose alphabetical order"
+    );
+}
+
+/// Regression test: a manual `reorder_connection()` must not leave the sidebar
+/// stuck. After reordering, `sort_all()` has to re-impose alphabetical order.
+///
+/// Before the fix, `reorder_connection()` rewrote `sort_order` but left the
+/// `is_sorted` guard set, so the next `sort_all()` short-circuited and the
+/// manual (non-alphabetical) order stayed on screen.
+#[test]
+fn reorder_then_sort_all_reapplies_alphabetical() {
+    let (mut manager, _temp, _runtime) = create_test_manager();
+
+    let alpha = manager
+        .create_connection(
+            "alpha".to_string(),
+            "host.example.com".to_string(),
+            22,
+            ProtocolConfig::Ssh(SshConfig::default()),
+        )
+        .expect("Should create alpha");
+    let mike = manager
+        .create_connection(
+            "mike".to_string(),
+            "host.example.com".to_string(),
+            22,
+            ProtocolConfig::Ssh(SshConfig::default()),
+        )
+        .expect("Should create mike");
+    let _zebra = manager
+        .create_connection(
+            "zebra".to_string(),
+            "host.example.com".to_string(),
+            22,
+            ProtocolConfig::Ssh(SshConfig::default()),
+        )
+        .expect("Should create zebra");
+
+    let order_by_sort = |manager: &ConnectionManager| -> Vec<String> {
+        let mut conns = manager.list_connections();
+        conns.sort_by_key(|c| c.sort_order);
+        conns.into_iter().map(|c| c.name.clone()).collect()
+    };
+
+    let alphabetical = vec!["alpha".to_string(), "mike".to_string(), "zebra".to_string()];
+
+    // (a) A-Z produces alphabetical order.
+    manager.sort_all().expect("Should sort all");
+    assert_eq!(
+        order_by_sort(&manager),
+        alphabetical,
+        "sort_all should produce alphabetical order"
+    );
+
+    // (b) Move alpha to immediately after mike, giving a non-alphabetical order.
+    manager
+        .reorder_connection(alpha, mike)
+        .expect("Should reorder alpha after mike");
+    let after_reorder = order_by_sort(&manager);
+    assert_ne!(
+        after_reorder, alphabetical,
+        "reorder_connection must produce a non-alphabetical order for this test to be meaningful"
+    );
+
+    // (c) A-Z AGAIN must re-impose alphabetical order. Fails before the fix,
+    // because the stale `is_sorted` flag makes `sort_all()` return early.
+    manager.sort_all().expect("Should sort all again");
+    assert_eq!(
+        order_by_sort(&manager),
+        alphabetical,
+        "sort_all after reorder_connection must re-impose alphabetical order"
+    );
+}
+
+/// Regression test: a manual `reorder_group()` must not leave the sidebar stuck.
+/// After reordering groups, `sort_all()` has to re-alphabetise them.
+///
+/// Before the fix, `reorder_group()` rewrote `sort_order` but left the
+/// `is_sorted` guard set, so the next `sort_all()` short-circuited.
+#[test]
+fn reorder_group_then_sort_all_reapplies() {
+    let (mut manager, _temp, _runtime) = create_test_manager();
+
+    let alpha = manager
+        .create_group("alpha".to_string())
+        .expect("Should create alpha group");
+    let mike = manager
+        .create_group("mike".to_string())
+        .expect("Should create mike group");
+    let _zebra = manager
+        .create_group("zebra".to_string())
+        .expect("Should create zebra group");
+
+    let group_order_by_sort = |manager: &ConnectionManager| -> Vec<String> {
+        let mut groups: Vec<_> = manager.list_groups();
+        groups.sort_by_key(|g| g.sort_order);
+        groups.into_iter().map(|g| g.name.clone()).collect()
+    };
+
+    let alphabetical = vec!["alpha".to_string(), "mike".to_string(), "zebra".to_string()];
+
+    // (a) A-Z produces alphabetical order.
+    manager.sort_all().expect("Should sort all");
+    assert_eq!(
+        group_order_by_sort(&manager),
+        alphabetical,
+        "sort_all should produce alphabetical group order"
+    );
+
+    // (b) Move alpha to immediately after mike, giving a non-alphabetical order.
+    manager
+        .reorder_group(alpha, mike)
+        .expect("Should reorder alpha after mike");
+    let after_reorder = group_order_by_sort(&manager);
+    assert_ne!(
+        after_reorder, alphabetical,
+        "reorder_group must produce a non-alphabetical order for this test to be meaningful"
+    );
+
+    // (c) A-Z AGAIN must re-impose alphabetical order. Fails before the fix.
+    manager.sort_all().expect("Should sort all again");
+    assert_eq!(
+        group_order_by_sort(&manager),
+        alphabetical,
+        "sort_all after reorder_group must re-impose alphabetical order"
+    );
+}
+
+/// Regression test: moving a connection into another group must not leave the
+/// sidebar stuck. After the move, `sort_all()` has to re-impose order within the
+/// destination group.
+///
+/// Before the fix, `move_connection_to_group()` appended the moved connection at
+/// the end of the target group and left the `is_sorted` guard set, so the next
+/// `sort_all()` short-circuited and the connection stayed out of alphabetical
+/// place.
+#[test]
+fn move_to_group_then_sort_all_reapplies() {
+    let (mut manager, _temp, _runtime) = create_test_manager();
+
+    let group = manager
+        .create_group("group".to_string())
+        .expect("Should create group");
+
+    // alpha and zebra start in the group; mike starts ungrouped and is moved in.
+    let _alpha = manager
+        .create_connection(
+            "alpha".to_string(),
+            "host.example.com".to_string(),
+            22,
+            ProtocolConfig::Ssh(SshConfig::default()),
+        )
+        .expect("Should create alpha");
+    let _zebra = manager
+        .create_connection(
+            "zebra".to_string(),
+            "host.example.com".to_string(),
+            22,
+            ProtocolConfig::Ssh(SshConfig::default()),
+        )
+        .expect("Should create zebra");
+    let mike = manager
+        .create_connection(
+            "mike".to_string(),
+            "host.example.com".to_string(),
+            22,
+            ProtocolConfig::Ssh(SshConfig::default()),
+        )
+        .expect("Should create mike");
+
+    manager
+        .move_connection_to_group(_alpha, Some(group))
+        .expect("Should move alpha into group");
+    manager
+        .move_connection_to_group(_zebra, Some(group))
+        .expect("Should move zebra into group");
+    manager.sort_all().expect("Should sort all");
+
+    // Display order of connections within `group`, ordered by sort_order.
+    let group_order = |manager: &ConnectionManager| -> Vec<String> {
+        let mut conns: Vec<_> = manager
+            .list_connections()
+            .into_iter()
+            .filter(|c| c.group_id == Some(group))
+            .collect();
+        conns.sort_by_key(|c| c.sort_order);
+        conns.into_iter().map(|c| c.name.clone()).collect()
+    };
+
+    let alphabetical = vec!["alpha".to_string(), "mike".to_string(), "zebra".to_string()];
+
+    // (a) Move mike into the group — it is appended at the end, after zebra,
+    // which is not alphabetical.
+    manager
+        .move_connection_to_group(mike, Some(group))
+        .expect("Should move mike into group");
+    let after_move = group_order(&manager);
+    assert_ne!(
+        after_move, alphabetical,
+        "move_connection_to_group must produce a non-alphabetical order for this test to be meaningful"
+    );
+
+    // (b) A-Z must re-impose alphabetical order within the group. Fails before
+    // the fix, because the stale `is_sorted` flag makes `sort_all()` return early.
+    manager.sort_all().expect("Should sort all again");
+    assert_eq!(
+        group_order(&manager),
+        alphabetical,
+        "sort_all after move_connection_to_group must re-impose alphabetical order"
+    );
+}

@@ -124,6 +124,11 @@ pub fn sort_recent(state: &SharedAppState, sidebar: &SharedSidebar) {
 
 /// Rebuilds the sidebar with sorted items
 pub fn rebuild_sidebar_sorted(state: &SharedAppState, sidebar: &SharedSidebar) {
+    // Every rebuild path funnels through here, so clear the search cache once at
+    // this choke point; otherwise direct callers (`sort_connections`,
+    // `sort_recent`, `handle_drag_drop`) would leave a stale filter result.
+    sidebar.invalidate_search_cache();
+
     let store = sidebar.store();
     let state_ref = state.borrow();
 

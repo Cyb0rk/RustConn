@@ -5462,14 +5462,14 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
-        "url": "https://static.crates.io/crates/ppmd-rust/ppmd-rust-1.5.1.crate",
-        "sha256": "494b4379484fc92217cc7d9e3a532375b1d01a61889ec8333025dc3b0377af56",
-        "dest": "cargo/vendor/ppmd-rust-1.5.1"
+        "url": "https://static.crates.io/crates/ppmd-rust/ppmd-rust-1.5.2.crate",
+        "sha256": "cd4acc8d264ea385db64ccfdcdfd5909ee9eda0975666723d59f3bfec80b3611",
+        "dest": "cargo/vendor/ppmd-rust-1.5.2"
     },
     {
         "type": "inline",
-        "contents": "{\"package\": \"494b4379484fc92217cc7d9e3a532375b1d01a61889ec8333025dc3b0377af56\", \"files\": {}}",
-        "dest": "cargo/vendor/ppmd-rust-1.5.1",
+        "contents": "{\"package\": \"cd4acc8d264ea385db64ccfdcdfd5909ee9eda0975666723d59f3bfec80b3611\", \"files\": {}}",
+        "dest": "cargo/vendor/ppmd-rust-1.5.2",
         "dest-filename": ".cargo-checksum.json"
     },
     {

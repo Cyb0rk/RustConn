@@ -1909,11 +1909,45 @@ Serial, Kubernetes, and Zero Trust connections from a single application.",
         .issue_url("https://github.com/totoshko88/rustconn/issues")
         .support_url("https://donatello.to/totoshko88")
         .license_type(gtk4::License::Gpl30)
-        .developers(vec!["Anton Isaiev <totoshko88@gmail.com>"])
+        // Each row is one person and libadwaita (`parse_person`) makes exactly
+        // one link clickable: either an `<email>` or an `http(s)://` URL,
+        // whichever it finds first, with the rest of the string kept as the
+        // visible name. So where someone has both, the GitHub URL is the
+        // clickable link and the e-mail is written into the name *without* angle
+        // brackets, so it shows as text beside the name rather than being parsed
+        // as the (second, unsupported) link. Where only one contact is known, it
+        // is the clickable one.
+        .developers(vec![
+            "Anton Isaiev · totoshko88@gmail.com https://github.com/totoshko88",
+            "Felipe Schneider https://github.com/sch-felipe",
+            "Naim Shafiev · shafiev@gmail.com https://github.com/shafiev",
+            "dwetscher https://github.com/dwetscher",
+            "Henrik https://github.com/h3nnes",
+            "cocide https://github.com/cocide",
+            "Austin Eschweiler https://github.com/Eschguy",
+        ])
         .copyright("© 2024-2026 Anton Isaiev")
         .application_icon("io.github.totoshko88.RustConn")
-        // Translators: Replace this with your name and language, e.g. "John Doe (German)"
-        .translator_credits(gettext("translator-credits"))
+        // The translators section. Its heading ("Translated by") is one of
+        // GTK's own strings, so libadwaita localises it automatically in every
+        // language GTK ships — nothing is added to our catalogues and the
+        // po-completeness gate stays green.
+        //
+        // The value is a fixed, language-independent list of every named
+        // translator, NOT `gettext("translator-credits")`: that per-catalogue
+        // string holds only the running locale's own translator, so it both
+        // dropped the others and duplicated the current one against any manual
+        // list. Names come from each catalogue's `Last-Translator` header or a
+        // merged translation PR; a catalogue credited only to "RustConn Team"
+        // names no individual. `\n`-separated so each is its own clickable row.
+        .translator_credits(
+            "Albano Battistella (Italian) https://github.com/albanobattistella\n\
+             Ekaterine Papava (Georgian) · papava.e@gtu.ge https://github.com/EkaterinePapava\n\
+             GaaChun (Simplified Chinese) https://github.com/GaaChun\n\
+             Jürgen Hörmann (German) https://github.com/jhit\n\
+             Mykola Zubkov (Ukrainian) <zubkov139@ukr.net>\n\
+             p-bo (Czech) https://github.com/p-bo",
+        )
         .debug_info(&debug_info)
         .debug_info_filename("rustconn-debug-info.txt")
         .build();

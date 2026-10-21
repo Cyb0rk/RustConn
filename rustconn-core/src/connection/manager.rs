@@ -1015,6 +1015,10 @@ impl ConnectionManager {
             group.touch();
         }
 
+        // Reparenting invalidates the alphabetical layout, so clear the flag;
+        // otherwise a later `sort_all()` would short-circuit on `is_sorted`.
+        self.mark_unsorted();
+
         self.persist_groups()?;
         Ok(())
     }
@@ -1064,6 +1068,10 @@ impl ConnectionManager {
         conn.group_id = group_id;
         conn.sort_order = new_sort_order;
         conn.touch();
+
+        // Reparenting invalidates the alphabetical layout, so clear the flag;
+        // otherwise a later `sort_all()` would short-circuit on `is_sorted`.
+        self.mark_unsorted();
 
         self.persist_connections()?;
         Ok(())
@@ -1519,8 +1527,19 @@ impl ConnectionManager {
             }
         }
 
+        // Reordering a group invalidates the "fully alphabetically sorted"
+        // assumption, so clear the flag; otherwise a later `sort_all()` would
+        // short-circuit on its `is_sorted` guard and silently do nothing.
+        self.is_sorted = false;
+
         self.persist_connections()?;
         Ok(())
+    }
+
+    /// Clears the `is_sorted` optimisation guard so the next `sort_all()` re-sorts
+    /// instead of short-circuiting. Call from every path that reorders or reparents.
+    fn mark_unsorted(&mut self) {
+        self.is_sorted = false;
     }
 
     /// Sorts all groups and their connections alphabetically
@@ -1725,6 +1744,12 @@ impl ConnectionManager {
             }
         }
 
+        // Sorting by recency reorders connections away from the alphabetical
+        // layout, so clear the flag; otherwise a subsequent `sort_all()` would
+        // return early on its `is_sorted` guard and the sidebar would stay in
+        // recency order (the reported "A-Z does nothing" bug).
+        self.is_sorted = false;
+
         self.persist_connections()?;
         Ok(())
     }
@@ -1809,6 +1834,10 @@ impl ConnectionManager {
             }
         }
 
+        // Reordering invalidates the alphabetical layout, so clear the flag;
+        // otherwise a later `sort_all()` would short-circuit on `is_sorted`.
+        self.mark_unsorted();
+
         self.persist_connections()?;
         Ok(())
     }
@@ -1889,6 +1918,10 @@ impl ConnectionManager {
                 }
             }
         }
+
+        // Reordering invalidates the alphabetical layout, so clear the flag;
+        // otherwise a later `sort_all()` would short-circuit on `is_sorted`.
+        self.mark_unsorted();
 
         self.persist_groups()?;
         Ok(())
