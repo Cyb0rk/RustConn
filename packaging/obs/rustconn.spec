@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.18
+Version:        0.23.19
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,13 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Wed Oct 21 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.19-0
+- Version bump to 0.23.19
+- Added About > Credits listing code contributors and every translator; the translator list is a fixed, language-independent set so no one is shown twice and the running locale's translator is not the only one visible
+- Fixed sidebar sort modes not re-applying when switched: "Sort alphabetically" after "Sort by recent", a drag-drop reorder, or a move-to-folder silently did nothing because the is_sorted guard was not cleared; closed across every reorder/reparent path via a shared mark_unsorted() helper
+- Fixed Homebrew formula printing post-install command lines during "brew info --json=v2", which produced invalid JSON and broke consumers such as Brew Browser (issue #386)
+- Updated ppmd-rust 1.5.1 to 1.5.2 (transitive); cargo-sources.json regenerated; no security advisories affected
+
 * Wed Oct 21 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.18-0
 - Version bump to 0.23.18
 - Added RDP Color Depth "Negotiate (server default)" option, which stops RustConn from always sending /bpp: to FreeRDP; some servers only accept a connection when the colour depth is left unset (issue #381)

@@ -140,6 +140,17 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.19" date="2026-10-21">
+      <description>
+        <p>Version 0.23.19 - contributor credits, sidebar sorting fixes, and a Homebrew packaging fix:</p>
+        <ul>
+          <li>About &gt; Credits now names the code contributors and every translator, with the translator list shown in full rather than only the running locale's own translator</li>
+          <li>Sidebar sorting now re-applies when switched: "Sort alphabetically" after "Sort by recent", a drag-drop reorder, or a move-to-folder no longer silently does nothing</li>
+          <li>Homebrew formula no longer prints post-install command lines during a read-only "brew info" query, which produced invalid JSON and broke JSON consumers (issue #386)</li>
+          <li>Updated the ppmd-rust dependency; no security advisories affected</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.18" date="2026-10-21">
       <description>
         <p>Version 0.23.18 - an RDP colour-depth option, SSH credential-handling hardening, and import/export and performance fixes:</p>

@@ -1,4 +1,21 @@
 -------------------------------------------------------------------
+Wed Oct 21 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.19
+
+- Version bump to 0.23.19
+- Added: About > Credits now names code contributors and every translator; the
+  translator list is a fixed, language-independent set so no one is shown twice
+  and the running locale's translator is not the only one visible
+- Fixed: sidebar sort modes now re-apply when switched - "Sort alphabetically"
+  after "Sort by recent", a drag-drop reorder, or a move-to-folder no longer
+  silently did nothing (the is_sorted guard was not cleared); closed across
+  every reorder/reparent path via a shared mark_unsorted() helper
+- Fixed: Homebrew formula no longer prints post-install command lines during
+  "brew info --json=v2", which produced invalid JSON and broke consumers such
+  as Brew Browser (issue #386)
+- Dependencies: ppmd-rust 1.5.1 -> 1.5.2 (transitive); cargo-sources.json
+  regenerated; no security advisories affected
+
+-------------------------------------------------------------------
 Wed Oct 21 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.18
 
 - Version bump to 0.23.18
