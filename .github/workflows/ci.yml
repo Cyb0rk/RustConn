@@ -675,6 +675,14 @@ jobs:
       #     call. It is waived here rather than with a `rubocop:disable` comment
       #     because Style/DisableCopsWithinSourceCodeDirective is *enabled* for
       #     `Formula/` paths, so the directive would itself be an offence.
+      #   * `FormulaAudit/InstallSteps` demands `post_install_steps` instead of a
+      #     `post_install` method. Its declarative runner only knows a fixed set
+      #     of named actions and cannot express our lsregister / schema / icon
+      #     commands; defining a `post_install_steps` *method* instead shadows the
+      #     registrar and fires those commands during `brew info --json=v2`, which
+      #     is issue #386. So this formula keeps the (odeprecated) `post_install`
+      #     hook deliberately — see the comment at `def post_install` — and the
+      #     cop is waived here for the same directive reason as FormulaAudit/Text.
       - name: Formula style (brew style)
         run: |
           set -euo pipefail
@@ -692,7 +700,7 @@ jobs:
             echo "::error::could not substitute PLACEHOLDER_SHA256 — has the template changed?"
             exit 1
           fi
-          brew style --except-cops=FormulaAuditStrict,FormulaAudit/Text \
+          brew style --except-cops=FormulaAuditStrict,FormulaAudit/Text,FormulaAudit/InstallSteps \
                      "$tap_dir/rustconn.rb"
 
       # Non-gating: a real build of the formula, so a packaging or dependency

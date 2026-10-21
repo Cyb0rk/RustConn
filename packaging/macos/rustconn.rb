@@ -7,7 +7,7 @@ class Rustconn < Formula
   # active `sha256` at this indentation — the sed patterns and the CI
   # verification gate are anchored to `^  url` and `^  sha256` (issue #251).
   # PLACEHOLDER_SHA256 is expected here in-tree; only the tap copy has a hash.
-  url "https://github.com/totoshko88/RustConn/archive/refs/tags/v0.23.18.tar.gz"
+  url "https://github.com/totoshko88/RustConn/archive/refs/tags/v0.23.19.tar.gz"
   sha256 "PLACEHOLDER_SHA256"
   license "GPL-3.0-or-later"
   head "https://github.com/totoshko88/RustConn.git", branch: "main"
@@ -251,7 +251,31 @@ class Rustconn < Formula
     chmod 0755, bin/"rustconn-app"
   end
 
-  def post_install_steps
+  # This hook is deliberately `post_install`, not `post_install_steps`, and the
+  # distinction is load-bearing — getting it wrong is issue #386.
+  #
+  # Homebrew's `post_install_steps` is a *declarative* DSL registrar
+  # (`post_install_steps do … end`), whose runner only knows a fixed set of named
+  # actions (configure_php, bootstrap_cpython, …) — see
+  # Library/Homebrew/install_steps/formula_actions.rb. It cannot express an
+  # arbitrary command like lsregister. Worse, when a formula *defines a method*
+  # named `post_install_steps`, that method shadows the registrar, and Homebrew
+  # invokes it while serialising the formula to a hash (Formula#to_hash) — which
+  # is exactly what `brew info --json=v2` does. The three `system` calls below
+  # then ran during a read-only metadata query and printed their `==>` command
+  # lines to stdout before the JSON document, breaking every JSON consumer (#386).
+  #
+  # `post_install` is the overridable instance hook for arbitrary imperative
+  # Ruby. Homebrew runs it only in the real install phase, inside a sandboxed
+  # child process wrapped in `with_logging` (Formula#run_post_install), so its
+  # output never reaches `brew info`. It is `odeprecated` in favour of the
+  # declarative form, which our commands cannot use — so the resulting
+  # `FormulaAudit/InstallSteps` lint is waived in the CI `brew style` step
+  # (`--except-cops`), the same mechanism used for `FormulaAudit/Text` above. The
+  # deprecation emits a warning on install and only becomes a hard error under
+  # `HOMEBREW_DEVELOPER=1`, which neither a normal `brew install` nor our
+  # informational build step sets.
+  def post_install
     # Register .app bundle with LaunchServices so macOS recognises the bundle
     # identity for Dock pinning, file associations and the Cmd-Tab switcher.
     #

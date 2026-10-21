@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: rustconn 0.23.18\n"
+"Project-Id-Version: rustconn 0.23.19\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-20 23:10+0300\n"
+"POT-Creation-Date: 2026-10-21 17:58+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,7 +19,7 @@ msgstr ""
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
 #: rustconn/src/alert.rs:15 rustconn/src/alert.rs:54 rustconn/src/alert.rs:64
-#: rustconn/src/app.rs:2000 rustconn/src/toast.rs:246
+#: rustconn/src/app.rs:2026 rustconn/src/toast.rs:246
 msgid "OK"
 msgstr ""
 
@@ -80,7 +80,7 @@ msgstr ""
 #: rustconn/src/dialogs/settings/terminal_tab.rs:872
 #: rustconn/src/dialogs/smart_folder.rs:82
 #: rustconn/src/dialogs/smart_folder.rs:83 rustconn/src/dialogs/snippet.rs:420
-#: rustconn/src/dialogs/template.rs:2799
+#: rustconn/src/dialogs/template.rs:2773
 #: rustconn/src/dialogs/tunnel_builder/mod.rs:194
 #: rustconn/src/dialogs/variables.rs:132 rustconn/src/dialogs/widgets.rs:609
 #: rustconn/src/window/edit_group.rs:49 rustconn/src/window/edit_group.rs:50
@@ -122,36 +122,31 @@ msgid ""
 "connections from a single application."
 msgstr ""
 
-#. Translators: Replace this with your name and language, e.g. "John Doe (German)"
-#: rustconn/src/app.rs:1916
-msgid "translator-credits"
-msgstr ""
-
-#: rustconn/src/app.rs:1923
+#: rustconn/src/app.rs:1949
 msgid "User Guide"
 msgstr ""
 
-#: rustconn/src/app.rs:1927
+#: rustconn/src/app.rs:1953
 msgid "Installation"
 msgstr ""
 
-#: rustconn/src/app.rs:1931
+#: rustconn/src/app.rs:1957
 msgid "Releases"
 msgstr ""
 
-#: rustconn/src/app.rs:1935
+#: rustconn/src/app.rs:1961
 msgid "Changelog"
 msgstr ""
 
-#: rustconn/src/app.rs:1945
+#: rustconn/src/app.rs:1971
 msgid "Special Thanks"
 msgstr ""
 
-#: rustconn/src/app.rs:1960
+#: rustconn/src/app.rs:1986
 msgid "Made in Ukraine"
 msgstr ""
 
-#: rustconn/src/app.rs:1961
+#: rustconn/src/app.rs:1987
 msgid "All contributors and supporters"
 msgstr ""
 
@@ -8928,7 +8923,7 @@ msgstr ""
 msgid "Custom SSH command with proxy settings"
 msgstr ""
 
-#: rustconn/src/dialogs/template.rs:2798
+#: rustconn/src/dialogs/template.rs:2772
 msgid "Edit Template"
 msgstr ""
 
