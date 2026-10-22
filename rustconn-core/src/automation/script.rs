@@ -26,11 +26,19 @@
 //! malformed jump loop from hanging the application.
 
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::automation::{KeyElement, KeySequence};
+use crate::variables::VariableManager;
+
+/// A `$name` or `${name}` reference to a script variable.
+static VARIABLE_REF: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))")
+        .expect("static regex")
+});
 
 /// How long a step with no explicit timeout waits before giving up.
 pub const DEFAULT_TIMEOUT_MS: u32 = 10_000;
@@ -618,7 +626,16 @@ impl ScriptEngine {
                 out_var,
                 code_var,
             } => {
-                let command = self.substitute(&command);
+                // The command goes to `sh -c`, and a variable may hold text the
+                // remote host printed (`capture`, `readline`). Substituting it
+                // unchecked would let that host run commands on this machine.
+                let command = match self.substitute_for_shell(&command) {
+                    Ok(command) => command,
+                    Err(reason) => {
+                        self.finish(Some(format!("Refusing to run command: {reason}")));
+                        return;
+                    }
+                };
                 self.run_out_var = out_var;
                 self.run_code_var = code_var;
                 self.pending = PendingKind::Run;
@@ -795,20 +812,50 @@ impl ScriptEngine {
 
     /// Substitutes `$name` / `${name}` references using the script's variables.
     fn substitute(&self, text: &str) -> String {
-        let re = Regex::new(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))")
-            .expect("static regex");
-        re.replace_all(text, |caps: &regex::Captures<'_>| {
-            let name = caps.get(1).or_else(|| caps.get(2)).map(|m| m.as_str());
-            match name {
-                Some(name) => self
-                    .variables
-                    .get(name)
-                    .cloned()
-                    .unwrap_or_else(|| caps[0].to_string()),
-                None => caps[0].to_string(),
-            }
-        })
-        .into_owned()
+        VARIABLE_REF
+            .replace_all(text, |caps: &regex::Captures<'_>| {
+                let name = caps.get(1).or_else(|| caps.get(2)).map(|m| m.as_str());
+                match name {
+                    Some(name) => self
+                        .variables
+                        .get(name)
+                        .cloned()
+                        .unwrap_or_else(|| caps[0].to_string()),
+                    None => caps[0].to_string(),
+                }
+            })
+            .into_owned()
+    }
+
+    /// [`Self::substitute`] for a command line handed to `sh -c`.
+    ///
+    /// Every substituted value must pass the same check `TaskExecutor`
+    /// applies to its variables (no shell metacharacters, newlines or
+    /// control characters); the first value that fails is reported. A
+    /// reference to an unknown variable is left as written, exactly like
+    /// [`Self::substitute`] — it is script text, not remote input.
+    fn substitute_for_shell(&self, text: &str) -> Result<String, String> {
+        let mut rejected: Option<String> = None;
+        let command = VARIABLE_REF
+            .replace_all(text, |caps: &regex::Captures<'_>| {
+                let name = caps.get(1).or_else(|| caps.get(2)).map(|m| m.as_str());
+                let Some((name, value)) =
+                    name.and_then(|n| self.variables.get(n).map(|v| (n, v)))
+                else {
+                    return caps[0].to_string();
+                };
+                if rejected.is_none()
+                    && let Err(e) = VariableManager::validate_command_value(name, value)
+                {
+                    rejected = Some(e.to_string());
+                }
+                value.clone()
+            })
+            .into_owned();
+        match rejected {
+            Some(reason) => Err(reason),
+            None => Ok(command),
+        }
     }
 
     /// Substitutes `${name}` key elements with script variables. Elements that
@@ -1684,5 +1731,62 @@ mod tests {
         assert!(engine.is_finished());
         assert_eq!(engine.variable("o"), Some("alice\n"));
         assert_eq!(engine.variable("c"), Some("0"));
+    }
+
+    /// Text the remote host printed must never become a local shell command:
+    /// a captured value carrying a metacharacter stops the script before
+    /// `run` reaches the host.
+    #[test]
+    fn run_refuses_a_captured_value_with_shell_metacharacters() {
+        let mut host = FakeHost::default();
+        let mut engine =
+            ScriptEngine::parse("capture /name=(\\S+)/ name\nrun \"echo ${name}\"\n").unwrap();
+        engine.pump(&mut host);
+        engine.on_output(b"name=x;touch\t/tmp/pwned ");
+        engine.pump(&mut host);
+
+        assert!(engine.is_finished());
+        assert!(
+            engine
+                .error()
+                .is_some_and(|e| e.contains("Refusing to run command")),
+            "{:?}",
+            engine.error()
+        );
+        assert!(host.events.iter().all(|e| !e.starts_with("run:")));
+    }
+
+    /// Each class the shared validator rejects is rejected here too, and a
+    /// plain value still runs.
+    #[test]
+    fn run_validates_every_substituted_value() {
+        for bad in ["a|b", "a&b", "`id`", "$(id)", "a>b", "a\nb", "a\u{7}b"] {
+            let mut host = FakeHost::default();
+            let mut engine = ScriptEngine::parse("run \"echo ${v}\"\n").unwrap();
+            engine.variables.insert("v".to_string(), bad.to_string());
+            engine.pump(&mut host);
+            assert!(engine.error().is_some(), "{bad:?} must be rejected");
+            assert!(host.events.is_empty(), "{bad:?} reached the host");
+        }
+
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse("run \"ping -c1 ${v}\"\n").unwrap();
+        engine
+            .variables
+            .insert("v".to_string(), "db-01.example.com".to_string());
+        engine.pump(&mut host);
+        assert_eq!(host.events, vec!["run:ping -c1 db-01.example.com:None"]);
+    }
+
+    /// `send` and `print` are not shell contexts, so the guard does not apply
+    /// to them: a value with `;` still reaches the terminal unchanged.
+    #[test]
+    fn send_and_print_are_not_shell_checked() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse("print $v\n").unwrap();
+        engine.variables.insert("v".to_string(), "a;b".to_string());
+        engine.pump(&mut host);
+        assert!(engine.error().is_none());
+        assert_eq!(host.events, vec!["print:a;b"]);
     }
 }
