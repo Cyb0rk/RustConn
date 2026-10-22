@@ -19,7 +19,8 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use libadwaita as adw;
 use rustconn_core::automation::{
-    DEFAULT_TIMEOUT_MS, KeySequence, PendingKind, ScriptEngine, ScriptHost, ScriptStep,
+    DEFAULT_TIMEOUT_MS, KeySequence, PendingKind, SCRUBBED_ENV_VARS, ScriptEngine, ScriptHost,
+    ScriptStep,
 };
 use uuid::Uuid;
 
@@ -27,17 +28,6 @@ use crate::state::SharedAppState;
 use crate::window::types::{
     SessionSplitBridges, SharedMonitoring, SharedNotebook, SharedSidebar, SharedSplitView,
 };
-
-/// Environment variables scrubbed from `run` commands, mirroring `TaskExecutor`.
-const SECRET_ENV_VARS: [&str; 7] = [
-    "BW_SESSION",
-    "AWS_SECRET_ACCESS_KEY",
-    "AWS_SESSION_TOKEN",
-    "AWS_ACCESS_KEY_ID",
-    "OP_SESSION",
-    "GITHUB_TOKEN",
-    "GH_TOKEN",
-];
 
 /// Handles a script runner needs that live for the whole application: the
 /// split-view bridges, the sidebar, monitoring and the main window. Published
@@ -730,8 +720,13 @@ async fn run_sh(command: &str, timeout_ms: Option<u32>) -> Result<(i32, String),
 
     let mut cmd = Command::new("sh");
     cmd.arg("-c").arg(command);
-    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
-    for var in &SECRET_ENV_VARS {
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    // A timeout drops the `output()` future; without this the child keeps
+    // running after the script has already reported it as timed out.
+    cmd.kill_on_drop(true);
+    for var in SCRUBBED_ENV_VARS {
         cmd.env_remove(var);
     }
 

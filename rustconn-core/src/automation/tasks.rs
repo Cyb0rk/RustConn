@@ -18,6 +18,20 @@ use uuid::Uuid;
 
 use crate::variables::{VariableManager, VariableScope};
 
+/// Environment variables removed before running a local shell command.
+///
+/// Used by connection tasks and the script `run` instruction: session tokens
+/// and cloud/CI credentials the user's own environment may carry.
+pub const SCRUBBED_ENV_VARS: &[&str] = &[
+    "BW_SESSION",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_ACCESS_KEY_ID",
+    "OP_SESSION",
+    "GITHUB_TOKEN",
+    "GH_TOKEN",
+];
+
 /// Errors that can occur during task operations
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum TaskError {
@@ -470,15 +484,7 @@ impl TaskExecutor {
 
         // Remove sensitive environment variables to prevent credential leakage
         // through automation tasks (TASK-005)
-        for var in &[
-            "BW_SESSION",
-            "AWS_SECRET_ACCESS_KEY",
-            "AWS_SESSION_TOKEN",
-            "AWS_ACCESS_KEY_ID",
-            "OP_SESSION",
-            "GITHUB_TOKEN",
-            "GH_TOKEN",
-        ] {
+        for var in SCRUBBED_ENV_VARS {
             cmd.env_remove(var);
         }
 

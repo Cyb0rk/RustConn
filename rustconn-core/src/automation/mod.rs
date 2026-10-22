@@ -21,7 +21,7 @@ pub use script::{
     ScriptStep, parse_program,
 };
 pub use tasks::{
-    ConnectionTask, FolderConnectionTracker, TaskCondition, TaskError, TaskExecutor, TaskResult,
-    TaskTiming,
+    ConnectionTask, FolderConnectionTracker, SCRUBBED_ENV_VARS, TaskCondition, TaskError,
+    TaskExecutor, TaskResult, TaskTiming,
 };
 pub use templates::{AutomationTemplate, builtin_templates, templates_for_protocol};
