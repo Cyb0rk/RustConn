@@ -849,8 +849,7 @@ impl ScriptEngine {
         let command = VARIABLE_REF
             .replace_all(text, |caps: &regex::Captures<'_>| {
                 let name = caps.get(1).or_else(|| caps.get(2)).map(|m| m.as_str());
-                let Some((name, value)) =
-                    name.and_then(|n| self.variables.get(n).map(|v| (n, v)))
+                let Some((name, value)) = name.and_then(|n| self.variables.get(n).map(|v| (n, v)))
                 else {
                     return caps[0].to_string();
                 };

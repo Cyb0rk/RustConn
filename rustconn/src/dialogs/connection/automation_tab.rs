@@ -671,7 +671,11 @@ pub(super) fn add_auto_script_row(
         let Ok(idx) = usize::try_from(row_delete.index()) else {
             return;
         };
-        let id = scripts_delete.borrow().get(idx).cloned().unwrap_or_default();
+        let id = scripts_delete
+            .borrow()
+            .get(idx)
+            .cloned()
+            .unwrap_or_default();
         if id.is_empty() {
             return;
         }
