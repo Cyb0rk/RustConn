@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: rustconn 0.23.19\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-22 16:17+0400\n"
+"POT-Creation-Date: 2026-10-22 19:12+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,8 +19,8 @@ msgstr ""
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
 #: rustconn/src/alert.rs:15 rustconn/src/alert.rs:54 rustconn/src/alert.rs:64
-#: rustconn/src/app.rs:2034 rustconn/src/script_runner.rs:781
-#: rustconn/src/script_runner.rs:813 rustconn/src/toast.rs:246
+#: rustconn/src/app.rs:2034 rustconn/src/script_runner.rs:776
+#: rustconn/src/script_runner.rs:808 rustconn/src/toast.rs:246
 msgid "OK"
 msgstr ""
 
@@ -34,6 +34,7 @@ msgstr ""
 #: rustconn/src/dialogs/portable_passphrase_change.rs:93
 #: rustconn/src/dialogs/portable_unlock.rs:93
 #: rustconn/src/dialogs/recording.rs:523 rustconn/src/dialogs/recording.rs:599
+#: rustconn/src/dialogs/script.rs:656
 #: rustconn/src/dialogs/settings/clients_tab.rs:351
 #: rustconn/src/dialogs/settings/keybindings_tab.rs:174
 #: rustconn/src/dialogs/settings/mod.rs:587
@@ -47,7 +48,7 @@ msgstr ""
 #: rustconn/src/dialogs/tunnel_builder/mod.rs:571
 #: rustconn/src/dialogs/variable_setup.rs:85
 #: rustconn/src/dialogs/workspace.rs:237 rustconn/src/dialogs/workspace.rs:291
-#: rustconn/src/embedded_rdp/autotype.rs:166 rustconn/src/script_runner.rs:780
+#: rustconn/src/embedded_rdp/autotype.rs:166 rustconn/src/script_runner.rs:775
 #: rustconn/src/split_view/adapter.rs:1198
 #: rustconn/src/terminal/safe_paste.rs:166
 #: rustconn/src/terminal/tab_menu.rs:354 rustconn/src/terminal/tab_menu.rs:459
@@ -393,7 +394,7 @@ msgid "This cluster will be permanently removed."
 msgstr ""
 
 #: rustconn/src/dialogs/cluster.rs:808 rustconn/src/dialogs/recording.rs:600
-#: rustconn/src/dialogs/script.rs:175
+#: rustconn/src/dialogs/script.rs:175 rustconn/src/dialogs/script.rs:657
 #: rustconn/src/dialogs/template_manager.rs:114
 #: rustconn/src/dialogs/template_manager.rs:192
 #: rustconn/src/dialogs/tunnel.rs:728 rustconn/src/dialogs/workspace.rs:119
@@ -1079,15 +1080,6 @@ msgstr ""
 #: rustconn/src/window/edit_group.rs:2606
 #: rustconn/src/window/edit_group.rs:2610
 msgid "Remove from this list"
-msgstr ""
-
-#: rustconn/src/dialogs/connection/automation_tab.rs:686
-msgid "Deleted script \\u{201c}{}\\u{201d}"
-msgstr ""
-
-#: rustconn/src/dialogs/connection/automation_tab.rs:691
-#: rustconn/src/dialogs/script.rs:399 rustconn/src/window/edit_group.rs:2655
-msgid "Could not delete script"
 msgstr ""
 
 #: rustconn/src/dialogs/connection/builders.rs:317
@@ -6121,84 +6113,102 @@ msgstr ""
 msgid "Delete script"
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:322
+#: rustconn/src/dialogs/script.rs:326
 msgid "Editing script. Save writes it back to the library."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:325 rustconn/src/dialogs/script.rs:526
+#: rustconn/src/dialogs/script.rs:329 rustconn/src/dialogs/script.rs:533
 msgid "Could not load script"
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:340
+#: rustconn/src/dialogs/script.rs:344
 msgid "New script. Enter an id and source, then Save."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:356
+#: rustconn/src/dialogs/script.rs:360
 msgid "A script id is required."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:366
+#: rustconn/src/dialogs/script.rs:370
 msgid "Script saved."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:370
+#: rustconn/src/dialogs/script.rs:374
 msgid "Could not save script"
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:386
+#: rustconn/src/dialogs/script.rs:390
 msgid "Select a script to delete."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:393
+#: rustconn/src/dialogs/script.rs:404
 msgid "Script deleted."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:424
+#: rustconn/src/dialogs/script.rs:431
 msgid "Select a script to run."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:428
+#: rustconn/src/dialogs/script.rs:435
 msgid "Open a session first, then run the script."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:434
+#: rustconn/src/dialogs/script.rs:441
 msgid "Script runtime is not ready."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:463
+#: rustconn/src/dialogs/script.rs:470
 msgid "Script finished in {} s."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:466
+#: rustconn/src/dialogs/script.rs:473
 msgid "Script stopped after {} s."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:470
+#: rustconn/src/dialogs/script.rs:477
 msgid "Script failed after {} s: {}"
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:497
+#: rustconn/src/dialogs/script.rs:504
 msgid "Script running… 0.0 s"
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:512
+#: rustconn/src/dialogs/script.rs:519
 msgid "Script running… {} s"
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:521
+#: rustconn/src/dialogs/script.rs:528
 msgid "Could not start script"
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:544
+#: rustconn/src/dialogs/script.rs:551
 msgid "Open a session first, then stop the script."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:552
+#: rustconn/src/dialogs/script.rs:559
 msgid "No script is running on this session."
 msgstr ""
 
-#: rustconn/src/dialogs/script.rs:561
+#: rustconn/src/dialogs/script.rs:568
 msgid "Script stopped."
+msgstr ""
+
+#: rustconn/src/dialogs/script.rs:650
+msgid "Delete Script?"
+msgstr ""
+
+#: rustconn/src/dialogs/script.rs:652
+msgid ""
+"“{}” will be removed from the script library, and every connection and group "
+"that runs it will stop running it."
+msgstr ""
+
+#: rustconn/src/dialogs/script.rs:671
+msgid "Deleted script “{}”"
+msgstr ""
+
+#: rustconn/src/dialogs/script.rs:682
+msgid "Could not delete script"
 msgstr ""
 
 #: rustconn/src/dialogs/settings/clients_tab.rs:36
@@ -10774,16 +10784,16 @@ msgstr ""
 msgid "⚠ Monitoring stopped — metrics may be stale"
 msgstr ""
 
-#: rustconn/src/script_runner.rs:613
+#: rustconn/src/script_runner.rs:603
 msgid "Script error: {}"
 msgstr ""
 
-#: rustconn/src/script_runner.rs:919
-msgid "Could not start script \\u{201c}{}\\u{201d}: {}"
+#: rustconn/src/script_runner.rs:914
+msgid "Could not start script “{}”: {}"
 msgstr ""
 
-#: rustconn/src/script_runner.rs:927
-msgid "Auto-run script \\u{201c}{}\\u{201d} could not be loaded: {}"
+#: rustconn/src/script_runner.rs:922
+msgid "Auto-run script “{}” could not be loaded: {}"
 msgstr ""
 
 #: rustconn/src/sidebar/mod.rs:158
@@ -12463,10 +12473,6 @@ msgstr ""
 
 #: rustconn/src/window/edit_group.rs:2515
 msgid "Command to execute after login"
-msgstr ""
-
-#: rustconn/src/window/edit_group.rs:2648
-msgid "Deleted script “{}”"
 msgstr ""
 
 #: rustconn/src/window/group_broadcast.rs:373
