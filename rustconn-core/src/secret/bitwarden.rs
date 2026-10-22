@@ -286,6 +286,17 @@ struct BitwardenItem {
     name: String,
     login: Option<BitwardenLogin>,
     notes: Option<String>,
+    /// Custom fields. A field named `domain` (any case) supplies the Windows
+    /// domain for an item the user keeps outside RustConn.
+    #[serde(default)]
+    fields: Option<Vec<BitwardenField>>,
+}
+
+/// One custom field as `bw` returns it (`{"name": …, "value": …, "type": …}`).
+#[derive(Debug, Deserialize)]
+struct BitwardenField {
+    name: Option<String>,
+    value: Option<String>,
 }
 
 /// Bitwarden login structure
@@ -985,6 +996,7 @@ impl BitwardenBackend {
             return Ok(None);
         };
 
+        let domain = Self::item_domain(&item, connection_id);
         let login = match item.login {
             Some(login) => login,
             None => return Ok(None),
@@ -994,8 +1006,35 @@ impl BitwardenBackend {
             username: login.username,
             password: login.password,
             key_passphrase: None,
-            domain: item.notes,
+            domain,
         }))
+    }
+
+    /// The Windows domain an item supplies.
+    ///
+    /// A custom field named `domain` (any case) is read from any item. The
+    /// notes field is read only from RustConn's own `RustConn: {id}` item,
+    /// because that is where `store` has always written the domain. An item
+    /// found by root search is the user's own entry, whose notes are free
+    /// text: handing them to RDP as `/d:` would put prose on the command line.
+    /// The value is checked by [`super::sanitize_domain`] later either way.
+    fn item_domain(item: &BitwardenItem, connection_id: &str) -> Option<String> {
+        let from_field = item
+            .fields
+            .iter()
+            .flatten()
+            .find(|f| {
+                f.name
+                    .as_deref()
+                    .is_some_and(|n| n.trim().eq_ignore_ascii_case("domain"))
+            })
+            .and_then(|f| f.value.clone())
+            .filter(|v| !v.trim().is_empty());
+        from_field.or_else(|| {
+            (item.name == Self::entry_name(connection_id))
+                .then(|| item.notes.clone())
+                .flatten()
+        })
     }
 
     /// Finds an item by exact vault entry name (without `RustConn:` prefix)
@@ -2466,6 +2505,48 @@ mod root_search_tests {
         assert_eq!(
             BitwardenBackend::bare_candidates("k", &["192.168.0.122", "krdp"]),
             vec!["k", "192.168.0.122", "krdp"]
+        );
+    }
+
+    /// The domain comes from a `domain` custom field on any item, but from
+    /// the notes only on RustConn's own item — a root-search hit's notes are
+    /// the user's free text and must never reach RDP as a domain.
+    #[test]
+    fn item_domain_reads_a_custom_field_and_only_trusts_own_notes() {
+        let with = |name: &str, notes: Option<&str>, fields: serde_json::Value| -> BitwardenItem {
+            serde_json::from_value(serde_json::json!({
+                "id": "x", "name": name, "notes": notes, "login": null, "fields": fields,
+            }))
+            .expect("item json")
+        };
+        let field = serde_json::json!([{ "name": "Domain", "value": "CORP", "type": 0 }]);
+
+        // Custom field, any item, any case.
+        assert_eq!(
+            BitwardenBackend::item_domain(&with("krdp", Some("free text"), field), "k"),
+            Some("CORP".to_string())
+        );
+        // Root-search item without the field: its notes are ignored.
+        assert_eq!(
+            BitwardenBackend::item_domain(
+                &with("krdp", Some("VPN via office"), serde_json::Value::Null),
+                "k"
+            ),
+            None
+        );
+        // RustConn's own item: notes are where `store` writes the domain.
+        assert_eq!(
+            BitwardenBackend::item_domain(
+                &with("RustConn: k", Some("CORP"), serde_json::Value::Null),
+                "k"
+            ),
+            Some("CORP".to_string())
+        );
+        // An empty field falls back to the same rule as no field.
+        let empty = serde_json::json!([{ "name": "domain", "value": "  " }]);
+        assert_eq!(
+            BitwardenBackend::item_domain(&with("krdp", Some("text"), empty), "k"),
+            None
         );
     }
 
