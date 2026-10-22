@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: rustconn 0.12.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-22 19:12+0300\n"
+"POT-Creation-Date: 2026-10-22 21:52+0300\n"
 "PO-Revision-Date: 2026-04-30 14:42+0800\n"
 "Last-Translator: GaaChun <zeonsinsang@163.com>\n"
 "Language-Team: Chinese(Simplified)\n"
@@ -58,8 +58,8 @@ msgstr "确定"
 #: rustconn/src/window/connection_dialogs.rs:942
 #: rustconn/src/window/edit_group.rs:1957
 #: rustconn/src/window/edit_group.rs:2006
-#: rustconn/src/window/group_broadcast.rs:379 rustconn/src/window/mod.rs:3368
-#: rustconn/src/window/mod.rs:3432 rustconn/src/window/mod.rs:4386
+#: rustconn/src/window/group_broadcast.rs:379 rustconn/src/window/mod.rs:3382
+#: rustconn/src/window/mod.rs:3446 rustconn/src/window/mod.rs:4400
 #: rustconn/src/window/operations.rs:116 rustconn/src/window/operations.rs:487
 #: rustconn/src/window/operations.rs:670 rustconn/src/window/sessions.rs:339
 #: rustconn/src/window/workspaces.rs:554
@@ -1502,71 +1502,71 @@ msgstr "主机"
 msgid "hostname or IP"
 msgstr "主机名或 IP"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:142
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:373
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:144
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:394
 msgid "Cannot Load Password"
 msgstr "无法加载密码"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:143
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:434
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:145
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:455
 msgid "Enter a connection name or host first."
 msgstr "请先输入连接名称或主机。"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:286
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:344
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:352
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:288
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:365
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:373
 msgid "Password Not Found"
 msgstr "密码未找到"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:287
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:345
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:353
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:289
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:366
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:374
 msgid "No password found in vault for this connection."
 msgstr "保险库中未找到此连接的密码。"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:296
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:360
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:298
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:381
 msgid "Failed to Load Password"
 msgstr "加载密码失败"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:297
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:361
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:299
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:382
 msgid "Could not load password from vault."
 msgstr "无法从保险库加载密码。"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:308
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:588
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:310
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:609
 msgid "Vault Not Configured"
 msgstr "保险库未配置"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:309
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:589
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:311
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:610
 msgid "Configure a secret backend in Settings → Secrets."
 msgstr "请在设置 → 密钥中配置密钥后端。"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:374
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:395
 msgid "Password loading is only available for Vault source."
 msgstr "密码加载仅适用于保险库源。"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:414
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:435
 msgid "Test Not Available"
 msgstr "测试不可用"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:415
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:436
 msgid "Credential test is only available when Password Source is set to Vault."
 msgstr "凭据测试仅在密码来源设置为密码库时可用。"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:433
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:454
 msgid "Cannot Test"
 msgstr "无法测试"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:552
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:619
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:573
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:640
 msgid "Credential Test Passed"
 msgstr "凭据测试通过"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:554
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:621
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:575
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:642
 msgid ""
 "Password found in vault.\n"
 "Lookup key: {}"
@@ -1574,15 +1574,15 @@ msgstr ""
 "在密码库中找到密码。\n"
 "查找密钥：{}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:562
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:573
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:628
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:639
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:650
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:583
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:594
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:649
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:660
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:671
 msgid "Credential Test Failed"
 msgstr "凭据测试失败"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:564
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:585
 msgid ""
 "No password found in vault.\n"
 "Lookup key: {}"
@@ -1590,7 +1590,7 @@ msgstr ""
 "在密码库中未找到密码。\n"
 "查找密钥：{}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:575
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:596
 msgid ""
 "Vault error. Check your KeePass configuration.\n"
 "Lookup key: {}"
@@ -1598,7 +1598,7 @@ msgstr ""
 "密码库错误。请检查您的 KeePass 配置。\n"
 "查找密钥：{}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:630
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:651
 msgid ""
 "Entry found but contains no password.\n"
 "Lookup key: {}"
@@ -1606,7 +1606,7 @@ msgstr ""
 "找到条目但不包含密码。\n"
 "查找密钥：{}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:641
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:662
 msgid ""
 "No entry found in vault.\n"
 "Lookup key: {}"
@@ -1614,7 +1614,7 @@ msgstr ""
 "在密码库中未找到条目。\n"
 "查找密钥：{}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:652
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:673
 msgid ""
 "Backend error. Check your vault configuration.\n"
 "Lookup key: {}"
@@ -2161,12 +2161,8 @@ msgstr "值"
 
 #: rustconn/src/dialogs/connection/general_tab.rs:301
 #: rustconn/src/dialogs/connection/general_tab.rs:305
-#: rustconn/src/dialogs/variables.rs:260 rustconn/src/dialogs/variables.rs:263
-#: rustconn/src/window/connection_dialogs.rs:522
-#: rustconn/src/window/connection_dialogs.rs:526
-#: rustconn/src/window/edit_group.rs:289 rustconn/src/window/edit_group.rs:293
-msgid "Load password from vault"
-msgstr "从密钥库加载密码"
+msgid "Load credentials from vault"
+msgstr "从密钥库加载凭据"
 
 #: rustconn/src/dialogs/connection/general_tab.rs:309
 #: rustconn/src/dialogs/connection/general_tab.rs:313
@@ -4544,7 +4540,7 @@ msgstr "复制已停止"
 #: rustconn/src/dialogs/widgets.rs:608 rustconn/src/sidebar_ui.rs:465
 #: rustconn/src/split_view/adapter.rs:1199
 #: rustconn/src/terminal/tab_menu.rs:689 rustconn/src/vault_ops.rs:65
-#: rustconn/src/window/mod.rs:4387
+#: rustconn/src/window/mod.rs:4401
 msgid "Close"
 msgstr "关闭"
 
@@ -9785,6 +9781,13 @@ msgstr "variable_name"
 msgid "Password value"
 msgstr "密码值"
 
+#: rustconn/src/dialogs/variables.rs:260 rustconn/src/dialogs/variables.rs:263
+#: rustconn/src/window/connection_dialogs.rs:522
+#: rustconn/src/window/connection_dialogs.rs:526
+#: rustconn/src/window/edit_group.rs:289 rustconn/src/window/edit_group.rs:293
+msgid "Load password from vault"
+msgstr "从密钥库加载密码"
+
 #: rustconn/src/dialogs/variables.rs:298
 msgid "KeePass entry:"
 msgstr "KeePass 条目："
@@ -11814,7 +11817,7 @@ msgstr "{} 个活动会话"
 msgid "About RustConn"
 msgstr "关于 RustConn"
 
-#: rustconn/src/vault_ops.rs:50 rustconn/src/window/mod.rs:5354
+#: rustconn/src/vault_ops.rs:50 rustconn/src/window/mod.rs:5368
 msgid "Passphrase Does Not Open the Portable File"
 msgstr "密码短语无法打开便携文件"
 
@@ -12002,8 +12005,8 @@ msgstr ""
 msgid "Jump Host Unavailable"
 msgstr "跳板主机不可用"
 
-#: rustconn/src/window/clusters.rs:457 rustconn/src/window/mod.rs:3369
-#: rustconn/src/window/mod.rs:3435 rustconn/src/window/rdp_vnc.rs:766
+#: rustconn/src/window/clusters.rs:457 rustconn/src/window/mod.rs:3383
+#: rustconn/src/window/mod.rs:3449 rustconn/src/window/rdp_vnc.rs:766
 msgid "Connect Anyway"
 msgstr "仍然连接"
 
@@ -12229,8 +12232,8 @@ msgstr "无法将变量保存到保险库：{}"
 msgid "Vault entry not found for '{}'. You will be prompted for a password."
 msgstr "未找到 '{}' 的密码库条目。系统将提示您输入密码。"
 
-#: rustconn/src/window/credentials.rs:988
-#: rustconn/src/window/credentials.rs:1224
+#: rustconn/src/window/credentials.rs:989
+#: rustconn/src/window/credentials.rs:1225
 #: rustconn/src/window/edit_actions.rs:2096
 msgid "Connection failed. Host unreachable."
 msgstr "连接失败。主机不可达。"
@@ -12862,23 +12865,23 @@ msgstr "已在外部窗口中运行"
 msgid "Connection to ‘{}’ failed"
 msgstr "连接到‘{}’失败"
 
-#: rustconn/src/window/mod.rs:3061 rustconn/src/window/mod.rs:3075
+#: rustconn/src/window/mod.rs:3075 rustconn/src/window/mod.rs:3089
 msgid "Pre-connect task failed: {}"
 msgstr "连接前任务失败：{}"
 
-#: rustconn/src/window/mod.rs:3109
+#: rustconn/src/window/mod.rs:3123
 msgid "Port knock failed: {}"
 msgstr "端口敲门失败：{}"
 
-#: rustconn/src/window/mod.rs:3158
+#: rustconn/src/window/mod.rs:3172
 msgid "SPA failed: {}"
 msgstr "SPA 失败：{}"
 
-#: rustconn/src/window/mod.rs:3354
+#: rustconn/src/window/mod.rs:3368
 msgid "{} (via {})"
 msgstr "{}（经由 {}）"
 
-#: rustconn/src/window/mod.rs:3360
+#: rustconn/src/window/mod.rs:3374
 msgid ""
 "This connection no longer goes where it did.\n"
 "\n"
@@ -12901,35 +12904,35 @@ msgstr ""
 "\n"
 "如果这不是你所做的更改，请取消——连接可能会将已保存的凭据发送到另一台机器。"
 
-#: rustconn/src/window/mod.rs:3365
+#: rustconn/src/window/mod.rs:3379
 msgid "Routing changed for “{}”"
 msgstr "“{}”的路由已更改"
 
-#: rustconn/src/window/mod.rs:3429
+#: rustconn/src/window/mod.rs:3443
 msgid "Jump Host Unavailable for “{}”"
 msgstr "“{}”的跳板主机不可用"
 
-#: rustconn/src/window/mod.rs:3434
+#: rustconn/src/window/mod.rs:3448
 msgid "Connect Directly"
 msgstr "直接连接"
 
-#: rustconn/src/window/mod.rs:3523 rustconn/src/window/mod.rs:3698
+#: rustconn/src/window/mod.rs:3537 rustconn/src/window/mod.rs:3712
 msgid "Connection “{}” created"
 msgstr "连接“{}”已创建"
 
-#: rustconn/src/window/mod.rs:3905
+#: rustconn/src/window/mod.rs:3919
 msgid "RustConn - {}"
 msgstr "RustConn — {}"
 
-#: rustconn/src/window/mod.rs:4110
+#: rustconn/src/window/mod.rs:4124
 msgid "Settings saved"
 msgstr "设置已保存"
 
-#: rustconn/src/window/mod.rs:4147
+#: rustconn/src/window/mod.rs:4161
 msgid "Passphrase Not Saved on This Computer"
 msgstr "密码短语未保存在本机"
 
-#: rustconn/src/window/mod.rs:4149
+#: rustconn/src/window/mod.rs:4163
 msgid ""
 "The passphrase could not be encrypted for local storage, so it is kept for "
 "this session only and you will be asked for it again after a restart. Choose "
@@ -12939,11 +12942,11 @@ msgstr ""
 "无法为本地存储加密该密码短语，因此它只在本次会话中保留，重启后会再次询问。请"
 "改选“系统密钥环”，或检查 RustConn 是否可以写入其数据目录。"
 
-#: rustconn/src/window/mod.rs:4195
+#: rustconn/src/window/mod.rs:4209
 msgid "Credentials Not Saved to Keyring"
 msgstr "凭据未保存到密钥环"
 
-#: rustconn/src/window/mod.rs:4197
+#: rustconn/src/window/mod.rs:4211
 msgid ""
 "The system keyring did not accept the credentials, so they are kept for this "
 "session only and will be gone after a restart. Check that your keyring "
@@ -12952,55 +12955,55 @@ msgstr ""
 "系统密钥环未接受该凭据，因此凭据仅在本次会话内保留，重启后将丢失。请确认密钥"
 "环服务正在运行且已解锁，然后重新保存设置。"
 
-#: rustconn/src/window/mod.rs:4380
+#: rustconn/src/window/mod.rs:4394
 msgid "Close RustConn?"
 msgstr "关闭 RustConn？"
 
-#: rustconn/src/window/mod.rs:4382
+#: rustconn/src/window/mod.rs:4396
 msgid "{} session tab(s) are open. Active connections will be disconnected."
 msgstr "有 {} 个会话标签页处于打开状态。活动连接将被断开。"
 
-#: rustconn/src/window/mod.rs:4419
+#: rustconn/src/window/mod.rs:4433
 msgid ""
 "Settings could not be read, so defaults are in use. The unreadable file was "
 "kept as {}."
 msgstr "无法读取设置，因此正在使用默认值。无法读取的文件已保留为 {}。"
 
-#: rustconn/src/window/mod.rs:4424
+#: rustconn/src/window/mod.rs:4438
 msgid ""
 "These settings were saved by a newer RustConn ({}). A backup is kept before "
 "they are changed."
 msgstr "这些设置由较新版本的 RustConn（{}）保存。更改前会保留备份。"
 
-#: rustconn/src/window/mod.rs:4449
+#: rustconn/src/window/mod.rs:4463
 msgid "Cloud sync failed for '{}': {}"
 msgstr "'{}' 的云同步失败：{}"
 
-#: rustconn/src/window/mod.rs:4632
+#: rustconn/src/window/mod.rs:4646
 msgid "Startup connection not found"
 msgstr "未找到启动连接"
 
-#: rustconn/src/window/mod.rs:4668
+#: rustconn/src/window/mod.rs:4682
 msgid "Failed to open .rdp file"
 msgstr "打开 .rdp 文件失败"
 
-#: rustconn/src/window/mod.rs:4704
+#: rustconn/src/window/mod.rs:4718
 msgid "Failed to open .vv file"
 msgstr "打开 .vv 文件失败"
 
-#: rustconn/src/window/mod.rs:4741
+#: rustconn/src/window/mod.rs:4755
 msgid "Tunnel “{}” stopped: {}"
 msgstr "隧道“{}”已停止：{}"
 
-#: rustconn/src/window/mod.rs:4757
+#: rustconn/src/window/mod.rs:4771
 msgid "Gave up reconnecting tunnel “{}”: {}"
 msgstr "已放弃重连隧道“{}”：{}"
 
-#: rustconn/src/window/mod.rs:5270
+#: rustconn/src/window/mod.rs:5284
 msgid "Successfully exported {} connection(s). {} skipped."
 msgstr "成功导出 {} 个连接。{} 个已跳过。"
 
-#: rustconn/src/window/mod.rs:5356
+#: rustconn/src/window/mod.rs:5370
 msgid ""
 "The passphrase you saved does not decrypt the portable credential file, so "
 "none of the passwords in it can be read. Open Settings ▸ Secrets and enter "

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: rustconn 0.12.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-22 19:12+0300\n"
+"POT-Creation-Date: 2026-10-22 21:52+0300\n"
 "PO-Revision-Date: 2026-04-25 10:46+0000\n"
 "Last-Translator: RustConn Team\n"
 "Language-Team: Uzbek\n"
@@ -57,8 +57,8 @@ msgstr "OK"
 #: rustconn/src/window/connection_dialogs.rs:942
 #: rustconn/src/window/edit_group.rs:1957
 #: rustconn/src/window/edit_group.rs:2006
-#: rustconn/src/window/group_broadcast.rs:379 rustconn/src/window/mod.rs:3368
-#: rustconn/src/window/mod.rs:3432 rustconn/src/window/mod.rs:4386
+#: rustconn/src/window/group_broadcast.rs:379 rustconn/src/window/mod.rs:3382
+#: rustconn/src/window/mod.rs:3446 rustconn/src/window/mod.rs:4400
 #: rustconn/src/window/operations.rs:116 rustconn/src/window/operations.rs:487
 #: rustconn/src/window/operations.rs:670 rustconn/src/window/sessions.rs:339
 #: rustconn/src/window/workspaces.rs:554
@@ -1549,73 +1549,73 @@ msgstr "Xost"
 msgid "hostname or IP"
 msgstr "xost nomi yoki IP"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:142
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:373
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:144
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:394
 msgid "Cannot Load Password"
 msgstr "Parolni yuklash imkonsiz"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:143
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:434
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:145
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:455
 msgid "Enter a connection name or host first."
 msgstr "Avval ulanish nomini yoki xostni kiriting."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:286
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:344
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:352
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:288
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:365
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:373
 msgid "Password Not Found"
 msgstr "Parol topilmadi"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:287
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:345
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:353
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:289
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:366
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:374
 msgid "No password found in vault for this connection."
 msgstr "Bu ulanish uchun omborda parol topilmadi."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:296
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:360
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:298
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:381
 msgid "Failed to Load Password"
 msgstr "Parolni yuklash muvaffaqiyatsiz"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:297
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:361
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:299
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:382
 msgid "Could not load password from vault."
 msgstr "Ombordan parolni yuklash imkonsiz."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:308
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:588
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:310
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:609
 msgid "Vault Not Configured"
 msgstr "Ombor sozlanmagan"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:309
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:589
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:311
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:610
 msgid "Configure a secret backend in Settings → Secrets."
 msgstr "Sozlamalar → Maxfiyliklar bo'limida maxfiy backendni sozlang."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:374
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:395
 msgid "Password loading is only available for Vault source."
 msgstr "Parolni yuklash faqat Ombor manbasi uchun mavjud."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:414
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:435
 msgid "Test Not Available"
 msgstr "Test mavjud emas"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:415
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:436
 msgid "Credential test is only available when Password Source is set to Vault."
 msgstr ""
 "Hisob maʻlumotlarini tekshirish faqat Parol manbai Ombor ga oʻrnatilganda "
 "mavjud."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:433
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:454
 msgid "Cannot Test"
 msgstr "Tekshirib boʻlmaydi"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:552
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:619
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:573
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:640
 msgid "Credential Test Passed"
 msgstr "Hisob maʻlumotlarini tekshirish muvaffaqiyatli"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:554
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:621
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:575
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:642
 msgid ""
 "Password found in vault.\n"
 "Lookup key: {}"
@@ -1623,15 +1623,15 @@ msgstr ""
 "Parol ombordan topildi.\n"
 "Qidiruv kaliti: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:562
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:573
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:628
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:639
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:650
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:583
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:594
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:649
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:660
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:671
 msgid "Credential Test Failed"
 msgstr "Hisob maʻlumotlarini tekshirish muvaffaqiyatsiz"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:564
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:585
 msgid ""
 "No password found in vault.\n"
 "Lookup key: {}"
@@ -1639,7 +1639,7 @@ msgstr ""
 "Ombordan parol topilmadi.\n"
 "Qidiruv kaliti: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:575
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:596
 msgid ""
 "Vault error. Check your KeePass configuration.\n"
 "Lookup key: {}"
@@ -1647,7 +1647,7 @@ msgstr ""
 "Ombor xatosi. KeePass konfiguratsiyasini tekshiring.\n"
 "Qidiruv kaliti: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:630
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:651
 msgid ""
 "Entry found but contains no password.\n"
 "Lookup key: {}"
@@ -1655,7 +1655,7 @@ msgstr ""
 "Yozuv topildi, lekin parol yoʻq.\n"
 "Qidiruv kaliti: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:641
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:662
 msgid ""
 "No entry found in vault.\n"
 "Lookup key: {}"
@@ -1663,7 +1663,7 @@ msgstr ""
 "Ombordan yozuv topilmadi.\n"
 "Qidiruv kaliti: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:652
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:673
 msgid ""
 "Backend error. Check your vault configuration.\n"
 "Lookup key: {}"
@@ -2219,12 +2219,8 @@ msgstr "Qiymat"
 
 #: rustconn/src/dialogs/connection/general_tab.rs:301
 #: rustconn/src/dialogs/connection/general_tab.rs:305
-#: rustconn/src/dialogs/variables.rs:260 rustconn/src/dialogs/variables.rs:263
-#: rustconn/src/window/connection_dialogs.rs:522
-#: rustconn/src/window/connection_dialogs.rs:526
-#: rustconn/src/window/edit_group.rs:289 rustconn/src/window/edit_group.rs:293
-msgid "Load password from vault"
-msgstr "Ombordan parolni yuklash"
+msgid "Load credentials from vault"
+msgstr "Hisob maʼlumotlarini xazinadan yuklash"
 
 #: rustconn/src/dialogs/connection/general_tab.rs:309
 #: rustconn/src/dialogs/connection/general_tab.rs:313
@@ -4681,7 +4677,7 @@ msgstr "Ko'chirish to'xtatildi"
 #: rustconn/src/dialogs/widgets.rs:608 rustconn/src/sidebar_ui.rs:465
 #: rustconn/src/split_view/adapter.rs:1199
 #: rustconn/src/terminal/tab_menu.rs:689 rustconn/src/vault_ops.rs:65
-#: rustconn/src/window/mod.rs:4387
+#: rustconn/src/window/mod.rs:4401
 msgid "Close"
 msgstr "Yopish"
 
@@ -10066,6 +10062,13 @@ msgstr "variable_name"
 msgid "Password value"
 msgstr "Parol qiymati"
 
+#: rustconn/src/dialogs/variables.rs:260 rustconn/src/dialogs/variables.rs:263
+#: rustconn/src/window/connection_dialogs.rs:522
+#: rustconn/src/window/connection_dialogs.rs:526
+#: rustconn/src/window/edit_group.rs:289 rustconn/src/window/edit_group.rs:293
+msgid "Load password from vault"
+msgstr "Ombordan parolni yuklash"
+
 #: rustconn/src/dialogs/variables.rs:298
 msgid "KeePass entry:"
 msgstr "KeePass yozuvi:"
@@ -12173,7 +12176,7 @@ msgstr "{} faol sessiya(lar)"
 msgid "About RustConn"
 msgstr "RustConn haqida"
 
-#: rustconn/src/vault_ops.rs:50 rustconn/src/window/mod.rs:5354
+#: rustconn/src/vault_ops.rs:50 rustconn/src/window/mod.rs:5368
 msgid "Passphrase Does Not Open the Portable File"
 msgstr "Parol iborasi ko'chma faylni ochmaydi"
 
@@ -12373,8 +12376,8 @@ msgstr ""
 msgid "Jump Host Unavailable"
 msgstr "Oʻtish xosti mavjud emas"
 
-#: rustconn/src/window/clusters.rs:457 rustconn/src/window/mod.rs:3369
-#: rustconn/src/window/mod.rs:3435 rustconn/src/window/rdp_vnc.rs:766
+#: rustconn/src/window/clusters.rs:457 rustconn/src/window/mod.rs:3383
+#: rustconn/src/window/mod.rs:3449 rustconn/src/window/rdp_vnc.rs:766
 msgid "Connect Anyway"
 msgstr "Baribir ulanish"
 
@@ -12602,8 +12605,8 @@ msgstr "O'zgaruvchini omborga saqlash amalga oshmadi: {}"
 msgid "Vault entry not found for '{}'. You will be prompted for a password."
 msgstr "'{}' uchun ombor yozuvi topilmadi. Sizdan parol soʻraladi."
 
-#: rustconn/src/window/credentials.rs:988
-#: rustconn/src/window/credentials.rs:1224
+#: rustconn/src/window/credentials.rs:989
+#: rustconn/src/window/credentials.rs:1225
 #: rustconn/src/window/edit_actions.rs:2096
 msgid "Connection failed. Host unreachable."
 msgstr "Ulanish muvaffaqiyatsiz. Xost mavjud emas."
@@ -13275,23 +13278,23 @@ msgstr "Allaqachon tashqi oynada ishlamoqda"
 msgid "Connection to ‘{}’ failed"
 msgstr "‘{}’ ga ulanish muvaffaqiyatsiz"
 
-#: rustconn/src/window/mod.rs:3061 rustconn/src/window/mod.rs:3075
+#: rustconn/src/window/mod.rs:3075 rustconn/src/window/mod.rs:3089
 msgid "Pre-connect task failed: {}"
 msgstr "Ulanish oldidan vazifa bajarilmadi: {}"
 
-#: rustconn/src/window/mod.rs:3109
+#: rustconn/src/window/mod.rs:3123
 msgid "Port knock failed: {}"
 msgstr "Port knock amalga oshmadi: {}"
 
-#: rustconn/src/window/mod.rs:3158
+#: rustconn/src/window/mod.rs:3172
 msgid "SPA failed: {}"
 msgstr "SPA amalga oshmadi: {}"
 
-#: rustconn/src/window/mod.rs:3354
+#: rustconn/src/window/mod.rs:3368
 msgid "{} (via {})"
 msgstr "{} ({} orqali)"
 
-#: rustconn/src/window/mod.rs:3360
+#: rustconn/src/window/mod.rs:3374
 msgid ""
 "This connection no longer goes where it did.\n"
 "\n"
@@ -13315,35 +13318,35 @@ msgstr ""
 "Agar bu o‘zgarishni siz qilmagan bo‘lsangiz, bekor qiling — ulanish "
 "saqlangan hisob ma’lumotlarini boshqa mashinaga yuborishi mumkin."
 
-#: rustconn/src/window/mod.rs:3365
+#: rustconn/src/window/mod.rs:3379
 msgid "Routing changed for “{}”"
 msgstr "«{}» uchun marshrut o‘zgardi"
 
-#: rustconn/src/window/mod.rs:3429
+#: rustconn/src/window/mod.rs:3443
 msgid "Jump Host Unavailable for “{}”"
 msgstr "«{}» uchun oʻtish xosti mavjud emas"
 
-#: rustconn/src/window/mod.rs:3434
+#: rustconn/src/window/mod.rs:3448
 msgid "Connect Directly"
 msgstr "Toʻgʻridan-toʻgʻri ulanish"
 
-#: rustconn/src/window/mod.rs:3523 rustconn/src/window/mod.rs:3698
+#: rustconn/src/window/mod.rs:3537 rustconn/src/window/mod.rs:3712
 msgid "Connection “{}” created"
 msgstr "“{}” ulanishi yaratildi"
 
-#: rustconn/src/window/mod.rs:3905
+#: rustconn/src/window/mod.rs:3919
 msgid "RustConn - {}"
 msgstr "RustConn — {}"
 
-#: rustconn/src/window/mod.rs:4110
+#: rustconn/src/window/mod.rs:4124
 msgid "Settings saved"
 msgstr "Sozlamalar saqlandi"
 
-#: rustconn/src/window/mod.rs:4147
+#: rustconn/src/window/mod.rs:4161
 msgid "Passphrase Not Saved on This Computer"
 msgstr "Parol iborasi bu kompyuterda saqlanmadi"
 
-#: rustconn/src/window/mod.rs:4149
+#: rustconn/src/window/mod.rs:4163
 msgid ""
 "The passphrase could not be encrypted for local storage, so it is kept for "
 "this session only and you will be asked for it again after a restart. Choose "
@@ -13355,11 +13358,11 @@ msgstr ""
 "so'raladi. Buning o'rniga «Tizim kalitlar shodasi»ni tanlang yoki RustConn "
 "o'z ma'lumotlar katalogiga yozishi mumkinligini tekshiring."
 
-#: rustconn/src/window/mod.rs:4195
+#: rustconn/src/window/mod.rs:4209
 msgid "Credentials Not Saved to Keyring"
 msgstr "Hisob ma’lumotlari kalitlar to‘plamiga saqlanmadi"
 
-#: rustconn/src/window/mod.rs:4197
+#: rustconn/src/window/mod.rs:4211
 msgid ""
 "The system keyring did not accept the credentials, so they are kept for this "
 "session only and will be gone after a restart. Check that your keyring "
@@ -13370,15 +13373,15 @@ msgstr ""
 "yo‘qoladi. Kalitlar to‘plami xizmati ishlayotganini va qulfi ochilganini "
 "tekshirib, sozlamalarni qayta saqlang."
 
-#: rustconn/src/window/mod.rs:4380
+#: rustconn/src/window/mod.rs:4394
 msgid "Close RustConn?"
 msgstr "RustConn yopilsinmi?"
 
-#: rustconn/src/window/mod.rs:4382
+#: rustconn/src/window/mod.rs:4396
 msgid "{} session tab(s) are open. Active connections will be disconnected."
 msgstr "{} ta seans varag'i ochiq. Faol ulanishlar uziladi."
 
-#: rustconn/src/window/mod.rs:4419
+#: rustconn/src/window/mod.rs:4433
 msgid ""
 "Settings could not be read, so defaults are in use. The unreadable file was "
 "kept as {}."
@@ -13386,7 +13389,7 @@ msgstr ""
 "Sozlamalarni o'qib bo'lmadi, shuning uchun standart qiymatlar ishlatilmoqda. "
 "O'qib bo'lmaydigan fayl {} sifatida saqlandi."
 
-#: rustconn/src/window/mod.rs:4424
+#: rustconn/src/window/mod.rs:4438
 msgid ""
 "These settings were saved by a newer RustConn ({}). A backup is kept before "
 "they are changed."
@@ -13394,35 +13397,35 @@ msgstr ""
 "Ushbu sozlamalar yangiroq RustConn ({}) tomonidan saqlangan. Ular "
 "o'zgartirilishdan oldin zaxira nusxa saqlanadi."
 
-#: rustconn/src/window/mod.rs:4449
+#: rustconn/src/window/mod.rs:4463
 msgid "Cloud sync failed for '{}': {}"
 msgstr "'{}' uchun bulutli sinxronlash muvaffaqiyatsiz tugadi: {}"
 
-#: rustconn/src/window/mod.rs:4632
+#: rustconn/src/window/mod.rs:4646
 msgid "Startup connection not found"
 msgstr "Ishga tushirish ulanishi topilmadi"
 
-#: rustconn/src/window/mod.rs:4668
+#: rustconn/src/window/mod.rs:4682
 msgid "Failed to open .rdp file"
 msgstr ".rdp faylni ochib bo’lmadi"
 
-#: rustconn/src/window/mod.rs:4704
+#: rustconn/src/window/mod.rs:4718
 msgid "Failed to open .vv file"
 msgstr ".vv faylni ochib bo'lmadi"
 
-#: rustconn/src/window/mod.rs:4741
+#: rustconn/src/window/mod.rs:4755
 msgid "Tunnel “{}” stopped: {}"
 msgstr "“{}” tunneli to'xtadi: {}"
 
-#: rustconn/src/window/mod.rs:4757
+#: rustconn/src/window/mod.rs:4771
 msgid "Gave up reconnecting tunnel “{}”: {}"
 msgstr "“{}” tunnelini qayta ulash to'xtatildi: {}"
 
-#: rustconn/src/window/mod.rs:5270
+#: rustconn/src/window/mod.rs:5284
 msgid "Successfully exported {} connection(s). {} skipped."
 msgstr "{} ta ulanish muvaffaqiyatli eksport qilindi. {} tashlab yuborildi."
 
-#: rustconn/src/window/mod.rs:5356
+#: rustconn/src/window/mod.rs:5370
 msgid ""
 "The passphrase you saved does not decrypt the portable credential file, so "
 "none of the passwords in it can be read. Open Settings ▸ Secrets and enter "

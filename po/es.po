@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: rustconn 0.12.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-22 19:12+0300\n"
+"POT-Creation-Date: 2026-10-22 21:52+0300\n"
 "PO-Revision-Date: 2026-04-25 10:46+0000\n"
 "Last-Translator: RustConn Team\n"
 "Language-Team: Spanish\n"
@@ -57,8 +57,8 @@ msgstr "OK"
 #: rustconn/src/window/connection_dialogs.rs:942
 #: rustconn/src/window/edit_group.rs:1957
 #: rustconn/src/window/edit_group.rs:2006
-#: rustconn/src/window/group_broadcast.rs:379 rustconn/src/window/mod.rs:3368
-#: rustconn/src/window/mod.rs:3432 rustconn/src/window/mod.rs:4386
+#: rustconn/src/window/group_broadcast.rs:379 rustconn/src/window/mod.rs:3382
+#: rustconn/src/window/mod.rs:3446 rustconn/src/window/mod.rs:4400
 #: rustconn/src/window/operations.rs:116 rustconn/src/window/operations.rs:487
 #: rustconn/src/window/operations.rs:670 rustconn/src/window/sessions.rs:339
 #: rustconn/src/window/workspaces.rs:554
@@ -1553,73 +1553,73 @@ msgstr "Host"
 msgid "hostname or IP"
 msgstr "nombre de host o IP"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:142
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:373
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:144
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:394
 msgid "Cannot Load Password"
 msgstr "No se puede cargar la contraseña"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:143
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:434
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:145
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:455
 msgid "Enter a connection name or host first."
 msgstr "Primero introduce un nombre de conexión o host."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:286
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:344
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:352
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:288
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:365
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:373
 msgid "Password Not Found"
 msgstr "Contraseña no encontrada"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:287
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:345
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:353
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:289
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:366
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:374
 msgid "No password found in vault for this connection."
 msgstr "No se encontró contraseña en el almacén para esta conexión."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:296
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:360
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:298
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:381
 msgid "Failed to Load Password"
 msgstr "Error al cargar la contraseña"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:297
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:361
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:299
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:382
 msgid "Could not load password from vault."
 msgstr "No se pudo cargar la contraseña del almacén."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:308
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:588
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:310
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:609
 msgid "Vault Not Configured"
 msgstr "Almacén no configurado"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:309
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:589
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:311
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:610
 msgid "Configure a secret backend in Settings → Secrets."
 msgstr "Configura un backend de secretos en Ajustes → Secretos."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:374
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:395
 msgid "Password loading is only available for Vault source."
 msgstr "La carga de contraseña solo está disponible para la fuente Almacén."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:414
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:435
 msgid "Test Not Available"
 msgstr "Prueba no disponible"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:415
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:436
 msgid "Credential test is only available when Password Source is set to Vault."
 msgstr ""
 "La prueba de credenciales solo está disponible cuando la fuente de "
 "contraseña está configurada como Bóveda."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:433
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:454
 msgid "Cannot Test"
 msgstr "No se puede probar"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:552
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:619
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:573
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:640
 msgid "Credential Test Passed"
 msgstr "Prueba de credenciales exitosa"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:554
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:621
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:575
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:642
 msgid ""
 "Password found in vault.\n"
 "Lookup key: {}"
@@ -1627,15 +1627,15 @@ msgstr ""
 "Contraseña encontrada en la bóveda.\n"
 "Clave de búsqueda: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:562
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:573
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:628
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:639
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:650
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:583
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:594
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:649
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:660
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:671
 msgid "Credential Test Failed"
 msgstr "Prueba de credenciales fallida"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:564
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:585
 msgid ""
 "No password found in vault.\n"
 "Lookup key: {}"
@@ -1643,7 +1643,7 @@ msgstr ""
 "No se encontró contraseña en la bóveda.\n"
 "Clave de búsqueda: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:575
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:596
 msgid ""
 "Vault error. Check your KeePass configuration.\n"
 "Lookup key: {}"
@@ -1651,7 +1651,7 @@ msgstr ""
 "Error de bóveda. Verifique su configuración de KeePass.\n"
 "Clave de búsqueda: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:630
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:651
 msgid ""
 "Entry found but contains no password.\n"
 "Lookup key: {}"
@@ -1659,7 +1659,7 @@ msgstr ""
 "Entrada encontrada pero no contiene contraseña.\n"
 "Clave de búsqueda: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:641
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:662
 msgid ""
 "No entry found in vault.\n"
 "Lookup key: {}"
@@ -1667,7 +1667,7 @@ msgstr ""
 "No se encontró entrada en la bóveda.\n"
 "Clave de búsqueda: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:652
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:673
 msgid ""
 "Backend error. Check your vault configuration.\n"
 "Lookup key: {}"
@@ -2228,12 +2228,8 @@ msgstr "Valor"
 
 #: rustconn/src/dialogs/connection/general_tab.rs:301
 #: rustconn/src/dialogs/connection/general_tab.rs:305
-#: rustconn/src/dialogs/variables.rs:260 rustconn/src/dialogs/variables.rs:263
-#: rustconn/src/window/connection_dialogs.rs:522
-#: rustconn/src/window/connection_dialogs.rs:526
-#: rustconn/src/window/edit_group.rs:289 rustconn/src/window/edit_group.rs:293
-msgid "Load password from vault"
-msgstr "Cargar contraseña desde el almacén"
+msgid "Load credentials from vault"
+msgstr "Cargar credenciales desde la bóveda"
 
 #: rustconn/src/dialogs/connection/general_tab.rs:309
 #: rustconn/src/dialogs/connection/general_tab.rs:313
@@ -4677,7 +4673,7 @@ msgstr "Copia detenida"
 #: rustconn/src/dialogs/widgets.rs:608 rustconn/src/sidebar_ui.rs:465
 #: rustconn/src/split_view/adapter.rs:1199
 #: rustconn/src/terminal/tab_menu.rs:689 rustconn/src/vault_ops.rs:65
-#: rustconn/src/window/mod.rs:4387
+#: rustconn/src/window/mod.rs:4401
 msgid "Close"
 msgstr "Cerrar"
 
@@ -10079,6 +10075,13 @@ msgstr "variable_name"
 msgid "Password value"
 msgstr "Valor de la contraseña"
 
+#: rustconn/src/dialogs/variables.rs:260 rustconn/src/dialogs/variables.rs:263
+#: rustconn/src/window/connection_dialogs.rs:522
+#: rustconn/src/window/connection_dialogs.rs:526
+#: rustconn/src/window/edit_group.rs:289 rustconn/src/window/edit_group.rs:293
+msgid "Load password from vault"
+msgstr "Cargar contraseña desde el almacén"
+
 #: rustconn/src/dialogs/variables.rs:298
 msgid "KeePass entry:"
 msgstr "Entrada de KeePass:"
@@ -12182,7 +12185,7 @@ msgstr "{} sesión(es) activa(s)"
 msgid "About RustConn"
 msgstr "Acerca de RustConn"
 
-#: rustconn/src/vault_ops.rs:50 rustconn/src/window/mod.rs:5354
+#: rustconn/src/vault_ops.rs:50 rustconn/src/window/mod.rs:5368
 msgid "Passphrase Does Not Open the Portable File"
 msgstr "La frase de contraseña no abre el archivo portátil"
 
@@ -12385,8 +12388,8 @@ msgstr ""
 msgid "Jump Host Unavailable"
 msgstr "Host de salto no disponible"
 
-#: rustconn/src/window/clusters.rs:457 rustconn/src/window/mod.rs:3369
-#: rustconn/src/window/mod.rs:3435 rustconn/src/window/rdp_vnc.rs:766
+#: rustconn/src/window/clusters.rs:457 rustconn/src/window/mod.rs:3383
+#: rustconn/src/window/mod.rs:3449 rustconn/src/window/rdp_vnc.rs:766
 msgid "Connect Anyway"
 msgstr "Conectar de todos modos"
 
@@ -12616,8 +12619,8 @@ msgid "Vault entry not found for '{}'. You will be prompted for a password."
 msgstr ""
 "Entrada de bóveda no encontrada para '{}'. Se le solicitará una contraseña."
 
-#: rustconn/src/window/credentials.rs:988
-#: rustconn/src/window/credentials.rs:1224
+#: rustconn/src/window/credentials.rs:989
+#: rustconn/src/window/credentials.rs:1225
 #: rustconn/src/window/edit_actions.rs:2096
 msgid "Connection failed. Host unreachable."
 msgstr "Conexión fallida. Host inaccesible."
@@ -13298,23 +13301,23 @@ msgstr "Ya se está ejecutando en una ventana externa"
 msgid "Connection to ‘{}’ failed"
 msgstr "Conexión a ‘{}’ fallida"
 
-#: rustconn/src/window/mod.rs:3061 rustconn/src/window/mod.rs:3075
+#: rustconn/src/window/mod.rs:3075 rustconn/src/window/mod.rs:3089
 msgid "Pre-connect task failed: {}"
 msgstr "La tarea previa a la conexión falló: {}"
 
-#: rustconn/src/window/mod.rs:3109
+#: rustconn/src/window/mod.rs:3123
 msgid "Port knock failed: {}"
 msgstr "Error de port knock: {}"
 
-#: rustconn/src/window/mod.rs:3158
+#: rustconn/src/window/mod.rs:3172
 msgid "SPA failed: {}"
 msgstr "Error de SPA: {}"
 
-#: rustconn/src/window/mod.rs:3354
+#: rustconn/src/window/mod.rs:3368
 msgid "{} (via {})"
 msgstr "{} (a través de {})"
 
-#: rustconn/src/window/mod.rs:3360
+#: rustconn/src/window/mod.rs:3374
 msgid ""
 "This connection no longer goes where it did.\n"
 "\n"
@@ -13338,35 +13341,35 @@ msgstr ""
 "Si no hiciste este cambio, cancela: conectar podría enviar las credenciales "
 "guardadas a otra máquina."
 
-#: rustconn/src/window/mod.rs:3365
+#: rustconn/src/window/mod.rs:3379
 msgid "Routing changed for “{}”"
 msgstr "La ruta cambió para «{}»"
 
-#: rustconn/src/window/mod.rs:3429
+#: rustconn/src/window/mod.rs:3443
 msgid "Jump Host Unavailable for “{}”"
 msgstr "Host de salto no disponible para «{}»"
 
-#: rustconn/src/window/mod.rs:3434
+#: rustconn/src/window/mod.rs:3448
 msgid "Connect Directly"
 msgstr "Conectar directamente"
 
-#: rustconn/src/window/mod.rs:3523 rustconn/src/window/mod.rs:3698
+#: rustconn/src/window/mod.rs:3537 rustconn/src/window/mod.rs:3712
 msgid "Connection “{}” created"
 msgstr "Conexión “{}” creada"
 
-#: rustconn/src/window/mod.rs:3905
+#: rustconn/src/window/mod.rs:3919
 msgid "RustConn - {}"
 msgstr "RustConn — {}"
 
-#: rustconn/src/window/mod.rs:4110
+#: rustconn/src/window/mod.rs:4124
 msgid "Settings saved"
 msgstr "Configuración guardada"
 
-#: rustconn/src/window/mod.rs:4147
+#: rustconn/src/window/mod.rs:4161
 msgid "Passphrase Not Saved on This Computer"
 msgstr "La frase de contraseña no se guardó en este equipo"
 
-#: rustconn/src/window/mod.rs:4149
+#: rustconn/src/window/mod.rs:4163
 msgid ""
 "The passphrase could not be encrypted for local storage, so it is kept for "
 "this session only and you will be asked for it again after a restart. Choose "
@@ -13378,11 +13381,11 @@ msgstr ""
 "reiniciar. Elija «Llavero del sistema» o compruebe que RustConn puede "
 "escribir en su directorio de datos."
 
-#: rustconn/src/window/mod.rs:4195
+#: rustconn/src/window/mod.rs:4209
 msgid "Credentials Not Saved to Keyring"
 msgstr "Credenciales no guardadas en el llavero"
 
-#: rustconn/src/window/mod.rs:4197
+#: rustconn/src/window/mod.rs:4211
 msgid ""
 "The system keyring did not accept the credentials, so they are kept for this "
 "session only and will be gone after a restart. Check that your keyring "
@@ -13393,16 +13396,16 @@ msgstr ""
 "servicio del llavero está en marcha y desbloqueado, y vuelve a guardar la "
 "configuración."
 
-#: rustconn/src/window/mod.rs:4380
+#: rustconn/src/window/mod.rs:4394
 msgid "Close RustConn?"
 msgstr "¿Cerrar RustConn?"
 
-#: rustconn/src/window/mod.rs:4382
+#: rustconn/src/window/mod.rs:4396
 msgid "{} session tab(s) are open. Active connections will be disconnected."
 msgstr ""
 "Hay {} pestañas de sesión abiertas. Se desconectarán las conexiones activas."
 
-#: rustconn/src/window/mod.rs:4419
+#: rustconn/src/window/mod.rs:4433
 msgid ""
 "Settings could not be read, so defaults are in use. The unreadable file was "
 "kept as {}."
@@ -13410,7 +13413,7 @@ msgstr ""
 "No se pudo leer la configuración, por lo que se usan los valores "
 "predeterminados. El archivo ilegible se conservó como {}."
 
-#: rustconn/src/window/mod.rs:4424
+#: rustconn/src/window/mod.rs:4438
 msgid ""
 "These settings were saved by a newer RustConn ({}). A backup is kept before "
 "they are changed."
@@ -13418,35 +13421,35 @@ msgstr ""
 "Esta configuración se guardó con una versión más reciente de RustConn ({}). "
 "Se conserva una copia de seguridad antes de modificarla."
 
-#: rustconn/src/window/mod.rs:4449
+#: rustconn/src/window/mod.rs:4463
 msgid "Cloud sync failed for '{}': {}"
 msgstr "Error de sincronización en la nube para «{}»: {}"
 
-#: rustconn/src/window/mod.rs:4632
+#: rustconn/src/window/mod.rs:4646
 msgid "Startup connection not found"
 msgstr "Conexión de inicio no encontrada"
 
-#: rustconn/src/window/mod.rs:4668
+#: rustconn/src/window/mod.rs:4682
 msgid "Failed to open .rdp file"
 msgstr "Error al abrir el archivo .rdp"
 
-#: rustconn/src/window/mod.rs:4704
+#: rustconn/src/window/mod.rs:4718
 msgid "Failed to open .vv file"
 msgstr "Error al abrir el archivo .vv"
 
-#: rustconn/src/window/mod.rs:4741
+#: rustconn/src/window/mod.rs:4755
 msgid "Tunnel “{}” stopped: {}"
 msgstr "El túnel “{}” se detuvo: {}"
 
-#: rustconn/src/window/mod.rs:4757
+#: rustconn/src/window/mod.rs:4771
 msgid "Gave up reconnecting tunnel “{}”: {}"
 msgstr "Se abandonó la reconexión del túnel “{}”: {}"
 
-#: rustconn/src/window/mod.rs:5270
+#: rustconn/src/window/mod.rs:5284
 msgid "Successfully exported {} connection(s). {} skipped."
 msgstr "Se exportaron {} conexión(es) correctamente. {} omitidas."
 
-#: rustconn/src/window/mod.rs:5356
+#: rustconn/src/window/mod.rs:5370
 msgid ""
 "The passphrase you saved does not decrypt the portable credential file, so "
 "none of the passwords in it can be read. Open Settings ▸ Secrets and enter "

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: rustconn 0.20.2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-22 19:12+0300\n"
+"POT-Creation-Date: 2026-10-22 21:52+0300\n"
 "PO-Revision-Date: 2026-08-19 09:53+0200\n"
 "Last-Translator: Ekaterine Papava <papava.e@gtu.ge>\n"
 "Language-Team: Georgian <(nothing)>\n"
@@ -58,8 +58,8 @@ msgstr "დიახ"
 #: rustconn/src/window/connection_dialogs.rs:942
 #: rustconn/src/window/edit_group.rs:1957
 #: rustconn/src/window/edit_group.rs:2006
-#: rustconn/src/window/group_broadcast.rs:379 rustconn/src/window/mod.rs:3368
-#: rustconn/src/window/mod.rs:3432 rustconn/src/window/mod.rs:4386
+#: rustconn/src/window/group_broadcast.rs:379 rustconn/src/window/mod.rs:3382
+#: rustconn/src/window/mod.rs:3446 rustconn/src/window/mod.rs:4400
 #: rustconn/src/window/operations.rs:116 rustconn/src/window/operations.rs:487
 #: rustconn/src/window/operations.rs:670 rustconn/src/window/sessions.rs:339
 #: rustconn/src/window/workspaces.rs:554
@@ -1551,73 +1551,73 @@ msgstr "ჰოსტი"
 msgid "hostname or IP"
 msgstr "ჰოსტის სახელი ან IP"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:142
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:373
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:144
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:394
 msgid "Cannot Load Password"
 msgstr "პაროლის ჩატვირთვა შეუძლებელია"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:143
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:434
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:145
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:455
 msgid "Enter a connection name or host first."
 msgstr "ჯერ შეიყვანეთ კავშირის სახელი, ან ჰოსტი."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:286
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:344
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:352
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:288
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:365
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:373
 msgid "Password Not Found"
 msgstr "პაროლი აღმოჩენილი არაა"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:287
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:345
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:353
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:289
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:366
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:374
 msgid "No password found in vault for this connection."
 msgstr "ამ კავშირისთვის საცავში პაროლი აღმოჩენილი არაა."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:296
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:360
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:298
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:381
 msgid "Failed to Load Password"
 msgstr "პაროლის ჩატვირთვა ჩავარდა"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:297
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:361
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:299
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:382
 msgid "Could not load password from vault."
 msgstr "საცავიდან პაროლის ჩატვირთვა შეუძლებელია."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:308
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:588
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:310
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:609
 msgid "Vault Not Configured"
 msgstr "საცავი მორგებული არაა"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:309
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:589
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:311
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:610
 msgid "Configure a secret backend in Settings → Secrets."
 msgstr "მოირგეთ საიდუმლო უკანაბოლო ფანჯრიდან მორგება → საიდუმლოები."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:374
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:395
 msgid "Password loading is only available for Vault source."
 msgstr "პაროლის ჩატვირთვა, მხოლოდ, საცავის წყაროსთვისაა ხელმისაწვდომი."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:414
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:435
 msgid "Test Not Available"
 msgstr "შემოწმება ხელმისაწვდომი არაა"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:415
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:436
 msgid "Credential test is only available when Password Source is set to Vault."
 msgstr ""
 "ავტორიზაციის დეტალების ტესტი, მხოლოდ, მაშინაა ხელმისაწვდომი, როცა პაროლების "
 "წყარო საცავია."
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:433
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:454
 msgid "Cannot Test"
 msgstr "შემოწმება შეუძლებელია"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:552
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:619
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:573
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:640
 msgid "Credential Test Passed"
 msgstr "ავტორიზაციის დეტალების შემოწმება წარმატებულია"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:554
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:621
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:575
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:642
 msgid ""
 "Password found in vault.\n"
 "Lookup key: {}"
@@ -1625,15 +1625,15 @@ msgstr ""
 "პაროლი აღმოჩენილია საცავში.\n"
 "ძებნის გასაღები: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:562
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:573
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:628
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:639
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:650
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:583
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:594
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:649
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:660
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:671
 msgid "Credential Test Failed"
 msgstr "ავტორიზაციის დეტალების შემოწმება ჩავარდა"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:564
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:585
 msgid ""
 "No password found in vault.\n"
 "Lookup key: {}"
@@ -1641,7 +1641,7 @@ msgstr ""
 "საცავში პაროლი აღმოჩენილი არაა.\n"
 "ძებნის გასაღები: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:575
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:596
 msgid ""
 "Vault error. Check your KeePass configuration.\n"
 "Lookup key: {}"
@@ -1649,7 +1649,7 @@ msgstr ""
 "საცავის შეცდომა. შეამოწმეთ თქვენი KeePass-ის კონფიგურაცია.\n"
 "ძებნის გასაღები: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:630
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:651
 msgid ""
 "Entry found but contains no password.\n"
 "Lookup key: {}"
@@ -1657,7 +1657,7 @@ msgstr ""
 "ჩანაწერი ნაპოვნია, მაგრამ ის პაროლს არ შეიცავს.\n"
 "ძებნის გასაღები: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:641
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:662
 msgid ""
 "No entry found in vault.\n"
 "Lookup key: {}"
@@ -1665,7 +1665,7 @@ msgstr ""
 "საცავში ჩანაწერი აღმოჩენილი არაა\n"
 "ძებნის გასაღები: {}"
 
-#: rustconn/src/dialogs/connection/dialog/passwords.rs:652
+#: rustconn/src/dialogs/connection/dialog/passwords.rs:673
 msgid ""
 "Backend error. Check your vault configuration.\n"
 "Lookup key: {}"
@@ -2221,12 +2221,8 @@ msgstr "მნიშვნელობა"
 
 #: rustconn/src/dialogs/connection/general_tab.rs:301
 #: rustconn/src/dialogs/connection/general_tab.rs:305
-#: rustconn/src/dialogs/variables.rs:260 rustconn/src/dialogs/variables.rs:263
-#: rustconn/src/window/connection_dialogs.rs:522
-#: rustconn/src/window/connection_dialogs.rs:526
-#: rustconn/src/window/edit_group.rs:289 rustconn/src/window/edit_group.rs:293
-msgid "Load password from vault"
-msgstr "პაროლის ჩატვირთვა საცავიდან"
+msgid "Load credentials from vault"
+msgstr "ავტორიზაციის მონაცემების ჩატვირთვა საცავიდან"
 
 #: rustconn/src/dialogs/connection/general_tab.rs:309
 #: rustconn/src/dialogs/connection/general_tab.rs:313
@@ -4673,7 +4669,7 @@ msgstr "კოპირება შეჩერდა"
 #: rustconn/src/dialogs/widgets.rs:608 rustconn/src/sidebar_ui.rs:465
 #: rustconn/src/split_view/adapter.rs:1199
 #: rustconn/src/terminal/tab_menu.rs:689 rustconn/src/vault_ops.rs:65
-#: rustconn/src/window/mod.rs:4387
+#: rustconn/src/window/mod.rs:4401
 msgid "Close"
 msgstr "დახურვა"
 
@@ -10040,6 +10036,13 @@ msgstr "ცვლადის_სახელი"
 msgid "Password value"
 msgstr "პაროლის მნიშვნელობა"
 
+#: rustconn/src/dialogs/variables.rs:260 rustconn/src/dialogs/variables.rs:263
+#: rustconn/src/window/connection_dialogs.rs:522
+#: rustconn/src/window/connection_dialogs.rs:526
+#: rustconn/src/window/edit_group.rs:289 rustconn/src/window/edit_group.rs:293
+msgid "Load password from vault"
+msgstr "პაროლის ჩატვირთვა საცავიდან"
+
 #: rustconn/src/dialogs/variables.rs:298
 msgid "KeePass entry:"
 msgstr "KeePass-ის ჩანაწერი:"
@@ -12123,7 +12126,7 @@ msgstr "{} აქტიური სესია"
 msgid "About RustConn"
 msgstr "RustConn-ის შესახებ"
 
-#: rustconn/src/vault_ops.rs:50 rustconn/src/window/mod.rs:5354
+#: rustconn/src/vault_ops.rs:50 rustconn/src/window/mod.rs:5368
 msgid "Passphrase Does Not Open the Portable File"
 msgstr "პაროლი არ ხსნის პორტატულ ფაილს"
 
@@ -12325,8 +12328,8 @@ msgstr ""
 msgid "Jump Host Unavailable"
 msgstr "გადასვლის ჰოსტი მიუწვდომელია"
 
-#: rustconn/src/window/clusters.rs:457 rustconn/src/window/mod.rs:3369
-#: rustconn/src/window/mod.rs:3435 rustconn/src/window/rdp_vnc.rs:766
+#: rustconn/src/window/clusters.rs:457 rustconn/src/window/mod.rs:3383
+#: rustconn/src/window/mod.rs:3449 rustconn/src/window/rdp_vnc.rs:766
 msgid "Connect Anyway"
 msgstr "მაინც შეერთება"
 
@@ -12555,8 +12558,8 @@ msgstr "ცვლადის საცავში შენახვის შ
 msgid "Vault entry not found for '{}'. You will be prompted for a password."
 msgstr "'{}'-ისთვის საცავის ჩანაწერი აღმოჩენილი არაა. პაროლს შეგეკითხებით."
 
-#: rustconn/src/window/credentials.rs:988
-#: rustconn/src/window/credentials.rs:1224
+#: rustconn/src/window/credentials.rs:989
+#: rustconn/src/window/credentials.rs:1225
 #: rustconn/src/window/edit_actions.rs:2096
 msgid "Connection failed. Host unreachable."
 msgstr "კავშირი ჩავარდა. ჰოსტი ხელმიუწვდომელია."
@@ -13235,23 +13238,23 @@ msgstr "უკვე გაშვებულია გარე ფანჯა
 msgid "Connection to ‘{}’ failed"
 msgstr "‘{}’-თან დაკავშირება ჩავარდა"
 
-#: rustconn/src/window/mod.rs:3061 rustconn/src/window/mod.rs:3075
+#: rustconn/src/window/mod.rs:3075 rustconn/src/window/mod.rs:3089
 msgid "Pre-connect task failed: {}"
 msgstr "დაკავშირებამდელი ამოცანა ჩავარდა: {}"
 
-#: rustconn/src/window/mod.rs:3109
+#: rustconn/src/window/mod.rs:3123
 msgid "Port knock failed: {}"
 msgstr "პორტზე დაკაკუნების შეცდომა: {}"
 
-#: rustconn/src/window/mod.rs:3158
+#: rustconn/src/window/mod.rs:3172
 msgid "SPA failed: {}"
 msgstr "SPA ჩავარდა: {}"
 
-#: rustconn/src/window/mod.rs:3354
+#: rustconn/src/window/mod.rs:3368
 msgid "{} (via {})"
 msgstr "{} ({}-ის გავლით)"
 
-#: rustconn/src/window/mod.rs:3360
+#: rustconn/src/window/mod.rs:3374
 msgid ""
 "This connection no longer goes where it did.\n"
 "\n"
@@ -13275,35 +13278,35 @@ msgstr ""
 "თუ ეს ცვლილება თქვენ არ შეგიტანიათ, გააუქმეთ — დაკავშირებამ შესაძლოა "
 "შენახული მონაცემები სხვა მანქანას გაუგზავნოს."
 
-#: rustconn/src/window/mod.rs:3365
+#: rustconn/src/window/mod.rs:3379
 msgid "Routing changed for “{}”"
 msgstr "მარშრუტი შეიცვალა „{}“-სთვის"
 
-#: rustconn/src/window/mod.rs:3429
+#: rustconn/src/window/mod.rs:3443
 msgid "Jump Host Unavailable for “{}”"
 msgstr "გადასვლის ჰოსტი მიუწვდომელია „{}“-სთვის"
 
-#: rustconn/src/window/mod.rs:3434
+#: rustconn/src/window/mod.rs:3448
 msgid "Connect Directly"
 msgstr "პირდაპირ დაკავშირება"
 
-#: rustconn/src/window/mod.rs:3523 rustconn/src/window/mod.rs:3698
+#: rustconn/src/window/mod.rs:3537 rustconn/src/window/mod.rs:3712
 msgid "Connection “{}” created"
 msgstr "კავშირი “{}” შეიქმნა"
 
-#: rustconn/src/window/mod.rs:3905
+#: rustconn/src/window/mod.rs:3919
 msgid "RustConn - {}"
 msgstr "RustConn - {}"
 
-#: rustconn/src/window/mod.rs:4110
+#: rustconn/src/window/mod.rs:4124
 msgid "Settings saved"
 msgstr "პარამეტრები შენახულია"
 
-#: rustconn/src/window/mod.rs:4147
+#: rustconn/src/window/mod.rs:4161
 msgid "Passphrase Not Saved on This Computer"
 msgstr "პაროლი არ არის შენახული ამ კომპიუტერზე"
 
-#: rustconn/src/window/mod.rs:4149
+#: rustconn/src/window/mod.rs:4163
 msgid ""
 "The passphrase could not be encrypted for local storage, so it is kept for "
 "this session only and you will be asked for it again after a restart. Choose "
@@ -13315,11 +13318,11 @@ msgstr ""
 "ამის ნაცვლად, აირჩიეთ \"System keyring\" ან შეამოწმეთ, რომ RustConn-ს "
 "შეუძლია ჩაწეროს მონაცემთა დირექტორიაში."
 
-#: rustconn/src/window/mod.rs:4195
+#: rustconn/src/window/mod.rs:4209
 msgid "Credentials Not Saved to Keyring"
 msgstr "ავტორიზაციის დეტალები ბრელოკში შენახული არაა"
 
-#: rustconn/src/window/mod.rs:4197
+#: rustconn/src/window/mod.rs:4211
 msgid ""
 "The system keyring did not accept the credentials, so they are kept for this "
 "session only and will be gone after a restart. Check that your keyring "
@@ -13329,15 +13332,15 @@ msgstr ""
 "ამ სესიისთვის და გაქრება გადატვირთვის შემდეგ. შეამოწმეთ, რომ თქვენი "
 "გასაღებების სერვისი მუშაობს და განბლოკილია, შემდეგ ისევ შეინახეთ პარამეტრები."
 
-#: rustconn/src/window/mod.rs:4380
+#: rustconn/src/window/mod.rs:4394
 msgid "Close RustConn?"
 msgstr "დაიხუროს RustConn?"
 
-#: rustconn/src/window/mod.rs:4382
+#: rustconn/src/window/mod.rs:4396
 msgid "{} session tab(s) are open. Active connections will be disconnected."
 msgstr "{} სესიის ჩანართი(ები) ღიაა. აქტიური კავშირები გაითიშება."
 
-#: rustconn/src/window/mod.rs:4419
+#: rustconn/src/window/mod.rs:4433
 msgid ""
 "Settings could not be read, so defaults are in use. The unreadable file was "
 "kept as {}."
@@ -13345,7 +13348,7 @@ msgstr ""
 "პარამეტრების წაკითხვა ვერ მოხერხდა, ამიტომ გამოიყენება ნაგულისხმევი "
 "მნიშვნელობები. წაუკითხავი ფაილი შენახულია როგორც {}."
 
-#: rustconn/src/window/mod.rs:4424
+#: rustconn/src/window/mod.rs:4438
 msgid ""
 "These settings were saved by a newer RustConn ({}). A backup is kept before "
 "they are changed."
@@ -13353,35 +13356,35 @@ msgstr ""
 "ეს პარამეტრები შენახულია RustConn-ის უფრო ახალი ვერსიით ({}). მათ შეცვლამდე "
 "ინახება სარეზერვო ასლი."
 
-#: rustconn/src/window/mod.rs:4449
+#: rustconn/src/window/mod.rs:4463
 msgid "Cloud sync failed for '{}': {}"
 msgstr "ღრუბელთან სინქრონიზაცია ჩავარდა ელემენტისთვის '{}': {}"
 
-#: rustconn/src/window/mod.rs:4632
+#: rustconn/src/window/mod.rs:4646
 msgid "Startup connection not found"
 msgstr "გაშვების კავშირი აღმოჩენილი არაა"
 
-#: rustconn/src/window/mod.rs:4668
+#: rustconn/src/window/mod.rs:4682
 msgid "Failed to open .rdp file"
 msgstr ".rdp ფაილის გახსნის შეცდომა"
 
-#: rustconn/src/window/mod.rs:4704
+#: rustconn/src/window/mod.rs:4718
 msgid "Failed to open .vv file"
 msgstr ".vv ფაილის გახსნის შეცდომა"
 
-#: rustconn/src/window/mod.rs:4741
+#: rustconn/src/window/mod.rs:4755
 msgid "Tunnel “{}” stopped: {}"
 msgstr "გვირაბი “{}” გაჩერდა: {}"
 
-#: rustconn/src/window/mod.rs:4757
+#: rustconn/src/window/mod.rs:4771
 msgid "Gave up reconnecting tunnel “{}”: {}"
 msgstr "გვირაბის “{}” ხელახლა მიერთება მიტოვებულია: {}"
 
-#: rustconn/src/window/mod.rs:5270
+#: rustconn/src/window/mod.rs:5284
 msgid "Successfully exported {} connection(s). {} skipped."
 msgstr "წარმატებით იქნა ექსპორტირებული {} კავშირი(ებ). {} გამოტოვებულია."
 
-#: rustconn/src/window/mod.rs:5356
+#: rustconn/src/window/mod.rs:5370
 msgid ""
 "The passphrase you saved does not decrypt the portable credential file, so "
 "none of the passwords in it can be read. Open Settings ▸ Secrets and enter "
