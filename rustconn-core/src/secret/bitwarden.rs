@@ -694,11 +694,24 @@ impl BitwardenBackend {
     /// with blanks dropped. When `aliases` is empty this is just `[id]`, so the
     /// fallback behaves byte-identically to the id-only form it replaced.
     fn bare_candidates<'c>(connection_id: &'c str, aliases: &[&'c str]) -> Vec<&'c str> {
-        let mut candidates: Vec<&str> = Vec::with_capacity(1 + aliases.len());
-        for cand in std::iter::once(connection_id).chain(aliases.iter().copied()) {
+        let mut candidates: Vec<&str> = Vec::with_capacity(2 + aliases.len());
+        let mut push = |cand: &'c str| {
             let cand = cand.trim();
             if !cand.is_empty() && !candidates.iter().any(|c| c.eq_ignore_ascii_case(cand)) {
                 candidates.push(cand);
+            }
+        };
+        push(connection_id);
+        for alias in aliases {
+            push(alias);
+            // A host given as a URL (`https://sso.example.com/start/#/`, a Web
+            // or Zero Trust connection) is not what anyone titles a vault entry,
+            // and `bw --search` with the whole URL finds nothing. Its host is
+            // the useful candidate, right after the URL itself.
+            if alias.contains("://")
+                && let Some(host) = Self::uri_host(alias)
+            {
+                push(host);
             }
         }
         candidates
@@ -838,6 +851,13 @@ impl BitwardenBackend {
         // everything else is pooled, and only after every search came back
         // empty-handed is the pool tried for a URI-host or short-name match.
         let candidates = Self::bare_candidates(connection_id, aliases);
+        // RustConn's own item can turn up here too: the scoped search above
+        // misses it when it ran while a `store` of the same connection was
+        // still creating the item. Its exact name is the strongest match there
+        // is, so accept it alongside the bare candidates.
+        let own_name = Self::entry_name(connection_id);
+        let is_title_match =
+            |name: &str| name == own_name || Self::root_search_matches(name, &candidates);
         let mut pool: Vec<BitwardenItem> = Vec::new();
         for term in &candidates {
             let bare_output = self
@@ -863,7 +883,7 @@ impl BitwardenBackend {
             );
             if let Some(pos) = bare_items
                 .iter()
-                .position(|item| Self::root_search_matches(&item.name, &candidates))
+                .position(|item| is_title_match(&item.name))
             {
                 let item = bare_items.into_iter().nth(pos);
                 if let Some(item) = &item {
@@ -2417,6 +2437,36 @@ mod root_search_tests {
                 miss.name
             );
         }
+    }
+
+    /// A connection whose host is a URL (a Web or SSO connection) contributes
+    /// that URL's host as a candidate, right after the URL. Searching `bw` for
+    /// the whole URL finds nothing (maintainer log, 2026-10-22, `aws sso`).
+    #[test]
+    fn a_url_host_alias_adds_its_host_as_a_candidate() {
+        let candidates = BitwardenBackend::bare_candidates(
+            "rustconn/aws sso",
+            &["https://epam.awsapps.com/start/#/", "aws sso"],
+        );
+        assert_eq!(
+            candidates,
+            vec![
+                "rustconn/aws sso",
+                "https://epam.awsapps.com/start/#/",
+                "epam.awsapps.com",
+                "aws sso",
+            ]
+        );
+        assert!(BitwardenBackend::root_search_matches(
+            "EPAM.awsapps.com",
+            &candidates
+        ));
+
+        // A plain host gains nothing extra.
+        assert_eq!(
+            BitwardenBackend::bare_candidates("k", &["192.168.0.122", "krdp"]),
+            vec!["k", "192.168.0.122", "krdp"]
+        );
     }
 
     /// A weaker tier wins only when it is unambiguous; a title match wins over
