@@ -356,6 +356,13 @@ struct BitwardenLoginTemplate {
     uris: Vec<BitwardenUri>,
 }
 
+impl Drop for BitwardenLoginTemplate {
+    fn drop(&mut self) {
+        use zeroize::Zeroize;
+        self.password.zeroize();
+    }
+}
+
 /// Bitwarden URI structure
 #[derive(Debug, Serialize)]
 struct BitwardenUri {
@@ -1145,7 +1152,7 @@ impl SecretBackend for BitwardenBackend {
                 serde_json::to_string(&item_template)
                     .map_err(|e| SecretError::StoreFailed(format!("Failed to serialize: {e}")))?,
             );
-            let encoded = base64_encode(json.as_bytes());
+            let encoded = base64_encode_secret(json.as_bytes());
 
             let edit_result = self
                 .run_command(&["edit", "item", &existing.id, &encoded])
@@ -1159,7 +1166,7 @@ impl SecretBackend for BitwardenBackend {
 
                     // Re-fetch the item to get updated revision
                     if let Some(refreshed) = self.find_item(connection_id).await? {
-                        let refreshed_encoded = base64_encode(json.as_bytes());
+                        let refreshed_encoded = base64_encode_secret(json.as_bytes());
                         self.run_command(&["edit", "item", &refreshed.id, &refreshed_encoded])
                             .await?;
                     } else {
@@ -1193,7 +1200,7 @@ impl SecretBackend for BitwardenBackend {
                 serde_json::to_string(&item_template)
                     .map_err(|e| SecretError::StoreFailed(format!("Failed to serialize: {e}")))?,
             );
-            let encoded = base64_encode(json.as_bytes());
+            let encoded = base64_encode_secret(json.as_bytes());
 
             self.run_command(&["create", "item", &encoded]).await?;
         }
@@ -2093,6 +2100,12 @@ async fn unlock_with_saved_credentials(
 /// Base64 encode helper (standard base64 with padding)
 fn base64_encode(data: &[u8]) -> String {
     data_encoding::BASE64.encode(data)
+}
+
+/// [`base64_encode`] for an item that carries a password. The encoding is
+/// reversible, so it is wiped on drop exactly like the JSON it came from.
+fn base64_encode_secret(data: &[u8]) -> zeroize::Zeroizing<String> {
+    zeroize::Zeroizing::new(base64_encode(data))
 }
 
 impl std::fmt::Debug for BitwardenBackend {
