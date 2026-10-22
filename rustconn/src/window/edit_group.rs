@@ -2579,13 +2579,11 @@ fn add_group_auto_script_row(
 ) {
     use crate::i18n::i18n;
 
-    let ids = crate::dialogs::script::library_script_ids();
-    let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
+    let (ids, labels, selected) = crate::dialogs::script::auto_script_choices(script);
+    let refs: Vec<&str> = labels.iter().map(String::as_str).collect();
     let model = gtk4::StringList::new(&refs);
     let dropdown = gtk4::DropDown::builder().model(&model).build();
-    if let Some(idx) = script.and_then(|s| ids.iter().position(|i| i.as_str() == s)) {
-        dropdown.set_selected(idx as u32);
-    }
+    dropdown.set_selected(selected);
 
     // Two distinct actions: the trash button deletes the script from the
     // library, the unlink button only detaches it from this group.

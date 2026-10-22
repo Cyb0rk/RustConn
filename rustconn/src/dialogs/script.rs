@@ -635,6 +635,32 @@ pub fn library_script_ids() -> Vec<String> {
     library_script_manager().list_scripts()
 }
 
+/// The choices an auto-run script dropdown offers, and which one is selected.
+///
+/// `ids[i]` is the script id behind `labels[i]`. An `existing` id that is not
+/// in the local library — the connection was imported or team-synced, or the
+/// script was deleted here — is kept as an extra, marked choice and selected.
+/// Without it the dropdown fell back to the first library script, and the next
+/// Save silently replaced the user's script with that one.
+#[must_use]
+pub fn auto_script_choices(existing: Option<&str>) -> (Vec<String>, Vec<String>, u32) {
+    let mut ids = library_script_ids();
+    let mut labels = ids.clone();
+    let selected = match existing.filter(|e| !e.is_empty()) {
+        Some(id) => {
+            if let Some(pos) = ids.iter().position(|i| i == id) {
+                pos
+            } else {
+                ids.push(id.to_string());
+                labels.push(i18n_f("{} (not in this library)", &[id]));
+                ids.len() - 1
+            }
+        }
+        None => 0,
+    };
+    (ids, labels, u32::try_from(selected).unwrap_or(0))
+}
+
 /// Asks before deleting script `id` from the library, then deletes it.
 ///
 /// Deleting removes the file for every connection and group that runs it, so
