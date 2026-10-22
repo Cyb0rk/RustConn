@@ -44,6 +44,13 @@ static VARIABLE_REF: LazyLock<Regex> = LazyLock::new(|| {
 /// How long a step with no explicit timeout waits before giving up.
 pub const DEFAULT_TIMEOUT_MS: u32 = 10_000;
 
+/// How long a `run` with no explicit timeout may take before it is killed.
+///
+/// Without a bound a stalled command (`curl` to an unreachable host) kept the
+/// script waiting forever, and stopping the script did not stop the command.
+/// Same ceiling as a connection's pre-connect task.
+pub const RUN_TIMEOUT_CEILING_MS: u32 = 60_000;
+
 /// Upper bound on instructions executed before a script is killed. Guard
 /// against runaway `goto` loops, which would otherwise spin the GTK thread.
 const MAX_STEPS_EXECUTED: u64 = 1_000_000;
@@ -356,7 +363,8 @@ pub trait ScriptHost {
     fn to_tab(&mut self, session: &str);
 
     /// Runs a local command; the result arrives via
-    /// [`ScriptEngine::on_run_result`].
+    /// [`ScriptEngine::on_run_result`]. The engine always passes a timeout —
+    /// the script's own, or [`RUN_TIMEOUT_CEILING_MS`].
     fn run_command(&mut self, command: &str, timeout_ms: Option<u32>);
 }
 
@@ -378,6 +386,11 @@ pub struct ScriptEngine {
     /// pattern is re-tried on every output chunk and `if_goto` may run in a
     /// loop, so compiling each time would dominate the GTK thread.
     regex_cache: HashMap<String, Regex>,
+    /// Variables currently holding an `ask … hide` answer. `run` refuses them:
+    /// a command line is readable by every local user in the process table.
+    hidden_vars: std::collections::HashSet<String>,
+    /// Whether the pending `ask` masks its answer.
+    ask_hidden: bool,
     pending: PendingKind,
     canceled: bool,
     finished: bool,
@@ -415,6 +428,8 @@ impl ScriptEngine {
             buffer: String::new(),
             variables: HashMap::new(),
             regex_cache: HashMap::new(),
+            hidden_vars: std::collections::HashSet::new(),
+            ask_hidden: false,
             pending: PendingKind::None,
             canceled: false,
             finished: false,
@@ -560,6 +575,7 @@ impl ScriptEngine {
             } => {
                 let prompt = self.substitute(&prompt);
                 self.ask_var = Some(variable);
+                self.ask_hidden = !echo;
                 self.pending = PendingKind::Ask;
                 host.ask(&prompt, echo);
             }
@@ -642,7 +658,7 @@ impl ScriptEngine {
                 self.run_out_var = out_var;
                 self.run_code_var = code_var;
                 self.pending = PendingKind::Run;
-                host.run_command(&command, timeout_ms);
+                host.run_command(&command, Some(timeout_ms.unwrap_or(RUN_TIMEOUT_CEILING_MS)));
             }
             ScriptStep::Set { var, value } => {
                 let value = self.substitute(&value);
@@ -737,7 +753,12 @@ impl ScriptEngine {
         match value {
             Some(value) => {
                 if let Some(var) = self.ask_var.take() {
-                    self.set_var(var, value);
+                    let hidden = self.ask_hidden;
+                    self.set_var(var.clone(), value);
+                    // After `set_var`, which clears the mark for any write.
+                    if hidden {
+                        self.hidden_vars.insert(var);
+                    }
                 }
                 self.pc += 1;
                 self.pending = PendingKind::None;
@@ -810,6 +831,9 @@ impl ScriptEngine {
 
     /// Sets a variable, zeroizing the value it replaces.
     fn set_var(&mut self, name: String, value: String) {
+        // A new value is not the hidden answer any more; `on_ask_result`
+        // re-marks it when it is.
+        self.hidden_vars.remove(&name);
         if let Some(mut old) = self.variables.insert(name, value) {
             old.zeroize();
         }
@@ -853,10 +877,14 @@ impl ScriptEngine {
                 else {
                     return caps[0].to_string();
                 };
-                if rejected.is_none()
-                    && let Err(e) = VariableManager::validate_command_value(name, value)
-                {
-                    rejected = Some(e.to_string());
+                if rejected.is_none() {
+                    if self.hidden_vars.contains(name) {
+                        rejected = Some(format!(
+                            "variable '{name}' holds a hidden answer and is never put on a command line"
+                        ));
+                    } else if let Err(e) = VariableManager::validate_command_value(name, value) {
+                        rejected = Some(e.to_string());
+                    }
                 }
                 value.clone()
             })
@@ -1825,7 +1853,13 @@ mod tests {
             .variables
             .insert("v".to_string(), "db-01.example.com".to_string());
         engine.pump(&mut host);
-        assert_eq!(host.events, vec!["run:ping -c1 db-01.example.com:None"]);
+        // No `<sec>` given: the ceiling applies, never an unbounded wait.
+        assert_eq!(
+            host.events,
+            vec![format!(
+                "run:ping -c1 db-01.example.com:Some({RUN_TIMEOUT_CEILING_MS})"
+            )]
+        );
     }
 
     /// M-PUBLIC-DEBUG: an `ask … hide` answer must not reach a `{:?}` — the
@@ -1843,6 +1877,48 @@ mod tests {
         assert!(!debug.contains("hunter2-secret"), "{debug}");
         // The value is still usable by the script itself.
         assert_eq!(engine.variable("pw"), Some("hunter2-secret"));
+    }
+
+    /// An `ask … hide` answer reaches `send` (that is what it is for) but
+    /// never a `run` command line, which other local users can read in the
+    /// process table — even when it has no shell metacharacter in it.
+    #[test]
+    fn a_hidden_answer_is_sent_but_never_run() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse(
+            "ask \"Password:\" hide pw\nsend \"${pw}{ENTER}\"\nrun \"echo ${pw}\"\n",
+        )
+        .unwrap();
+        engine.pump(&mut host);
+        engine.on_ask_result(Some("hunter2".to_string()));
+        engine.pump(&mut host);
+
+        assert!(host.events.iter().any(|e| e.starts_with("send:hunter2")));
+        assert!(host.events.iter().all(|e| !e.starts_with("run:")));
+        assert!(
+            engine.error().is_some_and(|e| e.contains("hidden answer")),
+            "{:?}",
+            engine.error()
+        );
+
+        // Overwriting the variable with an ordinary value lifts the mark, and
+        // a visible answer was never marked.
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse(
+            "ask \"Password:\" hide v\nset v plain\nask \"Host:\" h\nrun \"echo ${v} ${h}\"\n",
+        )
+        .unwrap();
+        engine.pump(&mut host);
+        engine.on_ask_result(Some("secret".to_string()));
+        engine.pump(&mut host);
+        engine.on_ask_result(Some("db01".to_string()));
+        engine.pump(&mut host);
+        assert!(engine.error().is_none(), "{:?}", engine.error());
+        assert!(
+            host.events
+                .iter()
+                .any(|e| e.starts_with("run:echo plain db01"))
+        );
     }
 
     /// `send` and `print` are not shell contexts, so the guard does not apply

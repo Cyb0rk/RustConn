@@ -19,8 +19,8 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use libadwaita as adw;
 use rustconn_core::automation::{
-    DEFAULT_TIMEOUT_MS, KeySequence, PendingKind, SCRUBBED_ENV_VARS, ScriptEngine, ScriptHost,
-    ScriptStep,
+    DEFAULT_TIMEOUT_MS, KeySequence, PendingKind, RUN_TIMEOUT_CEILING_MS, SCRUBBED_ENV_VARS,
+    ScriptEngine, ScriptHost, ScriptStep,
 };
 use uuid::Uuid;
 
@@ -730,16 +730,14 @@ async fn run_sh(command: &str, timeout_ms: Option<u32>) -> Result<(i32, String),
         cmd.env_remove(var);
     }
 
-    let output: std::process::Output = if let Some(ms) = timeout_ms {
+    // The engine always supplies a timeout; the fallback keeps this function
+    // bounded on its own, so no caller can reintroduce an endless wait.
+    let ms = timeout_ms.unwrap_or(RUN_TIMEOUT_CEILING_MS);
+    let output: std::process::Output =
         match tokio::time::timeout(Duration::from_millis(u64::from(ms)), cmd.output()).await {
             Ok(out) => out.map_err(|e| format!("Command failed: {e}"))?,
             Err(_) => return Err(format!("Command timed out after {ms}ms")),
-        }
-    } else {
-        cmd.output()
-            .await
-            .map_err(|e| format!("Command failed: {e}"))?
-    };
+        };
 
     let code = output.status.code().unwrap_or(-1);
     let stdout = String::from_utf8_lossy(&output.stdout).into_owned();

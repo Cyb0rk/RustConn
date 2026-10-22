@@ -118,7 +118,10 @@ run "<command>" [<timeout-seconds>] [out=<variable>] [code=<variable>]
     output is stored in the "out" variable and its exit code in the "code"
     variable. Sensitive environment variables (cloud, vault and CI tokens) are
     removed from the command's environment. The command runs off the UI
-    thread, so a slow command does not freeze the application.
+    thread, so a slow command does not freeze the application. It is
+    stopped when its timeout expires; without a timeout the limit is 60
+    seconds. A variable substituted into the command must not contain shell
+    metacharacters, and an "ask ... hide" answer is never substituted.
 
 
 5. CONTROL FLOW AND VARIABLES
