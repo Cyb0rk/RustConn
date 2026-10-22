@@ -297,6 +297,29 @@ struct BitwardenLogin {
         deserialize_with = "super::serde_helpers::deserialize_optional_secret"
     )]
     password: Option<SecretString>,
+    /// Login URIs. `bw list items --search` matches them too, so root search
+    /// can find an item through its URI rather than its title (issue #353).
+    #[serde(default)]
+    uris: Option<Vec<BitwardenLoginUri>>,
+}
+
+/// One login URI as `bw` returns it (`{"match": …, "uri": …}`).
+#[derive(Debug, Deserialize)]
+struct BitwardenLoginUri {
+    uri: Option<String>,
+}
+
+/// How a root-search item matched, strongest first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum RootMatch {
+    /// The title equals a candidate.
+    Title,
+    /// A login URI's host equals a candidate.
+    UriHost,
+    /// The first DNS label of the title or of a URI host equals a dotless
+    /// candidate (`hanfile03.corp.example` for `hanfile03`), or the title is
+    /// the first label of a dotted candidate. Accepted only when unambiguous.
+    ShortName,
 }
 
 /// Bitwarden item template for creation
@@ -694,13 +717,103 @@ impl BitwardenBackend {
             .any(|cand| super::backend::root_alias_eq(item_name, cand))
     }
 
+    /// The host of a login URI: `rdp://user@hanfile03.corp:3389/x` ->
+    /// `hanfile03.corp`. A bare `hanfile03` (no scheme) is its own host.
+    fn uri_host(uri: &str) -> Option<&str> {
+        let uri = uri.trim();
+        let rest = uri.split_once("://").map_or(uri, |(_, r)| r);
+        let authority = rest.split(['/', '?', '#']).next()?;
+        let host_port = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+        let host = if let Some(v6) = host_port.strip_prefix('[') {
+            v6.split(']').next()?
+        } else {
+            host_port.split(':').next()?
+        };
+        (!host.is_empty()).then_some(host)
+    }
+
+    /// The first DNS label of `name`, when `name` is a dotted host name (not
+    /// an IP address): `hanfile03.corp.example` -> `hanfile03`.
+    fn first_label(name: &str) -> Option<&str> {
+        let name = name.trim();
+        if name.parse::<std::net::IpAddr>().is_ok() {
+            return None;
+        }
+        let (label, rest) = name.split_once('.')?;
+        (!label.is_empty() && !rest.is_empty()).then_some(label)
+    }
+
+    /// Classifies how `item` matches the root-search `candidates`, if at all.
+    ///
+    /// Pure, so every tier is unit-tested without the `bw` CLI.
+    fn root_match(item: &BitwardenItem, candidates: &[&str]) -> Option<RootMatch> {
+        use super::backend::root_alias_eq;
+
+        if Self::root_search_matches(&item.name, candidates) {
+            return Some(RootMatch::Title);
+        }
+        let hosts: Vec<&str> = item
+            .login
+            .iter()
+            .flat_map(|login| login.uris.iter().flatten())
+            .filter_map(|u| u.uri.as_deref())
+            .filter_map(Self::uri_host)
+            .collect();
+        if hosts
+            .iter()
+            .any(|host| candidates.iter().any(|cand| root_alias_eq(host, cand)))
+        {
+            return Some(RootMatch::UriHost);
+        }
+        let short_match = candidates.iter().any(|cand| {
+            if cand.contains('.') {
+                // A dotted candidate (an FQDN host): the title is its short name.
+                Self::first_label(cand).is_some_and(|label| root_alias_eq(&item.name, label))
+            } else {
+                // A dotless candidate: the title or a URI host is its FQDN.
+                std::iter::once(item.name.as_str())
+                    .chain(hosts.iter().copied())
+                    .filter_map(Self::first_label)
+                    .any(|label| root_alias_eq(label, cand))
+            }
+        });
+        short_match.then_some(RootMatch::ShortName)
+    }
+
+    /// Picks the item root search should use from everything the candidate
+    /// searches returned: the strongest tier wins, and a tier weaker than
+    /// [`RootMatch::Title`] must be unambiguous — two items that both only
+    /// match by URI or short name would hand one of them a password chosen
+    /// by list order, so neither is used.
+    fn pick_root_match(
+        items: &[BitwardenItem],
+        candidates: &[&str],
+    ) -> Result<Option<(usize, RootMatch)>, RootMatch> {
+        let matches: Vec<(usize, RootMatch)> = items
+            .iter()
+            .enumerate()
+            .filter_map(|(i, item)| Self::root_match(item, candidates).map(|m| (i, m)))
+            .collect();
+        let Some(best) = matches.iter().map(|(_, m)| *m).min() else {
+            return Ok(None);
+        };
+        let mut at_best = matches.iter().filter(|(_, m)| *m == best);
+        let first = at_best.next().copied();
+        if best != RootMatch::Title && at_best.next().is_some() {
+            return Err(best);
+        }
+        Ok(first)
+    }
+
     /// Alias-aware form of [`Self::find_item`] (issue #353). The scoped
     /// `RustConn: {id}` match still wins first. When root-search is on, the
     /// whole-vault fallback accepts an entry titled by the bare connection id
     /// OR any alias (connection host/name), matched case-insensitively and
-    /// exactly via [`Self::root_search_matches`]. Reads only — stores still use
-    /// the `RustConn: {id}` name and RustConn folder. With `aliases` empty,
-    /// behaviour is byte-identical to the id-only fallback.
+    /// exactly via [`Self::root_search_matches`]. When no title matches, an
+    /// item whose login URI host is a candidate, or whose title/URI host is
+    /// the candidate's FQDN or short name, is used — but only if exactly one
+    /// item matches that way ([`Self::pick_root_match`]). Reads only — stores
+    /// still use the `RustConn: {id}` name and RustConn folder.
     async fn find_item_with_aliases(
         &self,
         connection_id: &str,
@@ -715,41 +828,98 @@ impl BitwardenBackend {
         // #353, by the connection's host or name. Search for each candidate and
         // match it exactly via `root_search_matches`. Reads only — stores still
         // use the `RustConn: {id}` name and RustConn folder.
-        if self.root_search {
-            let candidates = Self::bare_candidates(connection_id, aliases);
-            for term in &candidates {
-                let bare_output = self
-                    .run_command(&["list", "items", "--search", term])
-                    .await?;
-                let bare_items: Vec<BitwardenItem> =
-                    serde_json::from_str(&bare_output).map_err(|e| {
-                        SecretError::RetrieveFailed(format!(
-                            "Failed to parse items: {} error at line {}, column {}",
-                            serde_error_kind(&e),
-                            e.line(),
-                            e.column()
-                        ))
-                    })?;
-                if let Some(item) = bare_items
-                    .into_iter()
-                    .find(|item| Self::root_search_matches(&item.name, &candidates))
-                {
-                    // A root-search hit hands a password RustConn did not store
-                    // to a connection; say which one, so a wrong match can be
-                    // traced.
-                    tracing::info!(
-                        matched = %item.name,
-                        via = %term,
-                        %connection_id,
-                        "Bitwarden root search matched an item outside RustConn"
-                    );
-                    return Ok(Some(item));
-                }
-            }
+        if !self.root_search {
             return Ok(None);
         }
 
-        Ok(None)
+        // `bw --search` is a substring search over title, username, URIs and
+        // notes, so it returns items whose title is not a candidate. An exact
+        // title match from any search wins at once (the pre-#353 behaviour);
+        // everything else is pooled, and only after every search came back
+        // empty-handed is the pool tried for a URI-host or short-name match.
+        let candidates = Self::bare_candidates(connection_id, aliases);
+        let mut pool: Vec<BitwardenItem> = Vec::new();
+        for term in &candidates {
+            let bare_output = self
+                .run_command(&["list", "items", "--search", term])
+                .await?;
+            let bare_items: Vec<BitwardenItem> =
+                serde_json::from_str(&bare_output).map_err(|e| {
+                    SecretError::RetrieveFailed(format!(
+                        "Failed to parse items: {} error at line {}, column {}",
+                        serde_error_kind(&e),
+                        e.line(),
+                        e.column()
+                    ))
+                })?;
+            // Titles and URI hosts only — never a password or a username.
+            // Without these, a "no item found" after a search that returned
+            // items cannot be told apart from an empty vault (issue #353).
+            tracing::debug!(
+                %term,
+                items_count = bare_items.len(),
+                titles = ?bare_items.iter().map(|i| i.name.as_str()).collect::<Vec<_>>(),
+                "Bitwarden root search: search returned"
+            );
+            if let Some(pos) = bare_items
+                .iter()
+                .position(|item| Self::root_search_matches(&item.name, &candidates))
+            {
+                let item = bare_items.into_iter().nth(pos);
+                if let Some(item) = &item {
+                    Self::log_root_match(item, term, RootMatch::Title, connection_id);
+                }
+                return Ok(item);
+            }
+            for item in bare_items {
+                if !pool.iter().any(|p| p.id == item.id) {
+                    pool.push(item);
+                }
+            }
+        }
+
+        match Self::pick_root_match(&pool, &candidates) {
+            Ok(Some((pos, how))) => {
+                let item = pool.into_iter().nth(pos);
+                if let Some(item) = &item {
+                    Self::log_root_match(item, "-", how, connection_id);
+                }
+                Ok(item)
+            }
+            Ok(None) => {
+                tracing::debug!(
+                    ?candidates,
+                    rejected = ?pool.iter().map(|i| i.name.as_str()).collect::<Vec<_>>(),
+                    "Bitwarden root search: no title, URI host or short name matched"
+                );
+                Ok(None)
+            }
+            Err(how) => {
+                tracing::warn!(
+                    ?how,
+                    ?candidates,
+                    ambiguous = ?pool
+                        .iter()
+                        .filter(|i| Self::root_match(i, &candidates) == Some(how))
+                        .map(|i| i.name.as_str())
+                        .collect::<Vec<_>>(),
+                    "Bitwarden root search: several items match equally well; using none"
+                );
+                Ok(None)
+            }
+        }
+    }
+
+    /// A root-search hit hands a password RustConn did not store to a
+    /// connection; say which item and why, so a wrong match can be traced.
+    fn log_root_match(item: &BitwardenItem, term: &str, how: RootMatch, connection_id: &str) {
+        tracing::info!(
+            matched = %item.name,
+            via = %term,
+            ?how,
+            %connection_id,
+            "Bitwarden root search matched an item outside RustConn"
+        );
     }
 
     /// Shared retrieve path for both [`SecretBackend::retrieve`] and the
@@ -2154,5 +2324,137 @@ mod root_search_tests {
             "hanfile",
             &candidates
         ));
+    }
+
+    /// Builds an item the way `bw list items` returns one.
+    fn item(id: &str, name: &str, uris: &[&str]) -> BitwardenItem {
+        let uris: Vec<serde_json::Value> = uris
+            .iter()
+            .map(|u| serde_json::json!({ "match": null, "uri": u }))
+            .collect();
+        serde_json::from_value(serde_json::json!({
+            "id": id,
+            "name": name,
+            "notes": null,
+            "login": { "username": "u", "password": "p", "uris": uris },
+        }))
+        .expect("item json")
+    }
+
+    #[test]
+    fn uri_host_strips_scheme_userinfo_port_and_path() {
+        let host = BitwardenBackend::uri_host;
+        assert_eq!(
+            host("rdp://admin@hanfile03.corp:3389/x?y#z"),
+            Some("hanfile03.corp")
+        );
+        assert_eq!(host("https://db.example.com"), Some("db.example.com"));
+        assert_eq!(host("hanfile03"), Some("hanfile03"));
+        assert_eq!(host("ssh://[2001:db8::1]:22"), Some("2001:db8::1"));
+        assert_eq!(host("rustconn://"), None);
+    }
+
+    #[test]
+    fn first_label_skips_ip_addresses_and_dotless_names() {
+        let label = BitwardenBackend::first_label;
+        assert_eq!(label("hanfile03.corp.example"), Some("hanfile03"));
+        assert_eq!(label("10.0.0.1"), None);
+        assert_eq!(label("hanfile03"), None);
+        assert_eq!(label(".corp"), None);
+    }
+
+    /// Issue #353, the log from 2026-10-22: the search for `hanfile03`
+    /// returned one item, but its title was not exactly a candidate, so the
+    /// lookup said "no item found". An item reachable through its URI host or
+    /// through the FQDN short name must now resolve.
+    #[test]
+    fn root_match_tiers_title_then_uri_host_then_short_name() {
+        let candidates =
+            BitwardenBackend::bare_candidates("rustconn/hanfile03", &["10.20.30.40", "hanfile03"]);
+
+        let by_title = item("1", "HANFILE03", &[]);
+        assert_eq!(
+            BitwardenBackend::root_match(&by_title, &candidates),
+            Some(RootMatch::Title)
+        );
+
+        let by_uri = item("2", "File server (RDP)", &["rdp://10.20.30.40:3389"]);
+        assert_eq!(
+            BitwardenBackend::root_match(&by_uri, &candidates),
+            Some(RootMatch::UriHost)
+        );
+
+        let by_fqdn_title = item("3", "hanfile03.ame.corp", &[]);
+        assert_eq!(
+            BitwardenBackend::root_match(&by_fqdn_title, &candidates),
+            Some(RootMatch::ShortName)
+        );
+
+        let by_fqdn_uri = item("4", "Windows file server", &["https://hanfile03.ame.corp"]);
+        assert_eq!(
+            BitwardenBackend::root_match(&by_fqdn_uri, &candidates),
+            Some(RootMatch::ShortName)
+        );
+
+        // A dotted candidate (FQDN host) matches an entry titled by its
+        // short name.
+        let fqdn = BitwardenBackend::bare_candidates("k", &["hanfile03.ame.corp"]);
+        assert_eq!(
+            BitwardenBackend::root_match(&item("5", "hanfile03", &[]), &fqdn),
+            Some(RootMatch::ShortName)
+        );
+
+        // Still no substring matching anywhere.
+        for miss in [
+            item("6", "hanfile03 (old)", &[]),
+            item("7", "hanfile031.ame.corp", &[]),
+            item("8", "x", &["https://nothanfile03.corp"]),
+        ] {
+            assert_eq!(
+                BitwardenBackend::root_match(&miss, &candidates),
+                None,
+                "{}",
+                miss.name
+            );
+        }
+    }
+
+    /// A weaker tier wins only when it is unambiguous; a title match wins over
+    /// any number of weaker ones.
+    #[test]
+    fn pick_root_match_prefers_strong_tiers_and_refuses_ambiguity() {
+        let candidates = BitwardenBackend::bare_candidates("k", &["hanfile03"]);
+
+        let pool = vec![
+            item("a", "hanfile03.one.corp", &[]),
+            item("b", "hanfile03", &[]),
+        ];
+        assert_eq!(
+            BitwardenBackend::pick_root_match(&pool, &candidates),
+            Ok(Some((1, RootMatch::Title)))
+        );
+
+        let pool = vec![
+            item("a", "unrelated", &[]),
+            item("b", "hanfile03.one.corp", &[]),
+        ];
+        assert_eq!(
+            BitwardenBackend::pick_root_match(&pool, &candidates),
+            Ok(Some((1, RootMatch::ShortName)))
+        );
+
+        let pool = vec![
+            item("a", "hanfile03.one.corp", &[]),
+            item("b", "hanfile03.two.corp", &[]),
+        ];
+        assert_eq!(
+            BitwardenBackend::pick_root_match(&pool, &candidates),
+            Err(RootMatch::ShortName)
+        );
+
+        assert_eq!(
+            BitwardenBackend::pick_root_match(&[], &candidates),
+            Ok(None)
+        );
     }
 }
