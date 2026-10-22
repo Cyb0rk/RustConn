@@ -86,17 +86,18 @@ impl ScriptManager {
     /// Checks whether a script id exists.
     #[must_use]
     pub fn has_script(&self, id: &str) -> bool {
-        self.path_for(id).is_file()
+        self.path_for(id).is_ok_and(|path| path.is_file())
     }
 
     /// Loads a script's source text.
     ///
     /// # Errors
     ///
-    /// Returns [`ScriptError::NotFound`] when the script does not exist, or an
-    /// I/O error when reading fails.
+    /// Returns [`ScriptError::Storage`] for an id that is not a safe filename,
+    /// [`ScriptError::NotFound`] when the script does not exist, or an I/O
+    /// error when reading fails.
     pub fn load_script(&self, id: &str) -> Result<String, ScriptError> {
-        let path = self.path_for(id);
+        let path = self.path_for(id)?;
         if !path.is_file() {
             return Err(ScriptError::NotFound(id.to_string()));
         }
@@ -126,9 +127,10 @@ impl ScriptManager {
     ///
     /// # Errors
     ///
-    /// Returns [`ScriptError::NotFound`] when the script does not exist.
+    /// Returns [`ScriptError::Storage`] for an id that is not a safe filename,
+    /// or [`ScriptError::NotFound`] when the script does not exist.
     pub fn delete_script(&self, id: &str) -> Result<(), ScriptError> {
-        let path = self.path_for(id);
+        let path = self.path_for(id)?;
         if !path.is_file() {
             return Err(ScriptError::NotFound(id.to_string()));
         }
@@ -136,9 +138,16 @@ impl ScriptManager {
         Ok(())
     }
 
-    /// Builds the on-disk path for a script id.
-    fn path_for(&self, id: &str) -> PathBuf {
-        self.scripts_dir().join(format!("{id}.rsc"))
+    /// Builds the on-disk path for a script id, refusing an id that could
+    /// leave the scripts directory.
+    ///
+    /// Every access goes through here, not only `save_script`: ids also come
+    /// from `auto_scripts` in connection and group files, which are imported
+    /// and team-synced, so `../x` must not reach `load_script` or
+    /// `delete_script` either.
+    fn path_for(&self, id: &str) -> Result<PathBuf, ScriptError> {
+        validate_id(id)?;
+        Ok(self.scripts_dir().join(format!("{id}.rsc")))
     }
 }
 
@@ -198,6 +207,27 @@ mod tests {
         assert!(manager.save_script("../evil", "send hi\n").is_err());
         assert!(manager.save_script("a/b", "send hi\n").is_err());
         assert!(!manager.has_script("../evil"));
+    }
+
+    /// An id from an imported or team-synced `auto_scripts` list must not
+    /// read or delete a `.rsc` file outside the library.
+    #[test]
+    fn load_and_delete_reject_an_escaping_id() {
+        let (manager, temp) = manager();
+        manager.save_script("inside", "send hi\n").unwrap();
+        let outside = temp.path().join("config").join("outside.rsc");
+        std::fs::write(&outside, "send hi\n").unwrap();
+
+        assert!(matches!(
+            manager.load_script("../outside"),
+            Err(ScriptError::Storage(_))
+        ));
+        assert!(matches!(
+            manager.delete_script("../outside"),
+            Err(ScriptError::Storage(_))
+        ));
+        assert!(!manager.has_script("../outside"));
+        assert!(outside.is_file(), "the file outside the library survived");
     }
 
     #[test]
