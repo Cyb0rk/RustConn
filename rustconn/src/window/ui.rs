@@ -283,6 +283,7 @@ pub fn create_app_menu() -> gio::Menu {
     tools_submenu.append(Some(&i18n("Workspaces…")), Some("win.manage-workspaces"));
     tools_submenu.append(Some(&i18n("Templates…")), Some("win.manage-templates"));
     tools_submenu.append(Some(&i18n("Variables…")), Some("win.manage-variables"));
+    tools_submenu.append(Some(&i18n("Scripts…")), Some("win.manage-scripts"));
 
     let tools_section_sep = gio::Menu::new();
     tools_section_sep.append(

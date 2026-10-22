@@ -23,7 +23,7 @@ mod navigation_actions;
 mod network_monitor;
 mod operations;
 mod prompt_autofill;
-mod protocols;
+pub(crate) mod protocols;
 mod protocols_ssh;
 mod rdp_vnc;
 mod resume_monitor;
@@ -699,6 +699,20 @@ impl MainWindow {
         let sidebar_for_close = sidebar.clone();
         let monitoring = Rc::new(MonitoringCoordinator::new());
         let monitoring_for_close = monitoring.clone();
+
+        // Publish script-runner handles. `.rsc` scripts run from the launch
+        // path and the scripts manager, which do not thread every handle
+        // through, so they fetch these from a thread-local.
+        crate::script_runner::publish_script_runtime(crate::script_runner::ScriptRuntime::new(
+            session_split_bridges.clone(),
+            split_view.clone(),
+            window.downgrade(),
+            sidebar.clone(),
+            monitoring.clone(),
+        ));
+        // Write the bundled example scripts on first run, so the auto-run
+        // pickers list them before the Scripts manager has ever been opened.
+        crate::dialogs::script::ensure_bundled_examples();
         let activity_coordinator = Rc::new(ActivityCoordinator::new());
         let activity_for_close = activity_coordinator.clone();
         terminal_notebook.set_activity_coordinator(activity_coordinator.clone());
@@ -723,6 +737,9 @@ impl MainWindow {
             let state_for_activity = state.clone();
             let activity_for_setup = activity_coordinator.clone();
             let notebook_weak = Rc::downgrade(&terminal_notebook);
+            let state_for_scripts = state.clone();
+            let sidebar_for_scripts = sidebar.clone();
+            let monitoring_for_scripts = monitoring.clone();
             terminal_notebook.set_on_session_created(move |session_id, connection_id| {
                 let Some(notebook) = notebook_weak.upgrade() else {
                     return;
@@ -733,6 +750,18 @@ impl MainWindow {
                     &activity_for_setup,
                     session_id,
                     connection_id,
+                );
+                // Auto-run scripts belong to this same choke point: a
+                // connection started after an asynchronous port check never
+                // returns a session id to its caller, so hooking the launch
+                // path directly missed exactly those connections.
+                crate::script_runner::maybe_run_auto_scripts(
+                    state_for_scripts.clone(),
+                    notebook.clone(),
+                    sidebar_for_scripts.clone(),
+                    monitoring_for_scripts.clone(),
+                    connection_id,
+                    session_id,
                 );
             });
 
@@ -1627,7 +1656,7 @@ impl MainWindow {
         window: &adw::ApplicationWindow,
         state: &SharedAppState,
         sidebar: &SharedSidebar,
-        _terminal_notebook: &SharedNotebook,
+        terminal_notebook: &SharedNotebook,
     ) {
         // Drag-drop item action for reordering connections
         let drag_drop_action =
@@ -1657,6 +1686,22 @@ impl MainWindow {
             split_view_clone.set_show_sidebar(!visible);
         });
         window.add_action(&toggle_sidebar_action);
+
+        // Scripts manager — opens the script library dialog.
+        let manage_scripts_action = gio::SimpleAction::new("manage-scripts", None);
+        let window_weak = window.downgrade();
+        let state_clone = state.clone();
+        let notebook_clone = terminal_notebook.clone();
+        manage_scripts_action.connect_activate(move |_, _| {
+            if let Some(win) = window_weak.upgrade() {
+                crate::dialogs::script::show_scripts_manager(
+                    win.upcast_ref::<gtk4::ApplicationWindow>(),
+                    state_clone.clone(),
+                    notebook_clone.clone(),
+                );
+            }
+        });
+        window.add_action(&manage_scripts_action);
     }
 
     /// Connects UI signals
@@ -2926,6 +2971,20 @@ impl MainWindow {
 
         // Clone connection data before dropping borrow
         let mut conn_clone = conn.clone();
+        // The credential resolution that ran before this cached the identity
+        // the vault supplied (already merged with the connection's by
+        // `apply_vault_identity`). Every launcher below builds its command line
+        // from `conn_clone`, so this one override is what makes a vault user
+        // name reach SSH, Telnet, Serial and the rest — for this session only;
+        // the stored connection is not changed.
+        if let Some(cached) = state_ref.get_cached_credentials(connection_id) {
+            if !cached.username.trim().is_empty() {
+                conn_clone.username = Some(cached.username.clone());
+            }
+            if !cached.domain.trim().is_empty() {
+                conn_clone.domain = Some(cached.domain.clone());
+            }
+        }
         drop(state_ref);
 
         // Issue #241: a `.local` host that only the Flatpak *host* can resolve is

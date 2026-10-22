@@ -106,6 +106,8 @@ rustconn/src/dialogs/template_manager.rs
 rustconn/src/dialogs/password.rs
 rustconn/src/dialogs/password_generator.rs
 rustconn/src/dialogs/recording.rs
+rustconn/src/dialogs/script.rs
+rustconn/src/dialogs/script_reference.rs
 rustconn/src/dialogs/variables.rs
 rustconn/src/dialogs/variable_setup.rs
 rustconn/src/dialogs/widgets.rs
@@ -160,5 +162,6 @@ rustconn/src/embedded_web/navigation.rs
 rustconn/src/embedded_trait.rs
 rustconn/src/embedded_vnc/mod.rs
 rustconn/src/embedded_vnc/ui.rs
+rustconn/src/script_runner.rs
 rustconn/src/session/vnc.rs
 rustconn/src/window/batch_edit.rs

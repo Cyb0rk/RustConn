@@ -33,7 +33,7 @@ pub type SharedNotebook = Rc<TerminalNotebook>;
 /// the one function every terminal launcher calls to get the rules a session will
 /// run with — wiring the sudo rules into each launcher separately is how one of
 /// them ends up missing them.
-pub(super) fn resolve_automation_for_connection(
+pub(crate) fn resolve_automation_for_connection(
     state: &SharedAppState,
     conn: &rustconn_core::Connection,
 ) -> AutomationConfig {

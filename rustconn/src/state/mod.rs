@@ -1280,6 +1280,13 @@ impl AppState {
             )
         }
 
+        // Captured before the context moves into the final attempt.
+        let conn_username = ctx.connection.username.clone();
+        let conn_domain = ctx.connection.domain.clone();
+        let with_identity = |outcome| {
+            Self::apply_vault_identity(conn_username.as_deref(), conn_domain.as_deref(), outcome)
+        };
+
         let mut attempt = 0;
         loop {
             // Clone only when a further attempt is actually possible; the final
@@ -1288,11 +1295,11 @@ impl AppState {
             let outcome = if attempt + 1 < RETRY_ATTEMPTS {
                 Self::resolve_credentials_blocking_once(ctx.clone())
             } else {
-                return Self::resolve_credentials_blocking_once(ctx);
+                return with_identity(Self::resolve_credentials_blocking_once(ctx));
             };
 
             if !is_transient(&outcome) {
-                return outcome;
+                return with_identity(outcome);
             }
 
             attempt += 1;
@@ -1301,6 +1308,36 @@ impl AppState {
                 "[resolve_credentials_blocking] backend not ready, retrying after backoff"
             );
             std::thread::sleep(RETRY_BACKOFF);
+        }
+    }
+
+    /// Applies the one identity rule to a resolved credential: a non-empty user
+    /// name or domain from the vault replaces the connection's, an empty one
+    /// keeps it, and `DOMAIN\user` is split
+    /// ([`rustconn_core::secret::merge_vault_identity`]).
+    ///
+    /// Every resolution path ends here, so every backend and protocol sees the
+    /// same answer. Before, a Bitwarden user name reached RDP but not SSH, and a
+    /// KeePass one reached nothing.
+    fn apply_vault_identity(
+        conn_username: Option<&str>,
+        conn_domain: Option<&str>,
+        outcome: Result<rustconn_core::sync::CredentialResolutionResult, String>,
+    ) -> Result<rustconn_core::sync::CredentialResolutionResult, String> {
+        use rustconn_core::sync::CredentialResolutionResult;
+        match outcome {
+            Ok(CredentialResolutionResult::Resolved(mut creds)) => {
+                let identity = rustconn_core::secret::merge_vault_identity(
+                    conn_username,
+                    conn_domain,
+                    creds.username.as_deref(),
+                    creds.domain.as_deref(),
+                );
+                creds.username = identity.username;
+                creds.domain = identity.domain;
+                Ok(CredentialResolutionResult::Resolved(creds))
+            }
+            other => other,
         }
     }
 

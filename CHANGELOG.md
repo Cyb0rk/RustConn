@@ -5,6 +5,21 @@ All notable changes to RustConn will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.20] - 2026-10-23
+
+### Added
+- **Session scripting with `.rsc` scripts (PR #387, contributed by Naim Shafiev)** — Ásbrú-CM / SecureCRT-style automation of a live terminal: send keys, wait for and capture output, ask the user (`ask … hide` for masked input), run a local command, and open, split and close sessions, with variables, labels and `goto`/`if_goto` branching. **Tools → Scripts…** edits, validates, runs and stops scripts from the library at `<config_dir>/scripts/` and opens the language reference; bundled examples cover shell and OpenWrt uptime, a local command and a first-run wizard. Connections and groups can auto-run scripts when the session starts, inherited down the group chain. The parser and event-driven engine live in `rustconn-core`; no new dependency was added. (`rustconn-core/src/automation/script.rs`, `rustconn-core/src/script/manager.rs`, `rustconn/src/script_runner.rs`, `rustconn/src/dialogs/script.rs`)
+- **Scripts are safe against the remote host and other local users** — a variable substituted into `run` must pass the connection-task check (no shell metacharacters, newlines or control characters), so text captured from a session cannot become a local command, and an `ask … hide` answer is never put on a command line. `run` gets no stdin, runs without session-token and cloud-credential variables, and is killed at its timeout (60 s when none is set). Deleting a script asks first; script ids are validated on every read and delete; a script missing from the local library is kept on save rather than replaced; engine `Debug` shows variable names only and values are zeroized.
+- **The vault's user name and domain are used with its password, for every backend and protocol** — a non-empty vault value replaces the connection's for that session, an empty one keeps it, `DOMAIN\user` is split, and an e-mail-style login is kept whole. **Load credentials from vault** in the editor fills password, user name and domain. Before, a Bitwarden user name reached RDP but not SSH, Telnet or Serial. KeePassXC does not supply them yet. (`rustconn-core/src/secret/vault_identity.rs`, `rustconn/src/state/mod.rs`, `rustconn/src/window/mod.rs`)
+
+### Fixed
+- **Bitwarden "Search from vault root" finds entries by URL and full host name (issue #353)** — the search returned items whose title was not exactly the connection's name or host, and they were dropped. An exact title still wins; otherwise a login URL host or an FQDN/short-name match is used when exactly one item matches, and ambiguity resolves to none with a warning. A URL-shaped host also searches by its host, RustConn's own item is accepted when a save was still in flight, and the debug log lists what each search returned. (`rustconn-core/src/secret/bitwarden.rs`)
+- **Bitwarden item notes no longer become the RDP domain** — the domain now comes from a custom `domain` field, or from the notes of RustConn's own `RustConn: …` item only; an implausible value is ignored. Saving to Bitwarden also no longer leaves the password in unwiped buffers. (`rustconn-core/src/secret/bitwarden.rs`)
+
+### Dependencies
+- **tokio 1.54.0 → 1.54.1 (RUSTSEC-2026-0384)** — fixes a data race and use-after-free in `tokio::time::Interval` on the multi-threaded runtime; `cargo deny check advisories` is clean.
+- **Updated** (semver-compatible): icu_collections, icu_locale_core, icu_normalizer, icu_normalizer_data, icu_properties, icu_properties_data 2.3.0 → 2.4.0, icu_provider 2.3.1 → 2.4.0, memmap2 0.9.11 → 0.9.12, open 5.4.4 → 5.4.5, system-deps 9.0.0 → 9.0.1, tinystr 0.8.4 → 0.8.5, yoke 0.8.3 → 0.8.4, zerovec 0.11.8 → 0.11.9, zerovec-derive 0.11.6 → 0.11.7; `cargo-sources.json` regenerated for the Flatpak/Flathub manifests. GNOME runtime 51, FreeRDP 3.32.2, cJSON 1.7.19, OpenH264 2.6.0 and every downloadable CLI tool were already current; the Snap stays on `core24` + `gnome-46-2404` (issue #174).
+
 ## [0.23.19] - 2026-10-21
 
 ### Added

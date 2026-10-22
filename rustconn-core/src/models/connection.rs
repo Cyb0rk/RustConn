@@ -154,6 +154,13 @@ pub struct AutomationConfig {
     /// Post-login scripts to execute
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub post_login_scripts: Vec<String>,
+    /// `.rsc` script ids to run automatically after the session starts.
+    ///
+    /// Scripts live in the app's script library (`<config_dir>/scripts/`).
+    /// Empty by default; serde-default keeps configs written before this field
+    /// loadable.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub auto_scripts: Vec<String>,
     /// Expected text of the device's username prompt, for automatic login.
     ///
     /// Matched as a case-insensitive substring of the line under the cursor.

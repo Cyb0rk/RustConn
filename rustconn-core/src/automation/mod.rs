@@ -7,6 +7,7 @@
 
 mod expect;
 mod key_sequence;
+mod script;
 mod tasks;
 mod templates;
 
@@ -15,8 +16,12 @@ pub use expect::{
     elevated_credentials_rules,
 };
 pub use key_sequence::{KeyElement, KeySequence, KeySequenceError, KeySequenceResult, SpecialKey};
+pub use script::{
+    DEFAULT_TIMEOUT_MS, PendingKind, RUN_TIMEOUT_CEILING_MS, ScriptEngine, ScriptHost,
+    ScriptParseError, ScriptProgram, ScriptStep, parse_program,
+};
 pub use tasks::{
-    ConnectionTask, FolderConnectionTracker, TaskCondition, TaskError, TaskExecutor, TaskResult,
-    TaskTiming,
+    ConnectionTask, FolderConnectionTracker, SCRUBBED_ENV_VARS, TaskCondition, TaskError,
+    TaskExecutor, TaskResult, TaskTiming,
 };
 pub use templates::{AutomationTemplate, builtin_templates, templates_for_protocol};

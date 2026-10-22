@@ -625,7 +625,7 @@ impl VariableManager {
     ///
     /// Returns `VariableError::UnsafeValue` if the value contains unsafe
     /// characters.
-    fn validate_command_value(name: &str, value: &str) -> VariableResult<()> {
+    pub(crate) fn validate_command_value(name: &str, value: &str) -> VariableResult<()> {
         // Shell metacharacters that could enable injection via `sh -c`
         const SHELL_META: &[char] = &[';', '|', '&', '`', '$', '(', ')', '<', '>', '!'];
 

@@ -37,6 +37,7 @@ pub mod serde_helpers;
 mod status;
 mod store_key;
 mod touch;
+mod vault_identity;
 mod verification;
 
 pub use async_resolver::{
@@ -86,6 +87,7 @@ pub use passbolt::{
     get_passbolt_status, get_passbolt_version, get_passphrase_from_keyring,
     store_passphrase_in_keyring,
 };
+pub use vault_identity::{VaultIdentity, merge_vault_identity, sanitize_domain, split_down_level};
 // `MIN_REASONABLE_LENGTH` is deliberately *not* re-exported here. Flattened to
 // this level it reads as `MIN_PASSPHRASE_LENGTH`, which is the name of an
 // enforced minimum, and the whole point of the module is that there is none —

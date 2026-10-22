@@ -84,6 +84,7 @@ pub mod icon_render;
 pub mod monitor_mode;
 pub mod monitoring;
 mod renderer;
+pub mod script_runner;
 pub mod session;
 mod sidebar;
 mod sidebar_types;

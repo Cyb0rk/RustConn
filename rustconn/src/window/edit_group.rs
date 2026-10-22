@@ -1425,6 +1425,47 @@ pub fn show_edit_group_dialog(
     scripts_button_box.set_visible(has_automation);
     automation_content.append(&scripts_button_box);
 
+    // --- Auto-run Scripts (list with Add/Delete) ---
+    let auto_group = adw::PreferencesGroup::builder()
+        .title(i18n("Auto-run Scripts"))
+        .description(i18n(
+            "Script library ids run after a connection in this group starts (inherited by connections)",
+        ))
+        .build();
+
+    let auto_list = gtk4::ListBox::builder()
+        .selection_mode(gtk4::SelectionMode::None)
+        .css_classes(["boxed-list"])
+        .build();
+    auto_list.set_placeholder(Some(&Label::new(Some(&i18n("No auto-run scripts")))));
+    auto_group.add(&auto_list);
+
+    let group_auto_scripts: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
+
+    let add_auto_script_button = Button::builder().label(i18n("Add Script")).build();
+    {
+        let scripts_clone = group_auto_scripts.clone();
+        let list_clone = auto_list.clone();
+        add_auto_script_button.connect_clicked(move |_| {
+            add_group_auto_script_row(&list_clone, &scripts_clone, None);
+        });
+    }
+
+    let auto_button_box = gtk4::Box::new(Orientation::Horizontal, 8);
+    auto_button_box.set_halign(gtk4::Align::End);
+    auto_button_box.set_margin_top(12);
+    auto_button_box.append(&add_auto_script_button);
+
+    // Populate existing auto-run scripts
+    for script in &group.auto_scripts {
+        add_group_auto_script_row(&auto_list, &group_auto_scripts, Some(script));
+    }
+
+    auto_group.set_visible(has_automation);
+    automation_content.append(&auto_group);
+    auto_button_box.set_visible(has_automation);
+    automation_content.append(&auto_button_box);
+
     // Show/hide all automation sub-sections based on automation expander state
     {
         let expect_group = expect_rules_group.clone();
@@ -1432,6 +1473,8 @@ pub fn show_edit_group_dialog(
         let tester = tester_group.clone();
         let scripts = scripts_group.clone();
         let scripts_buttons = scripts_button_box.clone();
+        let auto = auto_group.clone();
+        let auto_buttons = auto_button_box.clone();
         let login_prompts = login_prompts_group.clone();
         automation_expander.connect_enable_expansion_notify(move |row| {
             let visible = row.enables_expansion();
@@ -1441,6 +1484,8 @@ pub fn show_edit_group_dialog(
             tester.set_visible(visible);
             scripts.set_visible(visible);
             scripts_buttons.set_visible(visible);
+            auto.set_visible(visible);
+            auto_buttons.set_visible(visible);
         });
     }
 
@@ -1559,6 +1604,7 @@ pub fn show_edit_group_dialog(
     let group_login_password_entry_clone = group_login_password_entry;
     let group_login_timeout_spin_clone = group_login_timeout_spin;
     let group_post_login_scripts_clone = group_post_login_scripts;
+    let group_auto_scripts_clone = group_auto_scripts;
     let old_name = group.name;
 
     save_btn.connect_clicked(move |_| {
@@ -1807,9 +1853,18 @@ pub fn show_edit_group_dialog(
                         .filter(|s| !s.trim().is_empty())
                         .cloned()
                         .collect();
+
+                    // Collect auto-run script ids, filtering empty
+                    updated.auto_scripts = group_auto_scripts_clone
+                        .borrow()
+                        .iter()
+                        .filter(|s| !s.trim().is_empty())
+                        .cloned()
+                        .collect();
                 } else {
                     updated.expect_rules = Vec::new();
                     updated.post_login_scripts = Vec::new();
+                    updated.auto_scripts = Vec::new();
                     updated.username_prompt = None;
                     updated.password_prompt = None;
                     updated.login_timeout_secs = None;
@@ -2509,6 +2564,133 @@ fn add_post_login_script_row(
         let mut vec = scripts_for_change.borrow_mut();
         if script_idx < vec.len() {
             vec[script_idx] = text;
+        }
+    });
+
+    list.append(&row);
+}
+
+/// Adds a row for one auto-run script id, keeping `scripts` in sync. The id
+/// is picked from a dropdown of the scripts currently in the library.
+fn add_group_auto_script_row(
+    list: &gtk4::ListBox,
+    scripts: &Rc<RefCell<Vec<String>>>,
+    script: Option<&str>,
+) {
+    use crate::i18n::i18n;
+
+    let (ids, labels, selected) = crate::dialogs::script::auto_script_choices(script);
+    let refs: Vec<&str> = labels.iter().map(String::as_str).collect();
+    let model = gtk4::StringList::new(&refs);
+    let dropdown = gtk4::DropDown::builder().model(&model).build();
+    dropdown.set_selected(selected);
+
+    // Two distinct actions: the trash button deletes the script from the
+    // library, the unlink button only detaches it from this group.
+    let delete_button = Button::builder()
+        .icon_name("user-trash-symbolic")
+        .css_classes(["flat"])
+        .tooltip_text(i18n("Delete script from the library"))
+        .valign(gtk4::Align::Center)
+        .build();
+    delete_button.update_property(&[gtk4::accessible::Property::Label(&i18n(
+        "Delete script from the library",
+    ))]);
+    delete_button.set_hexpand(false);
+
+    let remove_button = Button::builder()
+        .icon_name("list-remove-symbolic")
+        .css_classes(["flat"])
+        .tooltip_text(i18n("Remove from this list"))
+        .valign(gtk4::Align::Center)
+        .build();
+    remove_button.update_property(&[gtk4::accessible::Property::Label(&i18n(
+        "Remove from this list",
+    ))]);
+    remove_button.set_hexpand(false);
+
+    let row_box = gtk4::Box::new(Orientation::Horizontal, 8);
+    row_box.set_margin_top(12);
+    row_box.set_margin_bottom(12);
+    row_box.set_margin_start(12);
+    row_box.set_margin_end(12);
+    row_box.append(&dropdown);
+    row_box.append(&delete_button);
+    row_box.append(&remove_button);
+
+    let row = gtk4::ListBoxRow::builder().child(&row_box).build();
+
+    let value = ids
+        .get(dropdown.selected() as usize)
+        .cloned()
+        .unwrap_or_default();
+    scripts.borrow_mut().push(value);
+
+    // Delete from the library, after confirmation: removes the file and this
+    // row. The position is read from the row at the time of the click — the
+    // index captured at creation goes stale once a row above is removed.
+    {
+        let list_c = list.clone();
+        let scripts_c = scripts.clone();
+        let row_c = row.clone();
+        delete_button.connect_clicked(move |btn| {
+            let Ok(idx) = usize::try_from(row_c.index()) else {
+                return;
+            };
+            let id = scripts_c.borrow().get(idx).cloned().unwrap_or_default();
+            if id.is_empty() {
+                return;
+            }
+            let list_c = list_c.clone();
+            let scripts_c = scripts_c.clone();
+            let row_c = row_c.clone();
+            crate::dialogs::script::confirm_delete_script(btn, &id, move || {
+                let idx = usize::try_from(row_c.index()).ok();
+                list_c.remove(&row_c);
+                let mut vec = scripts_c.borrow_mut();
+                if let Some(idx) = idx
+                    && idx < vec.len()
+                {
+                    vec.remove(idx);
+                }
+            });
+        });
+    }
+
+    // Remove from this group only: the script stays in the library.
+    let list_for_delete = list.clone();
+    let scripts_for_delete = scripts.clone();
+    let row_for_delete = row.clone();
+    remove_button.connect_clicked(move |_| {
+        let idx = row_for_delete.index();
+        list_for_delete.remove(&row_for_delete);
+        #[expect(
+            clippy::cast_sign_loss,
+            reason = "value is non-negative by construction in this code path"
+        )]
+        if idx >= 0 {
+            let idx = idx as usize;
+            let mut vec = scripts_for_delete.borrow_mut();
+            if idx < vec.len() {
+                vec.remove(idx);
+            }
+        }
+    });
+
+    let ids_change = ids.clone();
+    let scripts_for_change = scripts.clone();
+    let row_for_change = row.clone();
+    dropdown.connect_selected_notify(move |d| {
+        let Ok(idx) = usize::try_from(row_for_change.index()) else {
+            return;
+        };
+        let value = ids_change
+            .get(d.selected() as usize)
+            .cloned()
+            .unwrap_or_default();
+        let mut vec = scripts_for_change.borrow_mut();
+        if let Some(slot) = vec.get_mut(idx) {
+            *slot = value;
         }
     });
 

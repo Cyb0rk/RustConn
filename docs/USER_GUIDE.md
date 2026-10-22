@@ -1,6 +1,6 @@
 # RustConn User Guide
 
-**Version 0.23.19** | GTK4/libadwaita Connection Manager for Linux
+**Version 0.23.20** | GTK4/libadwaita Connection Manager for Linux
 
 RustConn is a modern connection manager designed for Linux with Wayland-first approach. It supports SSH, RDP, VNC, SPICE, MOSH, SFTP, Telnet, Serial, Kubernetes, Web protocols and Zero Trust integrations through a native GTK4/libadwaita interface.
 
@@ -228,13 +228,25 @@ The full editor provides access to all connection options:**Basic Tab:**
 - Username
 - Password source selection:
   - **Prompt** — Ask for password on each connection
-  - **Vault** — Store/retrieve from the configured secret backend (see [Choosing a Secret Backend](#choosing-a-secret-backend))
+  - **Vault** — Store/retrieve from the configured secret backend (see [Choosing a Secret Backend](#choosing-a-secret-backend)). See *User name and domain from the vault* below.
   - **Variable** — Read credentials from a named secret global variable
   - **Inherit** — Use credentials from parent group
   - **Script** — Resolve password from an external command (see [Script Credentials](#script-credentials))
   - **None** — No password (key-based auth)
 - SSH key selection
 - Key passphrase
+
+**User name and domain from the vault:**
+A vault entry's user name and domain are used together with its password, the same way for every backend and protocol:
+
+- a non-empty user name or domain in the vault **replaces** the one on the connection;
+- an empty one never clears the connection's value;
+- a vault user name written `DOMAIN\user` is split into the domain and the user. An explicit domain field still wins over the prefix. An e-mail-style login (`user@corp.example`) is kept whole and does not change the domain, since some services use an address as the login;
+- a domain that is not a valid domain name is ignored and logged.
+
+At connect time this applies to that session only; the saved connection is not changed. **Load credentials from vault** (the folder button next to the password) fills the password, user name and domain into the editor, so **Save** stores them.
+
+Where the domain comes from: libsecret, pass, macOS Keychain and the encrypted file store it in its own field. In **Bitwarden**, add a custom field named `domain` (any case) to the item; the notes are read as the domain only on RustConn's own `RustConn: …` items, never on an item found by *Search from vault root*. KeePassXC (the user name and domain are not read yet), 1Password and Passbolt supply none.
 
 **SSH Agent Authentication:**
 Set the auth method (or the key source) to **SSH Agent** and pick one of the keys the agent currently holds from the dropdown. That choice is honoured at connect time: RustConn restricts the connection to the selected key with `-i <public key> -o IdentitiesOnly=yes`, so the other keys in the agent are not offered. The identity passed to `ssh` is the key's *public* half, written to `$XDG_RUNTIME_DIR/rustconn/agent-keys/`; the private key never leaves the agent and you are asked to confirm at most once. This matters on an agent holding many keys, where a server with a low `MaxAuthTries` can refuse the connection before the right key is reached.
@@ -2530,6 +2542,154 @@ rustconn-cli group show "Production"
 3. The template adds a rule: pattern `\[sudo\] password for \w+:` → response `${password}\n`
 4. Save the group
 5. All SSH connections in "Production Servers" now auto-respond to sudo prompts, each with its own password — `${password}` resolves per connection from that connection's Password Source, so one group rule covers the whole folder
+
+### Scripting (`.rsc`)
+
+Scripts are small instruction files that drive a live session the same way Ásbrú-CM's `%TERMINAL`/`%PAC` hashes or SecureCRT's `crt.Screen`/`crt.Session` do. A script can send keys, wait for output, capture text, ask the user, run local commands and manage sessions.
+
+**The script library**
+
+- Scripts live in the script library folder (`<config_dir>/scripts/`), one file per script, named by **script id** (alphanumeric, `-`, `_`).
+- Open **Tools → Scripts…** to create, edit, validate, delete and run scripts. The editor validates on save — a script with a syntax error never reaches disk.
+- A script runs against the **active session**. Start one from the Scripts dialog, or attach it to a connection/group to run automatically after the session starts.
+
+**Auto-run scripts**
+
+- Connection editor → **Automation** → **Auto-run Scripts**: script ids run after this connection's session starts.
+- Group editor → **Automation** → **Auto-run Scripts**: ids are inherited by connections that have none of their own, walking up the group chain (same rules as post-login scripts).
+- A script that needs a prompt should start with `expect` — the script runs after the session starts, so waiting for `password:`/prompt text is the normal first step.
+
+**Instruction reference**
+
+| Command | Meaning |
+|---------|---------|
+| `send <sequence>` | Send text (same syntax as key sequences: `{ENTER}`, `{TAB}`, `{WAIT:500}` …) |
+| `wait <ms>` | Pause for milliseconds |
+| `expect <regex> [<sec>]` | Wait until the output matches a regex (or times out) |
+| `capture <regex> <var> [<sec>]` | Like `expect`, but store capture group 1 in a variable |
+| `readline <var> [<sec>]` | Store the next line of output in a variable |
+| `getprompt <var>` | Guess the current prompt (send Enter, diff last line) and store it |
+| `log [<path>]` | Start/stop writing session output to a file |
+| `print <text>` | Print an ANSI-coloured message on the terminal |
+| `ask "<prompt>" [hide] <var>` | Ask the user for input; `hide` masks it |
+| `msg <text> [ok]` | Show a message window (optionally with an OK button) |
+| `start <name-or-uuid> [manual] [cluster=<name>] [-> uuid,tmp]` | Start a session; optionally record its ids |
+| `select <name-or-uuid> [-> uuid,tmp]` | Select an open session |
+| `stop <session-var>` | Close a session |
+| `split <a> <b> [vertical]` | Split two sessions into a shared layout |
+| `unsplit <session-var>` | Remove a session's split layout |
+| `totab <session-var>` / `towindow <session-var>` | Move a session back to a tab / to its own window |
+| `run "<command>" [<sec>] [out=<var>] [code=<var>]` | Run a local command (secrets scrubbed from its environment); capture stdout/exit code |
+| `set <var> <value>` | Set a script variable (supports `${var}` references) |
+| `goto <label>` | Jump to a label |
+| `if_goto <var> <regex> <label> [else <label>]` | Jump conditionally |
+
+**Variables**
+
+`${name}` and `$name` references are substituted from script variables (`set`, `capture`, `readline`, `ask`). Inside `send` use `${name}` only — a bare `$name` there is literal text, because the key-sequence syntax reserves `$` for `${...}`. A label is defined with `:name`; `#` and `;` start comments. An iteration cap kills runaway `goto` loops.
+
+**Local commands (`run`) and safety**
+
+- `run` executes its command with `sh -c` **on this computer**, not on the remote host. To run something on the remote host, use `send`.
+- A variable substituted into a `run` command must not contain a shell metacharacter (`; | & $ ( ) < > !` and backtick), a newline or a control character. A script that tries stops with *Refusing to run command* instead. This is deliberate: `capture` and `readline` store text the remote host printed, and without the check a host could run commands on your machine. Validate a value with `if_goto` before using it, as the first-run example below does.
+- The command gets no standard input, runs with session tokens and cloud credentials (`BW_SESSION`, `OP_SESSION`, `AWS_*`, `GITHUB_TOKEN`, `GH_TOKEN`) removed from its environment, and is killed when its timeout expires. A `run` without `<sec>` is limited to 60 seconds.
+- **Flatpak:** the command runs inside the RustConn sandbox and sees only the tools the sandbox has. Prefix it with `flatpak-spawn --host` to run it on the host.
+- `ask … hide` masks what is typed, and `run` refuses to put such an answer on a command line, which other local users could read in the process list; the script stops instead. Pass a password to the remote side with `send "${answer}{ENTER}"`. `print $answer` still prints it, so do not.
+
+**Branching on user input (a first-run wizard)**
+
+`ask` supplies a value and `if_goto` turns it into a decision. The bundled
+`example-router-first-run` asks in clear text (no `hide`, so the answer is
+visible), validates it and branches:
+
+```
+expect "#" 15
+
+:ask
+ask "Configure this router now? Type yes or no:" answer
+if_goto $answer /(?i)^\s*yes\s*$/ configure
+if_goto $answer /(?i)^\s*no\s*$/ skip
+print "Please answer yes or no."
+goto ask
+
+:skip
+msg "Leaving the router unchanged." ok
+goto done
+
+:configure
+send "uci show system.@system[0].hostname{ENTER}"
+capture /hostname='([^']+)'/ old_name 10
+print "Current hostname: $old_name"
+ask "New hostname (letters, digits and dashes only):" new_name
+if_goto $new_name /^[A-Za-z0-9][A-Za-z0-9-]*$/ apply
+print "Invalid hostname. Nothing was changed."
+goto done
+
+:apply
+send "uci set system.@system[0].hostname=${new_name} && uci commit system{ENTER}"
+expect "#" 15
+print "Hostname set to $new_name. It takes effect on the next boot."
+
+:done
+print "First-run helper finished."
+```
+
+Why it is written that way:
+
+- a question with only two valid answers needs the third `goto ask`; without it an unexpected answer silently falls through;
+- `if_goto` compares as a regular expression, so `(?i)` makes it case-insensitive and `\s*` tolerates stray spaces;
+- `capture` matches the quoted value (`hostname='...'`) rather than `hostname=`, because the echoed command line contains the latter and would satisfy the capture before the device answers;
+- the hostname is validated before it is substituted into a command, so a name containing a space or `;` never reaches the device.
+
+**Example — run a command and capture its output:**
+
+```
+expect "\$" 10
+send "uptime{ENTER}"
+readline line 5
+print "Uptime: $line"
+```
+
+**Example — ask for a host, then connect to it:**
+
+```
+ask "Host to inspect:" host
+start "ssh-$host" -> sid,tmp
+select $sid
+expect "\$" 30
+send "df -h{ENTER}"
+```
+
+**Example — uptime on an OpenWrt router (root login)**
+
+OpenWrt's root prompt ends in `#` (`root@OpenWrt:~#`). The bundled
+`example-openwrt-uptime` script is exactly this:
+
+```
+expect "#" 15
+send "uptime{ENTER}"
+capture /up\s+([^,]+)/ up 10
+print "Uptime: $up"
+```
+
+`capture` is used rather than `readline` because `readline` returns the next
+line of output, which after `send` is the echoed `uptime` command itself.
+The capture group picks the text after `up`, so a session showing
+`14:30:00 up 2 days, 3:21, load average: ...` prints `Uptime: 2 days`.
+
+For an ordinary shell whose prompt ends in `$`, use `example-shell-uptime`,
+which is the same script with `expect "\$"`.
+
+**Full language reference**
+
+The same reference is available in the application: **Tools → Scripts… → ⓘ** opens it. It covers the terminal primitives (`send`, `wait`, `expect`, `capture`, `readline`, `getprompt`, `log`, `print`), user interaction (`ask`, `msg`), session management (`start`, `select`, `stop`, `split`, `unsplit`, `totab`, `towindow`), local commands (`run`), control flow (`set`, `goto`, `if_goto`), variable substitution, and the error rules.
+
+**Deleting scripts**
+
+- In the Scripts manager, every row has a trash button and the **Delete** button deletes the selected script.
+- In Edit Connection → Automation → Auto-run Scripts (and in the group editor), each row has two buttons: the **trash** deletes the script from the library entirely, the **unlink** only detaches it from that connection or group.
+- A connection or group that names a script this computer's library does not have (imported, team-synced, or deleted here) shows it as *id (not in this library)* and keeps it on save; it is not replaced by another script.
+- Deleting always asks first, because it removes the file for every connection and group that runs it. The bundled `example-*` scripts are written back the next time the Scripts manager opens.
 
 #### Sorting
 

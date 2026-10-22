@@ -140,6 +140,18 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.23.20" date="2026-10-23">
+      <description>
+        <p>Version 0.23.20 - session scripting, vault user names and domains, and Bitwarden search fixes:</p>
+        <ul>
+          <li>Session scripting with .rsc scripts, contributed by Naim Shafiev: a script sends keys, waits for and captures output, asks the user, runs local commands and manages sessions; scripts are managed from Tools &gt; Scripts and can run automatically when a connection or group starts</li>
+          <li>Scripts cannot be steered by the remote host: captured text is checked before it reaches a local command, hidden answers never reach a command line, and local commands stop at their time limit</li>
+          <li>A vault entry's user name and domain are now used together with its password for every password manager and protocol, and the editor can load all three</li>
+          <li>Bitwarden "Search from vault root" finds entries by their web address or full host name, and an entry's notes no longer become the Windows domain (issue #353)</li>
+          <li>Updated dependencies, including a security fix in the tokio runtime</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.19" date="2026-10-21">
       <description>
         <p>Version 0.23.19 - contributor credits, sidebar sorting fixes, and a Homebrew packaging fix:</p>

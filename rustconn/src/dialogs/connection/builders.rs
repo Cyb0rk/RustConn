@@ -234,6 +234,7 @@ pub(super) struct ConnectionDialogData<'a> {
     pub local_variables: &'a HashMap<String, Variable>,
     pub logging_tab: &'a logging_tab::LoggingTab,
     pub expect_rules: &'a Vec<ExpectRule>,
+    pub auto_scripts: &'a Vec<String>,
     pub command_macros: &'a Vec<CommandMacro>,
     /// Expected text of the device's username prompt for automatic login (issue #254).
     pub login_username_prompt_entry: &'a Entry,
@@ -619,6 +620,13 @@ impl ConnectionDialogData<'_> {
             .expect_rules
             .iter()
             .filter(|r| !r.pattern.is_empty())
+            .cloned()
+            .collect();
+        // Set auto-run script ids, dropping blank rows.
+        conn.automation.auto_scripts = self
+            .auto_scripts
+            .iter()
+            .filter(|s| !s.trim().is_empty())
             .cloned()
             .collect();
         // Set command macros, dropping all-blank rows the user added but never

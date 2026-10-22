@@ -1251,6 +1251,18 @@ impl TerminalNotebook {
         }
     }
 
+    /// Renders text in the terminal widget without sending it to the session.
+    ///
+    /// `feed` is what VTE uses for output coming from the child; feeding bytes
+    /// here draws them locally and never reaches the remote shell. That is the
+    /// difference between a script printing a status line and a script typing
+    /// that line at a prompt.
+    pub fn feed_local_output(&self, session_id: Uuid, bytes: &[u8]) {
+        if let Some(terminal) = self.get_terminal(session_id) {
+            terminal.feed(bytes);
+        }
+    }
+
     /// Registers a callback for a session's raw PTY output.
     ///
     /// The callback runs on the GTK main thread with each chunk exactly as the

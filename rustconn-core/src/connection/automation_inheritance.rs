@@ -49,6 +49,12 @@ pub fn resolve_automation(connection: &Connection, groups: &[ConnectionGroup]) -
         connection.automation.post_login_scripts.clone()
     };
 
+    let auto_scripts = if connection.automation.auto_scripts.is_empty() {
+        resolve_auto_scripts(connection.group_id, groups)
+    } else {
+        connection.automation.auto_scripts.clone()
+    };
+
     // A prompt text set on the connection wins; otherwise take the first one
     // found walking up the group chain. Each prompt is resolved on its own, so
     // a group can supply the vendor's username wording while the connection
@@ -70,6 +76,7 @@ pub fn resolve_automation(connection: &Connection, groups: &[ConnectionGroup]) -
     AutomationConfig {
         expect_rules,
         post_login_scripts,
+        auto_scripts,
         username_prompt,
         password_prompt,
         login_timeout_secs: connection
@@ -183,6 +190,30 @@ fn resolve_post_login_scripts(
         };
         if !group.post_login_scripts.is_empty() {
             return group.post_login_scripts.clone();
+        }
+        current = group.parent_id;
+    }
+
+    Vec::new()
+}
+
+/// Walks the group hierarchy to find inherited `.rsc` script ids.
+///
+/// Returns the first non-empty `auto_scripts` found in the parent chain, or an
+/// empty vec if none found.
+fn resolve_auto_scripts(start_group_id: Option<Uuid>, groups: &[ConnectionGroup]) -> Vec<String> {
+    let mut visited = HashSet::new();
+    let mut current = start_group_id;
+
+    while let Some(gid) = current {
+        if !visited.insert(gid) {
+            break; // Cycle detected
+        }
+        let Some(group) = find_group(gid, groups) else {
+            break;
+        };
+        if !group.auto_scripts.is_empty() {
+            return group.auto_scripts.clone();
         }
         current = group.parent_id;
     }
@@ -368,5 +399,32 @@ mod tests {
 
         let result = resolve_automation(&conn, &[group_a, group_b]);
         assert!(result.username_prompt.is_none());
+    }
+
+    #[test]
+    fn auto_scripts_inherited_from_group_chain() {
+        let mut root = ConnectionGroup::new("Root".into());
+        root.auto_scripts = vec!["bootstrap".into(), "healthcheck".into()];
+
+        let child = ConnectionGroup::with_parent("Child".into(), root.id);
+
+        let mut conn = Connection::new_ssh("test".into(), "host".into(), 22);
+        conn.group_id = Some(child.id);
+
+        let result = resolve_automation(&conn, &[root, child]);
+        assert_eq!(result.auto_scripts, vec!["bootstrap", "healthcheck"]);
+    }
+
+    #[test]
+    fn connection_auto_scripts_override_group() {
+        let mut group = ConnectionGroup::new("G".into());
+        group.auto_scripts = vec!["group-script".into()];
+
+        let mut conn = Connection::new_ssh("test".into(), "host".into(), 22);
+        conn.group_id = Some(group.id);
+        conn.automation.auto_scripts = vec!["own-script".into()];
+
+        let result = resolve_automation(&conn, &[group]);
+        assert_eq!(result.auto_scripts, vec!["own-script"]);
     }
 }
