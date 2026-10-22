@@ -2576,6 +2576,14 @@ Scripts are small instruction files that drive a live session the same way Ásbr
 
 `${name}` and `$name` references are substituted from script variables (`set`, `capture`, `readline`, `ask`). Inside `send` use `${name}` only — a bare `$name` there is literal text, because the key-sequence syntax reserves `$` for `${...}`. A label is defined with `:name`; `#` and `;` start comments. An iteration cap kills runaway `goto` loops.
 
+**Local commands (`run`) and safety**
+
+- `run` executes its command with `sh -c` **on this computer**, not on the remote host. To run something on the remote host, use `send`.
+- A variable substituted into a `run` command must not contain a shell metacharacter (`; | & $ ( ) < > !` and backtick), a newline or a control character. A script that tries stops with *Refusing to run command* instead. This is deliberate: `capture` and `readline` store text the remote host printed, and without the check a host could run commands on your machine. Validate a value with `if_goto` before using it, as the first-run example below does.
+- The command gets no standard input, runs with session tokens and cloud credentials (`BW_SESSION`, `OP_SESSION`, `AWS_*`, `GITHUB_TOKEN`, `GH_TOKEN`) removed from its environment, and is killed when its timeout expires.
+- **Flatpak:** the command runs inside the RustConn sandbox and sees only the tools the sandbox has. Prefix it with `flatpak-spawn --host` to run it on the host.
+- `ask … hide` masks what is typed, but the answer is an ordinary script variable: `print $answer` prints it and `run` would put it on a command line that other local users can see in the process list. Pass a password to the remote side with `send "${answer}{ENTER}"` only.
+
 **Branching on user input (a first-run wizard)**
 
 `ask` supplies a value and `if_goto` turns it into a decision. The bundled
@@ -2668,6 +2676,7 @@ The same reference is available in the application: **Tools → Scripts… → �
 
 - In the Scripts manager, every row has a trash button and the **Delete** button deletes the selected script.
 - In Edit Connection → Automation → Auto-run Scripts (and in the group editor), each row has two buttons: the **trash** deletes the script from the library entirely, the **unlink** only detaches it from that connection or group.
+- Deleting always asks first, because it removes the file for every connection and group that runs it. The bundled `example-*` scripts are written back the next time the Scripts manager opens.
 
 #### Sorting
 

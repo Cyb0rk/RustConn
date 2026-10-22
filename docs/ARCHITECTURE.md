@@ -259,6 +259,27 @@ receives it fine. A single shared re-entrancy guard stops the fed text's own
 
 The two are orthogonal and can be active at once without interfering.
 
+### Session scripts (`.rsc`)
+
+A script drives a live terminal session, so it cannot block the GTK main
+thread while it waits for a prompt. It is split the same way as everything else:
+
+| Piece | Location | Role |
+|-------|----------|------|
+| Parser + engine | `rustconn-core/src/automation/script.rs` | `parse_program` turns source into `ScriptStep`s; `ScriptEngine` is an event-driven state machine. `pump()` runs steps until one has to wait, and the caller resumes it with `on_output`, `on_timer`, `on_ask_result`, `on_run_result` or `on_session_started` |
+| Host trait | `ScriptHost` in the same file | Every side effect (send keys, print, ask, start/split/close a session, run a local command). The engine never touches GTK; tests drive it with a recording host |
+| Library | `rustconn-core/src/script/manager.rs` | `ScriptManager`: one `<id>.rsc` file per script under `<config_dir>/scripts/`; ids are restricted to `[A-Za-z0-9_-]` and a source that does not parse is never written |
+| Auto-run inheritance | `rustconn-core/src/connection/automation_inheritance.rs` | `AutomationConfig.auto_scripts` / `ConnectionGroup.auto_scripts`; an empty list on a connection inherits the first non-empty list up the group chain |
+| GUI host | `rustconn/src/script_runner.rs` | `ScriptRunner` implements `ScriptHost` over the notebook, split bridges and sidebar, feeds VTE output into the engine and owns the timers. Auto-run starts from `create_terminal_tab_with_settings`, the one place every terminal session is created |
+| Manager dialog | `rustconn/src/dialogs/script.rs`, `script_reference.rs` | Tools → Scripts…: edit, validate, run, stop, delete (with confirmation), language reference |
+
+Two rules keep a script from becoming an attack path. Variables substituted
+into a `run` command go through `VariableManager::validate_command_value`, the
+same check connection tasks use, because `capture`/`readline` values are text
+the remote host chose; `run` also scrubs `SCRUBBED_ENV_VARS`, gets no stdin and
+is killed on timeout. The engine's `Debug` prints variable names only and its
+values are zeroized on replace and drop, since an `ask … hide` answer lives there.
+
 ### Why This Separation?
 
 1. **Testability**: Core logic can be tested without a display server
