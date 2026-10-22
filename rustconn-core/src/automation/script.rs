@@ -30,6 +30,7 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 use crate::automation::{KeyElement, KeySequence};
 use crate::variables::VariableManager;
@@ -364,7 +365,10 @@ pub trait ScriptHost {
 /// The caller drives it: call [`ScriptEngine::pump`] with a host until
 /// [`ScriptEngine::pending`] is not `None` or the script finishes, then feed
 /// output (`on_output`), timers (`on_timer`) and dialog/task results back.
-#[derive(Debug)]
+///
+/// A variable may hold an `ask … hide` answer, so `Debug` names variables
+/// without their values, and every value is zeroized when it is replaced or
+/// the engine is dropped.
 pub struct ScriptEngine {
     program: ScriptProgram,
     pc: usize,
@@ -455,12 +459,6 @@ impl ScriptEngine {
         }
     }
 
-    /// The script's variables (for inspection/debugging).
-    #[must_use]
-    pub fn variables(&self) -> &HashMap<String, String> {
-        &self.variables
-    }
-
     /// A value from the script's variable map.
     #[must_use]
     pub fn variable(&self, name: &str) -> Option<&str> {
@@ -542,7 +540,7 @@ impl ScriptEngine {
             }
             ScriptStep::GetPrompt { variable } => {
                 if let Some(prompt) = host.get_prompt() {
-                    self.variables.insert(variable, prompt);
+                    self.set_var(variable, prompt);
                 }
                 self.advance();
             }
@@ -648,7 +646,7 @@ impl ScriptEngine {
             }
             ScriptStep::Set { var, value } => {
                 let value = self.substitute(&value);
-                self.variables.insert(var, value);
+                self.set_var(var, value);
                 self.advance();
             }
             ScriptStep::Goto { label } => match self.jump(&label) {
@@ -739,7 +737,7 @@ impl ScriptEngine {
         match value {
             Some(value) => {
                 if let Some(var) = self.ask_var.take() {
-                    self.variables.insert(var, value);
+                    self.set_var(var, value);
                 }
                 self.pc += 1;
                 self.pending = PendingKind::None;
@@ -754,10 +752,10 @@ impl ScriptEngine {
             return;
         }
         if let Some(var) = self.run_out_var.take() {
-            self.variables.insert(var, stdout);
+            self.set_var(var, stdout);
         }
         if let Some(var) = self.run_code_var.take() {
-            self.variables.insert(var, code.to_string());
+            self.set_var(var, code.to_string());
         }
         self.pc += 1;
         self.pending = PendingKind::None;
@@ -775,12 +773,12 @@ impl ScriptEngine {
         if let Some(var) = self.session_uuid_var.take()
             && let Some(uuid) = uuid
         {
-            self.variables.insert(var, uuid);
+            self.set_var(var, uuid);
         }
         if let Some(var) = self.session_tmp_uuid_var.take()
             && let Some(tmp_uuid) = tmp_uuid
         {
-            self.variables.insert(var, tmp_uuid);
+            self.set_var(var, tmp_uuid);
         }
         self.pc += 1;
         self.pending = PendingKind::None;
@@ -808,6 +806,13 @@ impl ScriptEngine {
         self.finished = true;
         self.pending = PendingKind::None;
         self.error = error;
+    }
+
+    /// Sets a variable, zeroizing the value it replaces.
+    fn set_var(&mut self, name: String, value: String) {
+        if let Some(mut old) = self.variables.insert(name, value) {
+            old.zeroize();
+        }
     }
 
     /// Reads a variable, falling back to the empty string.
@@ -917,20 +922,23 @@ impl ScriptEngine {
             self.finish(Some(format!("Invalid regex: {pattern}")));
             return true;
         };
-        if let Some(captures) = regex.captures(&self.buffer) {
-            if let Some(group) = captures.get(1)
-                && let Some(variable) = self.capture_var.clone()
-            {
-                self.variables.insert(variable, group.as_str().to_string());
-            }
-            if let Some(m) = captures.get(0) {
-                self.buffer.drain(..m.end());
-            }
-            self.advance();
-            true
-        } else {
-            false
+        // Copy what is needed out of the match first: `set_var` takes `&mut
+        // self`, and the captures borrow `self.buffer`.
+        let Some((group, end)) = regex.captures(&self.buffer).map(|captures| {
+            let group = captures.get(1).map(|g| g.as_str().to_string());
+            let end = captures.get(0).map_or(0, |m| m.end());
+            (group, end)
+        }) else {
+            return false;
+        };
+        if let Some(group) = group
+            && let Some(variable) = self.capture_var.clone()
+        {
+            self.set_var(variable, group);
         }
+        self.buffer.drain(..end);
+        self.advance();
+        true
     }
 
     /// Tries to satisfy the current `readline` step against the buffer.
@@ -939,13 +947,39 @@ impl ScriptEngine {
             let line = self.buffer[..pos].to_string();
             self.buffer.drain(..=pos);
             if let Some(variable) = self.readline_var.clone() {
-                self.variables.insert(variable, line);
+                self.set_var(variable, line);
             }
             self.advance();
             true
         } else {
             false
         }
+    }
+}
+
+impl std::fmt::Debug for ScriptEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut names: Vec<&str> = self.variables.keys().map(String::as_str).collect();
+        names.sort_unstable();
+        f.debug_struct("ScriptEngine")
+            .field("steps", &self.program.len())
+            .field("pc", &self.pc)
+            .field("pending", &self.pending)
+            .field("finished", &self.finished)
+            .field("canceled", &self.canceled)
+            .field("error", &self.error)
+            .field("variables", &names)
+            .field("buffered_bytes", &self.buffer.len())
+            .finish_non_exhaustive()
+    }
+}
+
+impl Drop for ScriptEngine {
+    fn drop(&mut self) {
+        for value in self.variables.values_mut() {
+            value.zeroize();
+        }
+        self.buffer.zeroize();
     }
 }
 
@@ -1793,6 +1827,23 @@ mod tests {
             .insert("v".to_string(), "db-01.example.com".to_string());
         engine.pump(&mut host);
         assert_eq!(host.events, vec!["run:ping -c1 db-01.example.com:None"]);
+    }
+
+    /// M-PUBLIC-DEBUG: an `ask … hide` answer must not reach a `{:?}` — the
+    /// engine sits inside GUI structs that are logged with `Debug`.
+    #[test]
+    fn debug_names_variables_without_their_values() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse("ask \"Password:\" hide pw\nwait 1\n").unwrap();
+        engine.pump(&mut host);
+        engine.on_ask_result(Some("hunter2-secret".to_string()));
+        engine.pump(&mut host);
+
+        let debug = format!("{engine:?}");
+        assert!(debug.contains("pw"), "{debug}");
+        assert!(!debug.contains("hunter2-secret"), "{debug}");
+        // The value is still usable by the script itself.
+        assert_eq!(engine.variable("pw"), Some("hunter2-secret"));
     }
 
     /// `send` and `print` are not shell contexts, so the guard does not apply
