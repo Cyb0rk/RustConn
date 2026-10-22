@@ -370,6 +370,10 @@ pub struct ScriptEngine {
     pc: usize,
     buffer: String,
     variables: HashMap<String, String>,
+    /// Compiled `expect`/`capture`/`if_goto` patterns, keyed by source. A
+    /// pattern is re-tried on every output chunk and `if_goto` may run in a
+    /// loop, so compiling each time would dominate the GTK thread.
+    regex_cache: HashMap<String, Regex>,
     pending: PendingKind,
     canceled: bool,
     finished: bool,
@@ -406,6 +410,7 @@ impl ScriptEngine {
             pc: 0,
             buffer: String::new(),
             variables: HashMap::new(),
+            regex_cache: HashMap::new(),
             pending: PendingKind::None,
             canceled: false,
             finished: false,
@@ -657,9 +662,9 @@ impl ScriptEngine {
                 else_label,
             } => {
                 let value = self.variable_value(&var);
-                let matched = Regex::new(&pattern)
-                    .map(|re| re.is_match(&value))
-                    .unwrap_or(false);
+                let matched = self
+                    .compiled(&pattern)
+                    .is_some_and(|re| re.is_match(&value));
                 let target = if matched {
                     Some(then_label)
                 } else {
@@ -877,9 +882,21 @@ impl ScriptEngine {
         KeySequence::from_elements(elements)
     }
 
+    /// Returns `pattern` compiled, from the cache when it was seen before.
+    /// `None` for an invalid pattern — the parser rejects those, so this only
+    /// happens for a program built by hand.
+    fn compiled(&mut self, pattern: &str) -> Option<Regex> {
+        if let Some(regex) = self.regex_cache.get(pattern) {
+            return Some(regex.clone());
+        }
+        let regex = Regex::new(pattern).ok()?;
+        self.regex_cache.insert(pattern.to_string(), regex.clone());
+        Some(regex)
+    }
+
     /// Tries to satisfy the current `expect` step against the buffer.
     fn try_satisfy_expect(&mut self, pattern: &str) -> bool {
-        let Ok(regex) = Regex::new(pattern) else {
+        let Some(regex) = self.compiled(pattern) else {
             self.finish(Some(format!("Invalid regex: {pattern}")));
             return true;
         };
@@ -896,7 +913,7 @@ impl ScriptEngine {
 
     /// Tries to satisfy the current `capture` step against the buffer.
     fn try_satisfy_capture(&mut self, pattern: &str) -> bool {
-        let Ok(regex) = Regex::new(pattern) else {
+        let Some(regex) = self.compiled(pattern) else {
             self.finish(Some(format!("Invalid regex: {pattern}")));
             return true;
         };
