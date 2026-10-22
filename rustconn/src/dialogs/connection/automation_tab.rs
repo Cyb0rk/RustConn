@@ -13,7 +13,7 @@ use libadwaita as adw;
 use rustconn_core::automation::builtin_templates;
 
 use super::widgets::EntryRowBuilder;
-use crate::i18n::{i18n, i18n_f};
+use crate::i18n::i18n;
 
 /// All widgets created by [`create_automation_combined_tab`].
 pub(super) struct AutomationTabWidgets {
@@ -662,40 +662,33 @@ pub(super) fn add_auto_script_row(
         }
     });
 
-    // Delete from the library: removes the file and this row.
-    let manager = Rc::new(crate::dialogs::script::library_script_manager());
+    // Delete from the library, after confirmation: removes the file and this
+    // row. A failed delete keeps the row, so the editor still shows the truth.
     let list_delete = list.clone();
     let scripts_delete = scripts.clone();
     let row_delete = row.clone();
-    delete_script.connect_clicked(move |_| {
-        let idx = row_delete.index();
-        if idx < 0 {
+    delete_script.connect_clicked(move |btn| {
+        let Ok(idx) = usize::try_from(row_delete.index()) else {
             return;
-        }
-        let idx = idx as usize;
-        let id = scripts_delete
-            .borrow()
-            .get(idx)
-            .cloned()
-            .unwrap_or_default();
+        };
+        let id = scripts_delete.borrow().get(idx).cloned().unwrap_or_default();
         if id.is_empty() {
             return;
         }
-        match manager.delete_script(&id) {
-            Ok(()) => crate::toast::show_info_toast_on_active_window(&i18n_f(
-                "Deleted script “{}”",
-                &[&id],
-            )),
-            Err(e) => crate::toast::show_error_toast_on_active_window(&format!(
-                "{}: {e}",
-                i18n("Could not delete script")
-            )),
-        }
-        list_delete.remove(&row_delete);
-        let mut store = scripts_delete.borrow_mut();
-        if idx < store.len() {
-            store.remove(idx);
-        }
+        let list_delete = list_delete.clone();
+        let scripts_delete = scripts_delete.clone();
+        let row_delete = row_delete.clone();
+        crate::dialogs::script::confirm_delete_script(btn, &id, move || {
+            // Re-read the index: rows above may have been removed meanwhile.
+            let idx = usize::try_from(row_delete.index()).ok();
+            list_delete.remove(&row_delete);
+            let mut store = scripts_delete.borrow_mut();
+            if let Some(idx) = idx
+                && idx < store.len()
+            {
+                store.remove(idx);
+            }
+        });
     });
 
     // Remove from this connection only: the script stays in the library.

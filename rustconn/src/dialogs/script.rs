@@ -258,9 +258,13 @@ impl ScriptDialog {
             let list_c = list.clone();
             let manager_c = manager.clone();
             let ids_c = ids.clone();
-            delete_btn.connect_clicked(move |_| {
-                let _ = manager_c.delete_script(&id_delete);
-                Self::refresh_list(&list_c, &manager_c, &ids_c);
+            delete_btn.connect_clicked(move |btn| {
+                let list_c = list_c.clone();
+                let manager_c = manager_c.clone();
+                let ids_c = ids_c.clone();
+                confirm_delete_script(btn, &id_delete, move || {
+                    Self::refresh_list(&list_c, &manager_c, &ids_c);
+                });
             });
         }
     }
@@ -380,25 +384,28 @@ impl ScriptDialog {
         let status_delete = status_label.clone();
         let save_delete = save_btn.clone();
         let run_delete = run_btn.clone();
-        delete_btn.connect_clicked(move |_| {
+        delete_btn.connect_clicked(move |btn| {
             let id = id_entry_delete.text().trim().to_string();
             if id.is_empty() {
                 status_delete.set_label(&i18n("Select a script to delete."));
                 return;
             }
-            match manager_delete.delete_script(&id) {
-                Ok(()) => {
-                    id_entry_delete.set_text("");
-                    editor_delete.buffer().set_text("");
-                    status_delete.set_label(&i18n("Script deleted."));
-                    save_delete.set_sensitive(false);
-                    run_delete.set_sensitive(false);
-                    Self::refresh_list(&script_list_delete, &manager_delete, &ids_delete);
-                }
-                Err(e) => {
-                    status_delete.set_label(&format!("{}: {e}", i18n("Could not delete script")));
-                }
-            }
+            let manager_delete = manager_delete.clone();
+            let script_list_delete = script_list_delete.clone();
+            let ids_delete = ids_delete.clone();
+            let id_entry_delete = id_entry_delete.clone();
+            let editor_delete = editor_delete.clone();
+            let status_delete = status_delete.clone();
+            let save_delete = save_delete.clone();
+            let run_delete = run_delete.clone();
+            confirm_delete_script(btn, &id, move || {
+                id_entry_delete.set_text("");
+                editor_delete.buffer().set_text("");
+                status_delete.set_label(&i18n("Script deleted."));
+                save_delete.set_sensitive(false);
+                run_delete.set_sensitive(false);
+                Self::refresh_list(&script_list_delete, &manager_delete, &ids_delete);
+            });
         });
 
         // Shared run state: the Stop button and the elapsed-time ticker both
@@ -626,6 +633,58 @@ pub fn ensure_bundled_examples() {
 #[must_use]
 pub fn library_script_ids() -> Vec<String> {
     library_script_manager().list_scripts()
+}
+
+/// Asks before deleting script `id` from the library, then deletes it.
+///
+/// Deleting removes the file for every connection and group that runs it, so
+/// it is never done on a single click. `on_deleted` runs only after the file
+/// is gone; a failed delete is reported in a notification and leaves the
+/// caller's state untouched.
+pub fn confirm_delete_script(
+    parent: &impl IsA<gtk4::Widget>,
+    id: &str,
+    on_deleted: impl FnOnce() + 'static,
+) {
+    let dialog = adw::AlertDialog::new(
+        Some(&i18n("Delete Script?")),
+        Some(&i18n_f(
+            "“{}” will be removed from the script library, and every connection and group that runs it will stop running it.",
+            &[id],
+        )),
+    );
+    dialog.add_response("cancel", &i18n("Cancel"));
+    dialog.add_response("delete", &i18n("Delete"));
+    dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+    dialog.set_default_response(Some("cancel"));
+    dialog.set_close_response("cancel");
+
+    let id = id.to_string();
+    let on_deleted = RefCell::new(Some(on_deleted));
+    dialog.connect_response(None, move |_, response| {
+        if response != "delete" {
+            return;
+        }
+        match library_script_manager().delete_script(&id) {
+            Ok(()) => {
+                crate::toast::show_info_toast_on_active_window(&i18n_f(
+                    "Deleted script “{}”",
+                    &[&id],
+                ));
+                if let Some(on_deleted) = on_deleted.borrow_mut().take() {
+                    on_deleted();
+                }
+            }
+            Err(e) => {
+                tracing::warn!(script = %id, error = %e, "could not delete script");
+                crate::toast::show_error_toast_on_active_window(&format!(
+                    "{}: {e}",
+                    i18n("Could not delete script")
+                ));
+            }
+        }
+    });
+    dialog.present(Some(parent));
 }
 
 #[cfg(test)]

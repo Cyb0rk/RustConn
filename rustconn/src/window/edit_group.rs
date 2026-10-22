@@ -2622,44 +2622,40 @@ fn add_group_auto_script_row(
 
     let row = gtk4::ListBoxRow::builder().child(&row_box).build();
 
-    let script_idx = scripts.borrow().len();
     let value = ids
         .get(dropdown.selected() as usize)
         .cloned()
         .unwrap_or_default();
     scripts.borrow_mut().push(value);
 
-    // Delete from the library: removes the file and this row.
+    // Delete from the library, after confirmation: removes the file and this
+    // row. The position is read from the row at the time of the click — the
+    // index captured at creation goes stale once a row above is removed.
     {
+        let list_c = list.clone();
         let scripts_c = scripts.clone();
-        delete_button.connect_clicked(move |_| {
-            let id = scripts_c
-                .borrow()
-                .get(script_idx)
-                .cloned()
-                .unwrap_or_default();
+        let row_c = row.clone();
+        delete_button.connect_clicked(move |btn| {
+            let Ok(idx) = usize::try_from(row_c.index()) else {
+                return;
+            };
+            let id = scripts_c.borrow().get(idx).cloned().unwrap_or_default();
             if id.is_empty() {
                 return;
             }
-            let manager = std::rc::Rc::new(crate::dialogs::script::library_script_manager());
-            match manager.delete_script(&id) {
-                Ok(()) => {
-                    crate::toast::show_info_toast_on_active_window(&i18n_f(
-                        "Deleted script “{}”",
-                        &[&id],
-                    ));
+            let list_c = list_c.clone();
+            let scripts_c = scripts_c.clone();
+            let row_c = row_c.clone();
+            crate::dialogs::script::confirm_delete_script(btn, &id, move || {
+                let idx = usize::try_from(row_c.index()).ok();
+                list_c.remove(&row_c);
+                let mut vec = scripts_c.borrow_mut();
+                if let Some(idx) = idx
+                    && idx < vec.len()
+                {
+                    vec.remove(idx);
                 }
-                Err(e) => {
-                    crate::toast::show_error_toast_on_active_window(&format!(
-                        "{}: {e}",
-                        i18n("Could not delete script")
-                    ));
-                }
-            }
-            let mut vec = scripts_c.borrow_mut();
-            if script_idx < vec.len() {
-                vec.remove(script_idx);
-            }
+            });
         });
     }
 
@@ -2685,14 +2681,18 @@ fn add_group_auto_script_row(
 
     let ids_change = ids.clone();
     let scripts_for_change = scripts.clone();
+    let row_for_change = row.clone();
     dropdown.connect_selected_notify(move |d| {
+        let Ok(idx) = usize::try_from(row_for_change.index()) else {
+            return;
+        };
         let value = ids_change
             .get(d.selected() as usize)
             .cloned()
             .unwrap_or_default();
         let mut vec = scripts_for_change.borrow_mut();
-        if script_idx < vec.len() {
-            vec[script_idx] = value;
+        if let Some(slot) = vec.get_mut(idx) {
+            *slot = value;
         }
     });
 
