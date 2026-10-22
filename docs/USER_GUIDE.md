@@ -228,13 +228,25 @@ The full editor provides access to all connection options:**Basic Tab:**
 - Username
 - Password source selection:
   - **Prompt** — Ask for password on each connection
-  - **Vault** — Store/retrieve from the configured secret backend (see [Choosing a Secret Backend](#choosing-a-secret-backend))
+  - **Vault** — Store/retrieve from the configured secret backend (see [Choosing a Secret Backend](#choosing-a-secret-backend)). See *User name and domain from the vault* below.
   - **Variable** — Read credentials from a named secret global variable
   - **Inherit** — Use credentials from parent group
   - **Script** — Resolve password from an external command (see [Script Credentials](#script-credentials))
   - **None** — No password (key-based auth)
 - SSH key selection
 - Key passphrase
+
+**User name and domain from the vault:**
+A vault entry's user name and domain are used together with its password, the same way for every backend and protocol:
+
+- a non-empty user name or domain in the vault **replaces** the one on the connection;
+- an empty one never clears the connection's value;
+- a vault user name written `DOMAIN\user` is split into the domain and the user. An explicit domain field still wins over the prefix. An e-mail-style login (`user@corp.example`) is kept whole and does not change the domain, since some services use an address as the login;
+- a domain that is not a valid domain name is ignored and logged.
+
+At connect time this applies to that session only; the saved connection is not changed. **Load credentials from vault** (the folder button next to the password) fills the password, user name and domain into the editor, so **Save** stores them.
+
+Where the domain comes from: libsecret, pass, macOS Keychain and the encrypted file store it in its own field. In **Bitwarden**, add a custom field named `domain` (any case) to the item; the notes are read as the domain only on RustConn's own `RustConn: …` items, never on an item found by *Search from vault root*. KeePassXC (the user name and domain are not read yet), 1Password and Passbolt supply none.
 
 **SSH Agent Authentication:**
 Set the auth method (or the key source) to **SSH Agent** and pick one of the keys the agent currently holds from the dropdown. That choice is honoured at connect time: RustConn restricts the connection to the selected key with `-i <public key> -o IdentitiesOnly=yes`, so the other keys in the agent are not offered. The identity passed to `ssh` is the key's *public* half, written to `$XDG_RUNTIME_DIR/rustconn/agent-keys/`; the private key never leaves the agent and you are asked to confirm at most once. This matters on an agent holding many keys, where a server with a low `MaxAuthTries` can refuse the connection before the right key is reached.
