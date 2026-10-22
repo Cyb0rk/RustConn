@@ -6,7 +6,7 @@
 #
 
 Name:           rustconn
-Version:        0.23.19
+Version:        0.23.20
 Release:        0
 # rpmlint caps Summary at 79 characters (summary-too-long, badness 200); the
 # protocol list belongs in %description, which has room for all of it. Kept in
@@ -392,6 +392,15 @@ done
 %{_datadir}/icons/hicolor/*/apps/io.github.totoshko88.RustConn.*
 
 %changelog
+* Fri Oct 23 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.20-0
+- Version bump to 0.23.20
+- Added session scripting with .rsc scripts (PR #387, contributed by Naim Shafiev): send keys, wait for and capture output, ask the user, run local commands and manage sessions; Tools > Scripts manager; auto-run scripts on connections and groups with group inheritance
+- Added script safety: values substituted into "run" are checked for shell metacharacters, hidden answers never reach a command line, and "run" is killed at its timeout (60 s by default) and runs without session tokens
+- Added use of the vault's user name and domain with its password for every backend and protocol; "Load credentials from vault" fills all three
+- Fixed Bitwarden "Search from vault root" missing entries titled differently from the connection; it now matches by URL host and full host name and refuses ambiguous matches (issue #353)
+- Fixed Bitwarden item notes becoming the RDP domain, and saving to Bitwarden leaving the password in unwiped buffers
+- Updated tokio 1.54.0 to 1.54.1 (RUSTSEC-2026-0384) and semver-compatible icu, memmap2, open, system-deps, tinystr, yoke and zerovec releases; cargo-sources.json regenerated
+
 * Wed Oct 21 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.19-0
 - Version bump to 0.23.19
 - Added About > Credits listing code contributors and every translator; the translator list is a fixed, language-independent set so no one is shown twice and the running locale's translator is not the only one visible

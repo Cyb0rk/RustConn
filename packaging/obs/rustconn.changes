@@ -1,4 +1,25 @@
 -------------------------------------------------------------------
+Fri Oct 23 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.20
+
+- Version bump to 0.23.20
+- Added: session scripting with .rsc scripts (PR #387, contributed by Naim
+  Shafiev) - send keys, wait for and capture output, ask the user, run local
+  commands and manage sessions; Tools > Scripts manager; auto-run scripts on
+  connections and groups with group inheritance
+- Added: script safety - values substituted into "run" are checked for shell
+  metacharacters, hidden answers never reach a command line, "run" is killed
+  at its timeout (60 s by default) and runs without session tokens
+- Added: the vault's user name and domain are used with its password for every
+  backend and protocol; "Load credentials from vault" fills all three
+- Fixed: Bitwarden "Search from vault root" finds entries by URL host and full
+  host name, and refuses ambiguous matches (issue #353)
+- Fixed: Bitwarden item notes no longer become the RDP domain; saving no longer
+  leaves the password in unwiped buffers
+- Dependencies: tokio 1.54.0 -> 1.54.1 (RUSTSEC-2026-0384); icu 2.3 -> 2.4,
+  memmap2, open, system-deps, tinystr, yoke, zerovec (semver-compatible);
+  cargo-sources.json regenerated
+
+-------------------------------------------------------------------
 Wed Oct 21 2026 Anton Isaiev <totoshko88@gmail.com> - 0.23.19
 
 - Version bump to 0.23.19
