@@ -683,7 +683,7 @@ pub(super) fn add_auto_script_row(
         }
         match manager.delete_script(&id) {
             Ok(()) => crate::toast::show_info_toast_on_active_window(&i18n_f(
-                "Deleted script \u{201c}{}\u{201d}",
+                "Deleted script “{}”",
                 &[&id],
             )),
             Err(e) => crate::toast::show_error_toast_on_active_window(&format!(

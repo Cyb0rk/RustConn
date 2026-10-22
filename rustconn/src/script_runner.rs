@@ -916,7 +916,7 @@ fn start_auto_scripts(
                 ) {
                     tracing::error!(script = %id, error = %e, "auto-run script failed to start");
                     crate::toast::show_error_toast_on_active_window(&crate::i18n::i18n_f(
-                        "Could not start script \u{201c}{}\u{201d}: {}",
+                        "Could not start script “{}”: {}",
                         &[id, &e],
                     ));
                 }
@@ -924,7 +924,7 @@ fn start_auto_scripts(
             Err(e) => {
                 tracing::error!(script = %id, error = %e, "auto-run script not found or unreadable");
                 crate::toast::show_error_toast_on_active_window(&crate::i18n::i18n_f(
-                    "Auto-run script \u{201c}{}\u{201d} could not be loaded: {}",
+                    "Auto-run script “{}” could not be loaded: {}",
                     &[id, &e.to_string()],
                 ));
             }
