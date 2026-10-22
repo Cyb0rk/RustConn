@@ -110,6 +110,8 @@ impl ConnectionDialog {
 
         let password_source_dropdown = self.password_source_dropdown.clone();
         let password_entry = self.password_entry.clone();
+        let username_entry = self.username_entry.clone();
+        let domain_entry = self.domain_entry.clone();
         let name_entry = self.name_entry.clone();
         let host_entry = self.host_entry.clone();
         let protocol_dropdown = self.protocol_dropdown.clone();
@@ -316,6 +318,8 @@ impl ConnectionDialog {
                         // root-searching backend no name or host to match, and
                         // ran a Bitwarden unlock outside the vault lock (#353).
                         let secret_settings = secret_settings.clone();
+                        let username_entry = username_entry.clone();
+                        let domain_entry = domain_entry.clone();
                         spawn_blocking_with_callback(
                             move || {
                                 crate::state::dispatch_vault_op(
@@ -338,6 +342,23 @@ impl ConnectionDialog {
                                     Ok(Some(creds)) => {
                                         if let Some(password) = creds.expose_password() {
                                             password_entry.set_text(password);
+                                            // Same rule a connect applies: a
+                                            // non-empty vault user name or
+                                            // domain replaces what is typed
+                                            // here, an empty one keeps it.
+                                            let identity =
+                                                rustconn_core::secret::merge_vault_identity(
+                                                    Some(username_entry.text().as_str()),
+                                                    Some(domain_entry.text().as_str()),
+                                                    creds.username.as_deref(),
+                                                    creds.domain.as_deref(),
+                                                );
+                                            if let Some(username) = identity.username {
+                                                username_entry.set_text(&username);
+                                            }
+                                            if let Some(domain) = identity.domain {
+                                                domain_entry.set_text(&domain);
+                                            }
                                         } else {
                                             alert::show_error(
                                                 &window,

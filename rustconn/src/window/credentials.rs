@@ -854,7 +854,8 @@ impl MainWindow {
                     && let Ok(mut state_mut) = state.try_borrow_mut()
                 {
                     let username = creds.username.as_deref().unwrap_or_default();
-                    state_mut.cache_credentials(connection_id, username, password, "");
+                    let domain = creds.domain.as_deref().unwrap_or_default();
+                    state_mut.cache_credentials(connection_id, username, password, domain);
                 }
                 Self::start_connection_with_split_observed(
                     &state,

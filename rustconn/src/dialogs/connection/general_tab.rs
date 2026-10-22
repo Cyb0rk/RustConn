@@ -298,11 +298,11 @@ pub(super) fn create_basic_tab() -> BasicTabWidgets {
     let password_entry = password_value_row.clone();
     let password_load_button = Button::builder()
         .icon_name("document-open-symbolic")
-        .tooltip_text(i18n("Load password from vault"))
+        .tooltip_text(i18n("Load credentials from vault"))
         .valign(gtk4::Align::Center)
         .build();
     password_load_button.update_property(&[gtk4::accessible::Property::Label(&i18n(
-        "Load password from vault",
+        "Load credentials from vault",
     ))]);
     let vault_test_button = Button::builder()
         .icon_name("object-select-symbolic")

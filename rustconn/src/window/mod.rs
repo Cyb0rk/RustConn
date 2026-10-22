@@ -2971,6 +2971,20 @@ impl MainWindow {
 
         // Clone connection data before dropping borrow
         let mut conn_clone = conn.clone();
+        // The credential resolution that ran before this cached the identity
+        // the vault supplied (already merged with the connection's by
+        // `apply_vault_identity`). Every launcher below builds its command line
+        // from `conn_clone`, so this one override is what makes a vault user
+        // name reach SSH, Telnet, Serial and the rest — for this session only;
+        // the stored connection is not changed.
+        if let Some(cached) = state_ref.get_cached_credentials(connection_id) {
+            if !cached.username.trim().is_empty() {
+                conn_clone.username = Some(cached.username.clone());
+            }
+            if !cached.domain.trim().is_empty() {
+                conn_clone.domain = Some(cached.domain.clone());
+            }
+        }
         drop(state_ref);
 
         // Issue #241: a `.local` host that only the Flatpak *host* can resolve is
