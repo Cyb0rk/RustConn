@@ -91,6 +91,10 @@ pub struct ConnectionGroup {
     /// Connections with empty `automation.post_login_scripts` inherit from their group chain.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub post_login_scripts: Vec<String>,
+    /// `.rsc` script ids for inheritance by child connections.
+    /// Connections with empty `automation.auto_scripts` inherit from their group chain.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub auto_scripts: Vec<String>,
     /// Expected text of the username prompt, for inheritance by child connections.
     /// Connections without their own `automation.username_prompt` inherit from
     /// their group chain (issue #254).
@@ -158,6 +162,7 @@ impl ConnectionGroup {
             last_synced_at: None,
             expect_rules: Vec::new(),
             post_login_scripts: Vec::new(),
+            auto_scripts: Vec::new(),
             username_prompt: None,
             password_prompt: None,
             login_timeout_secs: None,
@@ -193,6 +198,7 @@ impl ConnectionGroup {
             last_synced_at: None,
             expect_rules: Vec::new(),
             post_login_scripts: Vec::new(),
+            auto_scripts: Vec::new(),
             username_prompt: None,
             password_prompt: None,
             login_timeout_secs: None,

@@ -268,6 +268,9 @@ impl ConnectionDialog {
         // Set expect rules
         self.set_expect_rules(&conn.automation.expect_rules);
 
+        // Set auto-run scripts
+        self.set_auto_scripts(&conn.automation.auto_scripts);
+
         // Set command macros
         self.set_command_macros(&conn.automation.command_macros);
 
@@ -723,6 +726,23 @@ impl ConnectionDialog {
         Self::connect_rule_entry_changes(&rule_row, &self.expect_rules);
 
         self.expect_rules_list.append(&rule_row.row);
+    }
+
+    /// Sets the auto-run script rows for this connection
+    pub(super) fn set_auto_scripts(&self, scripts: &[String]) {
+        // Clear existing rows
+        while let Some(row) = self.auto_scripts_list.row_at_index(0) {
+            self.auto_scripts_list.remove(&row);
+        }
+        self.auto_scripts.borrow_mut().clear();
+
+        for script in scripts {
+            super::super::automation_tab::add_auto_script_row(
+                &self.auto_scripts_list,
+                &self.auto_scripts,
+                Some(script),
+            );
+        }
     }
 
     /// Sets the command macros for this connection

@@ -2531,6 +2531,144 @@ rustconn-cli group show "Production"
 4. Save the group
 5. All SSH connections in "Production Servers" now auto-respond to sudo prompts, each with its own password — `${password}` resolves per connection from that connection's Password Source, so one group rule covers the whole folder
 
+### Scripting (`.rsc`)
+
+Scripts are small instruction files that drive a live session the same way Ásbrú-CM's `%TERMINAL`/`%PAC` hashes or SecureCRT's `crt.Screen`/`crt.Session` do. A script can send keys, wait for output, capture text, ask the user, run local commands and manage sessions.
+
+**The script library**
+
+- Scripts live in the script library folder (`<config_dir>/scripts/`), one file per script, named by **script id** (alphanumeric, `-`, `_`).
+- Open **Tools → Scripts…** to create, edit, validate, delete and run scripts. The editor validates on save — a script with a syntax error never reaches disk.
+- A script runs against the **active session**. Start one from the Scripts dialog, or attach it to a connection/group to run automatically after the session starts.
+
+**Auto-run scripts**
+
+- Connection editor → **Automation** → **Auto-run Scripts**: script ids run after this connection's session starts.
+- Group editor → **Automation** → **Auto-run Scripts**: ids are inherited by connections that have none of their own, walking up the group chain (same rules as post-login scripts).
+- A script that needs a prompt should start with `expect` — the script runs after the session starts, so waiting for `password:`/prompt text is the normal first step.
+
+**Instruction reference**
+
+| Command | Meaning |
+|---------|---------|
+| `send <sequence>` | Send text (same syntax as key sequences: `{ENTER}`, `{TAB}`, `{WAIT:500}` …) |
+| `wait <ms>` | Pause for milliseconds |
+| `expect <regex> [<sec>]` | Wait until the output matches a regex (or times out) |
+| `capture <regex> <var> [<sec>]` | Like `expect`, but store capture group 1 in a variable |
+| `readline <var> [<sec>]` | Store the next line of output in a variable |
+| `getprompt <var>` | Guess the current prompt (send Enter, diff last line) and store it |
+| `log [<path>]` | Start/stop writing session output to a file |
+| `print <text>` | Print an ANSI-coloured message on the terminal |
+| `ask "<prompt>" [hide] <var>` | Ask the user for input; `hide` masks it |
+| `msg <text> [ok]` | Show a message window (optionally with an OK button) |
+| `start <name-or-uuid> [manual] [cluster=<name>] [-> uuid,tmp]` | Start a session; optionally record its ids |
+| `select <name-or-uuid> [-> uuid,tmp]` | Select an open session |
+| `stop <session-var>` | Close a session |
+| `split <a> <b> [vertical]` | Split two sessions into a shared layout |
+| `unsplit <session-var>` | Remove a session's split layout |
+| `totab <session-var>` / `towindow <session-var>` | Move a session back to a tab / to its own window |
+| `run "<command>" [<sec>] [out=<var>] [code=<var>]` | Run a local command (secrets scrubbed from its environment); capture stdout/exit code |
+| `set <var> <value>` | Set a script variable (supports `${var}` references) |
+| `goto <label>` | Jump to a label |
+| `if_goto <var> <regex> <label> [else <label>]` | Jump conditionally |
+
+**Variables**
+
+`${name}` and `$name` references are substituted from script variables (`set`, `capture`, `readline`, `ask`). Inside `send` use `${name}` only — a bare `$name` there is literal text, because the key-sequence syntax reserves `$` for `${...}`. A label is defined with `:name`; `#` and `;` start comments. An iteration cap kills runaway `goto` loops.
+
+**Branching on user input (a first-run wizard)**
+
+`ask` supplies a value and `if_goto` turns it into a decision. The bundled
+`example-router-first-run` asks in clear text (no `hide`, so the answer is
+visible), validates it and branches:
+
+```
+expect "#" 15
+
+:ask
+ask "Configure this router now? Type yes or no:" answer
+if_goto $answer /(?i)^\s*yes\s*$/ configure
+if_goto $answer /(?i)^\s*no\s*$/ skip
+print "Please answer yes or no."
+goto ask
+
+:skip
+msg "Leaving the router unchanged." ok
+goto done
+
+:configure
+send "uci show system.@system[0].hostname{ENTER}"
+capture /hostname='([^']+)'/ old_name 10
+print "Current hostname: $old_name"
+ask "New hostname (letters, digits and dashes only):" new_name
+if_goto $new_name /^[A-Za-z0-9][A-Za-z0-9-]*$/ apply
+print "Invalid hostname. Nothing was changed."
+goto done
+
+:apply
+send "uci set system.@system[0].hostname=${new_name} && uci commit system{ENTER}"
+expect "#" 15
+print "Hostname set to $new_name. It takes effect on the next boot."
+
+:done
+print "First-run helper finished."
+```
+
+Why it is written that way:
+
+- a question with only two valid answers needs the third `goto ask`; without it an unexpected answer silently falls through;
+- `if_goto` compares as a regular expression, so `(?i)` makes it case-insensitive and `\s*` tolerates stray spaces;
+- `capture` matches the quoted value (`hostname='...'`) rather than `hostname=`, because the echoed command line contains the latter and would satisfy the capture before the device answers;
+- the hostname is validated before it is substituted into a command, so a name containing a space or `;` never reaches the device.
+
+**Example — run a command and capture its output:**
+
+```
+expect "\$" 10
+send "uptime{ENTER}"
+readline line 5
+print "Uptime: $line"
+```
+
+**Example — ask for a host, then connect to it:**
+
+```
+ask "Host to inspect:" host
+start "ssh-$host" -> sid,tmp
+select $sid
+expect "\$" 30
+send "df -h{ENTER}"
+```
+
+**Example — uptime on an OpenWrt router (root login)**
+
+OpenWrt's root prompt ends in `#` (`root@OpenWrt:~#`). The bundled
+`example-openwrt-uptime` script is exactly this:
+
+```
+expect "#" 15
+send "uptime{ENTER}"
+capture /up\s+([^,]+)/ up 10
+print "Uptime: $up"
+```
+
+`capture` is used rather than `readline` because `readline` returns the next
+line of output, which after `send` is the echoed `uptime` command itself.
+The capture group picks the text after `up`, so a session showing
+`14:30:00 up 2 days, 3:21, load average: ...` prints `Uptime: 2 days`.
+
+For an ordinary shell whose prompt ends in `$`, use `example-shell-uptime`,
+which is the same script with `expect "\$"`.
+
+**Full language reference**
+
+The same reference is available in the application: **Tools → Scripts… → ⓘ** opens it. It covers the terminal primitives (`send`, `wait`, `expect`, `capture`, `readline`, `getprompt`, `log`, `print`), user interaction (`ask`, `msg`), session management (`start`, `select`, `stop`, `split`, `unsplit`, `totab`, `towindow`), local commands (`run`), control flow (`set`, `goto`, `if_goto`), variable substitution, and the error rules.
+
+**Deleting scripts**
+
+- In the Scripts manager, every row has a trash button and the **Delete** button deletes the selected script.
+- In Edit Connection → Automation → Auto-run Scripts (and in the group editor), each row has two buttons: the **trash** deletes the script from the library entirely, the **unlink** only detaches it from that connection or group.
+
 #### Sorting
 
 - Alphabetical by default (case-insensitive, by full path)

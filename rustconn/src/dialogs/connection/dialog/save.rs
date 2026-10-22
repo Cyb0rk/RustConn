@@ -221,6 +221,7 @@ impl ConnectionDialog {
         logging_tab: &logging_tab::LoggingTab,
         expect_rules: &Rc<RefCell<Vec<ExpectRule>>>,
         command_macros: &Rc<RefCell<Vec<CommandMacro>>>,
+        auto_scripts: &Rc<RefCell<Vec<String>>>,
         login_username_prompt_entry: &Entry,
         login_password_prompt_entry: &Entry,
         login_timeout_spin: &SpinButton,
@@ -457,6 +458,7 @@ impl ConnectionDialog {
         let logging_timestamps_switch = logging_tab.log_timestamps_switch.clone();
         let expect_rules = expect_rules.clone();
         let command_macros = command_macros.clone();
+        let auto_scripts = auto_scripts.clone();
         let login_username_prompt_entry = login_username_prompt_entry.clone();
         let login_password_prompt_entry = login_password_prompt_entry.clone();
         let login_timeout_spin = login_timeout_spin.clone();
@@ -509,6 +511,7 @@ impl ConnectionDialog {
             let local_variables = Self::collect_local_variables(&variables_rows);
             let collected_expect_rules = expect_rules.borrow().clone();
             let collected_command_macros = command_macros.borrow().clone();
+            let collected_auto_scripts = auto_scripts.borrow().clone();
             let collected_custom_properties = custom_properties.borrow().clone();
             let collected_highlight_rules = highlight_rules.borrow().clone();
             let data = ConnectionDialogData {
@@ -701,6 +704,7 @@ impl ConnectionDialog {
                 },
                 expect_rules: &collected_expect_rules,
                 command_macros: &collected_command_macros,
+                auto_scripts: &collected_auto_scripts,
                 login_username_prompt_entry: &login_username_prompt_entry,
                 login_password_prompt_entry: &login_password_prompt_entry,
                 login_timeout_spin: &login_timeout_spin,

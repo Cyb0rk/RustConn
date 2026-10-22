@@ -1,0 +1,1688 @@
+//! `.rsc` scripting engine — Asbru-CM / SecureCRT-style automation.
+//!
+//! # Why a state machine and not a blocking loop
+//!
+//! GTK has one main thread. A script that does `expect "password:"` cannot
+//! block it or the UI freezes. So the runner is event-driven: every step
+//! either completes immediately (`send`) or hands control back to the caller
+//! (`wait` → timer, `expect`/`capture` → output, `ask` → dialog, `run` →
+//! task completion, `start`/`select` → session start) and is resumed by a
+//! callback. This module owns the parsing and the state machine; the GUI
+//! (`rustconn::script_runner`) supplies the host that performs the side
+//! effects.
+//!
+//! # The consumption cursor
+//!
+//! `expect`/`capture`/`readline` match against output that arrived since the
+//! previous step consumed. On a match the buffer is trimmed to the end of the
+//! match, so the next step sees only output that arrived after this one
+//! completed.
+//!
+//! # Control flow
+//!
+//! Scripts are label-based: `:name` defines a label, `goto name` jumps, and
+//! `if_goto $var /regex/ name [else]` jumps conditionally. Combined with
+//! `set` a script can build counters and loops. An iteration cap prevents a
+//! malformed jump loop from hanging the application.
+
+use std::collections::HashMap;
+
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+
+use crate::automation::{KeyElement, KeySequence};
+
+/// How long a step with no explicit timeout waits before giving up.
+pub const DEFAULT_TIMEOUT_MS: u32 = 10_000;
+
+/// Upper bound on instructions executed before a script is killed. Guard
+/// against runaway `goto` loops, which would otherwise spin the GTK thread.
+const MAX_STEPS_EXECUTED: u64 = 1_000_000;
+
+/// A single instruction in a `.rsc` script.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ScriptStep {
+    /// Sends a key sequence to the session (text plus `{ENTER}`-style keys).
+    Send(KeySequence),
+    /// Pauses for `ms` milliseconds.
+    Wait(u32),
+    /// Waits until `pattern` matches the output (or times out).
+    Expect {
+        /// Regex to match against the buffered output.
+        pattern: String,
+        /// Timeout in milliseconds; `None` uses [`DEFAULT_TIMEOUT_MS`].
+        timeout_ms: Option<u32>,
+    },
+    /// Waits until `pattern` matches, then stores capture group 1.
+    Capture {
+        /// Regex to match against the buffered output.
+        pattern: String,
+        /// Script variable receiving capture group 1.
+        variable: String,
+        /// Timeout in milliseconds; `None` uses [`DEFAULT_TIMEOUT_MS`].
+        timeout_ms: Option<u32>,
+    },
+    /// Waits until a newline arrives, then stores the line (without `\n`).
+    ReadLine {
+        /// Script variable receiving the line.
+        variable: String,
+        /// Timeout in milliseconds; `None` uses [`DEFAULT_TIMEOUT_MS`].
+        timeout_ms: Option<u32>,
+    },
+    /// Guesses the current prompt (host-side) and stores it.
+    GetPrompt {
+        /// Script variable receiving the guessed prompt.
+        variable: String,
+    },
+    /// Sets or clears the output log file for the running script.
+    Log {
+        /// `Some(path)` starts logging to `path`; `None` stops.
+        path: Option<String>,
+    },
+    /// Prints an ANSI-coloured message on the terminal.
+    Print(String),
+    /// Asks the user for input (optionally masked) and stores the answer.
+    Ask {
+        /// Prompt text shown in the dialog.
+        prompt: String,
+        /// Whether the input is masked (secret).
+        echo: bool,
+        /// Script variable receiving the answer.
+        variable: String,
+    },
+    /// Shows a message window (optionally with an OK button).
+    Message {
+        /// Message text; empty hides any open message window.
+        text: String,
+        /// Whether to show an OK button.
+        ok_button: bool,
+    },
+    /// Starts a session, optionally in a cluster, optionally with manual login.
+    StartSession {
+        /// Connection name or UUID.
+        selector: String,
+        /// Set the manual-login flag on the started session.
+        manual_login: bool,
+        /// Cluster name, when starting inside a cluster.
+        cluster: Option<String>,
+        /// Script variable receiving the started session's UUID.
+        uuid_var: Option<String>,
+        /// Script variable receiving the started session's temporary UUID.
+        tmp_uuid_var: Option<String>,
+    },
+    /// Selects an already-running session.
+    SelectSession {
+        /// Connection name or UUID.
+        selector: String,
+        /// Script variable receiving the selected session's UUID.
+        uuid_var: Option<String>,
+        /// Script variable receiving the selected session's temporary UUID.
+        tmp_uuid_var: Option<String>,
+    },
+    /// Stops and closes the session named by a script variable.
+    StopSession {
+        /// Script variable holding the session UUID to close.
+        session_var: String,
+    },
+    /// Splits two sessions horizontally (default) or vertically.
+    Split {
+        /// Script variable holding the first session UUID.
+        first_var: String,
+        /// Script variable holding the second session UUID.
+        second_var: String,
+        /// `true` = vertical split, `false` = horizontal.
+        vertical: bool,
+    },
+    /// Removes the split layout containing the given session.
+    Unsplit {
+        /// Script variable holding the session UUID.
+        session_var: String,
+    },
+    /// Moves a session out of its tab into its own window.
+    ToWindow {
+        /// Script variable holding the session UUID.
+        session_var: String,
+    },
+    /// Returns a session from a split pane to its own tab.
+    ToTab {
+        /// Script variable holding the session UUID.
+        session_var: String,
+    },
+    /// Runs a local command via the task executor (scrubbed environment).
+    Run {
+        /// Command line to execute.
+        command: String,
+        /// Timeout in milliseconds; `None` uses the executor default.
+        timeout_ms: Option<u32>,
+        /// Script variable receiving the command's stdout.
+        out_var: Option<String>,
+        /// Script variable receiving the command's exit code.
+        code_var: Option<String>,
+    },
+    /// Sets a script variable.
+    Set {
+        /// Variable name.
+        var: String,
+        /// Value (after `${...}` substitution).
+        value: String,
+    },
+    /// Jumps to a label.
+    Goto {
+        /// Label name.
+        label: String,
+    },
+    /// Jumps to one of two labels depending on whether `var` matches a regex.
+    IfGoto {
+        /// Variable whose value is tested.
+        var: String,
+        /// Regex matched against the variable's value.
+        pattern: String,
+        /// Label to jump to on match.
+        then_label: String,
+        /// Label to jump to on no match (`None` = fall through).
+        else_label: Option<String>,
+    },
+}
+
+/// A parsed script: ordered steps plus resolved label indexes.
+#[derive(Debug, Clone)]
+pub struct ScriptProgram {
+    pub(crate) steps: Vec<ScriptStep>,
+    pub(crate) labels: HashMap<String, usize>,
+}
+
+impl ScriptProgram {
+    /// The number of instructions in the program.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.steps.len()
+    }
+
+    /// Whether the program contains no instructions.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.steps.is_empty()
+    }
+
+    /// The instructions, in execution order.
+    #[must_use]
+    pub fn steps(&self) -> &[ScriptStep] {
+        &self.steps
+    }
+}
+
+/// Errors produced while parsing a `.rsc` script.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ScriptParseError {
+    /// A line could not be understood.
+    #[error("line {line}: {message}")]
+    InvalidSyntax {
+        /// 1-based line number in the script source.
+        line: usize,
+        /// Human-readable explanation.
+        message: String,
+    },
+    /// An unknown command name was used.
+    #[error("line {line}: unknown command `{command}`")]
+    UnknownCommand {
+        /// 1-based line number in the script source.
+        line: usize,
+        /// The unknown command token.
+        command: String,
+    },
+    /// A label was defined twice.
+    #[error("line {line}: duplicate label `{label}`")]
+    DuplicateLabel {
+        /// 1-based line number in the script source.
+        line: usize,
+        /// The duplicated label name.
+        label: String,
+    },
+    /// A `goto`/`if_goto` referenced a label that does not exist.
+    #[error("undefined label `{label}`")]
+    UndefinedLabel {
+        /// The missing label name.
+        label: String,
+    },
+    /// A required argument was missing.
+    #[error("line {line}: {message}")]
+    MissingArgument {
+        /// 1-based line number in the script source.
+        line: usize,
+        /// Human-readable explanation.
+        message: String,
+    },
+    /// A key sequence failed to parse.
+    #[error("line {line}: invalid key sequence: {message}")]
+    InvalidKeySequence {
+        /// 1-based line number in the script source.
+        line: usize,
+        /// The underlying key-sequence error.
+        message: String,
+    },
+    /// A regex failed to compile.
+    #[error("line {line}: invalid regex: {message}")]
+    InvalidRegex {
+        /// 1-based line number in the script source.
+        line: usize,
+        /// The regex error.
+        message: String,
+    },
+    /// A duration was not a positive integer.
+    #[error("line {line}: invalid duration: {message}")]
+    InvalidDuration {
+        /// 1-based line number in the script source.
+        line: usize,
+        /// Human-readable explanation.
+        message: String,
+    },
+}
+
+/// What a suspended script is waiting on. `None` means it is runnable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PendingKind {
+    /// No suspension; the engine can execute more steps.
+    None,
+    /// Waiting for a `wait` timer.
+    Wait,
+    /// Waiting for an `expect` pattern (or its timeout).
+    Expect,
+    /// Waiting for a `capture` pattern (or its timeout).
+    Capture,
+    /// Waiting for a `readline` newline (or its timeout).
+    ReadLine,
+    /// Waiting for the user to answer an `ask` dialog.
+    Ask,
+    /// Waiting for a `run` command to finish.
+    Run,
+    /// Waiting for a `start` session to be created.
+    StartSession,
+    /// Waiting for a `select` session to be resolved.
+    SelectSession,
+}
+
+/// Host services a script needs. The GUI implements this against the live
+/// notebook; tests use a recording fake.
+pub trait ScriptHost {
+    /// Sends a key sequence to the session the script runs on.
+    fn send(&mut self, sequence: &KeySequence);
+
+    /// Prints an ANSI-coloured message on the terminal.
+    fn print_message(&mut self, text: &str);
+
+    /// Sets or clears the script's output log file.
+    fn set_log(&mut self, path: Option<&str>);
+
+    /// Guesses the current prompt of the session.
+    fn get_prompt(&mut self) -> Option<String>;
+
+    /// Shows an input dialog; the answer arrives via
+    /// [`ScriptEngine::on_ask_result`].
+    fn ask(&mut self, prompt: &str, echo: bool);
+
+    /// Shows a message window.
+    fn message(&mut self, text: &str, ok_button: bool);
+
+    /// Starts a session; the result arrives via
+    /// [`ScriptEngine::on_session_started`].
+    fn start_session(&mut self, selector: &str, manual_login: bool, cluster: Option<&str>);
+
+    /// Selects a running session; the result arrives via
+    /// [`ScriptEngine::on_session_started`].
+    fn select_session(&mut self, selector: &str);
+
+    /// Stops and closes a session.
+    fn stop_session(&mut self, session: &str);
+
+    /// Splits two sessions into a shared layout.
+    fn split(&mut self, first: &str, second: &str, vertical: bool);
+
+    /// Removes the split layout containing a session.
+    fn unsplit(&mut self, session: &str);
+
+    /// Moves a session to its own window.
+    fn to_window(&mut self, session: &str);
+
+    /// Returns a session from a split pane to its own tab.
+    fn to_tab(&mut self, session: &str);
+
+    /// Runs a local command; the result arrives via
+    /// [`ScriptEngine::on_run_result`].
+    fn run_command(&mut self, command: &str, timeout_ms: Option<u32>);
+}
+
+/// A running `.rsc` script.
+///
+/// The caller drives it: call [`ScriptEngine::pump`] with a host until
+/// [`ScriptEngine::pending`] is not `None` or the script finishes, then feed
+/// output (`on_output`), timers (`on_timer`) and dialog/task results back.
+#[derive(Debug)]
+pub struct ScriptEngine {
+    program: ScriptProgram,
+    pc: usize,
+    buffer: String,
+    variables: HashMap<String, String>,
+    pending: PendingKind,
+    canceled: bool,
+    finished: bool,
+    error: Option<String>,
+    steps_executed: u64,
+
+    // Pending-step targets.
+    capture_var: Option<String>,
+    readline_var: Option<String>,
+    ask_var: Option<String>,
+    run_out_var: Option<String>,
+    run_code_var: Option<String>,
+    session_uuid_var: Option<String>,
+    session_tmp_uuid_var: Option<String>,
+    expect_pattern: Option<String>,
+}
+
+impl ScriptEngine {
+    /// Parses a `.rsc` source and builds an engine for it.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first parse error encountered.
+    pub fn parse(source: &str) -> Result<Self, ScriptParseError> {
+        let program = parse_program(source)?;
+        Ok(Self::new(program))
+    }
+
+    /// Creates an engine from an already-parsed program.
+    #[must_use]
+    pub fn new(program: ScriptProgram) -> Self {
+        Self {
+            program,
+            pc: 0,
+            buffer: String::new(),
+            variables: HashMap::new(),
+            pending: PendingKind::None,
+            canceled: false,
+            finished: false,
+            error: None,
+            steps_executed: 0,
+            capture_var: None,
+            readline_var: None,
+            ask_var: None,
+            run_out_var: None,
+            run_code_var: None,
+            session_uuid_var: None,
+            session_tmp_uuid_var: None,
+            expect_pattern: None,
+        }
+    }
+
+    /// Whether the script has run to completion or been cancelled.
+    #[must_use]
+    pub fn is_finished(&self) -> bool {
+        self.finished
+    }
+
+    /// The terminal error, if the script failed.
+    #[must_use]
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+
+    /// What the script is currently waiting on.
+    #[must_use]
+    pub const fn pending(&self) -> PendingKind {
+        self.pending
+    }
+
+    /// The step currently being executed, if any.
+    #[must_use]
+    pub fn current_step(&self) -> Option<&ScriptStep> {
+        if self.finished || self.canceled {
+            None
+        } else {
+            self.program.steps.get(self.pc)
+        }
+    }
+
+    /// The script's variables (for inspection/debugging).
+    #[must_use]
+    pub fn variables(&self) -> &HashMap<String, String> {
+        &self.variables
+    }
+
+    /// A value from the script's variable map.
+    #[must_use]
+    pub fn variable(&self, name: &str) -> Option<&str> {
+        self.variables.get(name).map(String::as_str)
+    }
+
+    /// The buffered (unconsumed) output.
+    #[must_use]
+    pub fn buffer(&self) -> &str {
+        &self.buffer
+    }
+
+    /// Runs steps until the script suspends on an async step or finishes.
+    pub fn pump(&mut self, host: &mut dyn ScriptHost) {
+        // Bounded loop: every iteration either advances `pc` or suspends.
+        while !self.finished && !self.canceled && self.pending == PendingKind::None {
+            if self.steps_executed >= MAX_STEPS_EXECUTED {
+                self.finish(Some(format!(
+                    "Script exceeded the {MAX_STEPS_EXECUTED}-instruction limit (runaway loop?)"
+                )));
+                return;
+            }
+            self.steps_executed += 1;
+            if self.pc >= self.program.steps.len() {
+                self.finish(None);
+                return;
+            }
+            self.execute_current(host);
+        }
+    }
+
+    /// Executes exactly one step.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "long match over the many DSL verbs; splitting per verb only relocates the boilerplate"
+    )]
+    fn execute_current(&mut self, host: &mut dyn ScriptHost) {
+        let step = self.program.steps[self.pc].clone();
+        match step {
+            ScriptStep::Send(sequence) => {
+                let sequence = self.substitute_sequence(&sequence);
+                host.send(&sequence);
+                self.advance();
+            }
+            ScriptStep::Wait(_) => {
+                self.pending = PendingKind::Wait;
+            }
+            ScriptStep::Expect {
+                pattern,
+                timeout_ms,
+            } => {
+                self.expect_pattern = Some(pattern.clone());
+                if !self.try_satisfy_expect(&pattern) {
+                    self.pending = PendingKind::Expect;
+                    let _ = timeout_ms;
+                }
+            }
+            ScriptStep::Capture {
+                pattern,
+                variable,
+                timeout_ms,
+            } => {
+                self.expect_pattern = Some(pattern.clone());
+                self.capture_var = Some(variable);
+                if !self.try_satisfy_capture(&pattern) {
+                    self.pending = PendingKind::Capture;
+                    let _ = timeout_ms;
+                }
+            }
+            ScriptStep::ReadLine {
+                variable,
+                timeout_ms,
+            } => {
+                self.readline_var = Some(variable);
+                if !self.try_satisfy_readline() {
+                    self.pending = PendingKind::ReadLine;
+                    let _ = timeout_ms;
+                }
+            }
+            ScriptStep::GetPrompt { variable } => {
+                if let Some(prompt) = host.get_prompt() {
+                    self.variables.insert(variable, prompt);
+                }
+                self.advance();
+            }
+            ScriptStep::Log { path } => {
+                host.set_log(path.as_deref());
+                self.advance();
+            }
+            ScriptStep::Print(text) => {
+                let text = self.substitute(&text);
+                host.print_message(&text);
+                self.advance();
+            }
+            ScriptStep::Ask {
+                prompt,
+                echo,
+                variable,
+            } => {
+                let prompt = self.substitute(&prompt);
+                self.ask_var = Some(variable);
+                self.pending = PendingKind::Ask;
+                host.ask(&prompt, echo);
+            }
+            ScriptStep::Message { text, ok_button } => {
+                let text = self.substitute(&text);
+                host.message(&text, ok_button);
+                self.advance();
+            }
+            ScriptStep::StartSession {
+                selector,
+                manual_login,
+                cluster,
+                uuid_var,
+                tmp_uuid_var,
+            } => {
+                let selector = self.substitute(&selector);
+                let cluster = cluster.as_ref().map(|c| self.substitute(c));
+                self.session_uuid_var = uuid_var;
+                self.session_tmp_uuid_var = tmp_uuid_var;
+                self.pending = PendingKind::StartSession;
+                host.start_session(&selector, manual_login, cluster.as_deref());
+            }
+            ScriptStep::SelectSession {
+                selector,
+                uuid_var,
+                tmp_uuid_var,
+            } => {
+                let selector = self.substitute(&selector);
+                self.session_uuid_var = uuid_var;
+                self.session_tmp_uuid_var = tmp_uuid_var;
+                self.pending = PendingKind::SelectSession;
+                host.select_session(&selector);
+            }
+            ScriptStep::StopSession { session_var } => {
+                let session = self.variable_value(&session_var);
+                host.stop_session(&session);
+                self.advance();
+            }
+            ScriptStep::Split {
+                first_var,
+                second_var,
+                vertical,
+            } => {
+                let first = self.variable_value(&first_var);
+                let second = self.variable_value(&second_var);
+                host.split(&first, &second, vertical);
+                self.advance();
+            }
+            ScriptStep::Unsplit { session_var } => {
+                let session = self.variable_value(&session_var);
+                host.unsplit(&session);
+                self.advance();
+            }
+            ScriptStep::ToWindow { session_var } => {
+                let session = self.variable_value(&session_var);
+                host.to_window(&session);
+                self.advance();
+            }
+            ScriptStep::ToTab { session_var } => {
+                let session = self.variable_value(&session_var);
+                host.to_tab(&session);
+                self.advance();
+            }
+            ScriptStep::Run {
+                command,
+                timeout_ms,
+                out_var,
+                code_var,
+            } => {
+                let command = self.substitute(&command);
+                self.run_out_var = out_var;
+                self.run_code_var = code_var;
+                self.pending = PendingKind::Run;
+                host.run_command(&command, timeout_ms);
+            }
+            ScriptStep::Set { var, value } => {
+                let value = self.substitute(&value);
+                self.variables.insert(var, value);
+                self.advance();
+            }
+            ScriptStep::Goto { label } => match self.jump(&label) {
+                Some(pc) => self.pc = pc,
+                None => self.finish(Some(format!("Undefined label `{label}`"))),
+            },
+            ScriptStep::IfGoto {
+                var,
+                pattern,
+                then_label,
+                else_label,
+            } => {
+                let value = self.variable_value(&var);
+                let matched = Regex::new(&pattern)
+                    .map(|re| re.is_match(&value))
+                    .unwrap_or(false);
+                let target = if matched {
+                    Some(then_label)
+                } else {
+                    else_label
+                };
+                match target {
+                    Some(label) => match self.jump(&label) {
+                        Some(pc) => self.pc = pc,
+                        None => self.finish(Some(format!("Undefined label `{label}`"))),
+                    },
+                    None => self.advance(),
+                }
+            }
+        }
+    }
+
+    /// Handles a chunk of raw session output.
+    ///
+    /// Appends to the buffer, then if the current step is waiting on a
+    /// pattern, tries to satisfy it. Returns `true` if the pending step was
+    /// satisfied, so the caller should pump again.
+    pub fn on_output(&mut self, data: &[u8]) -> bool {
+        if self.canceled || self.finished {
+            return false;
+        }
+        self.buffer.push_str(&String::from_utf8_lossy(data));
+        let satisfied = match self.pending {
+            PendingKind::Expect => self
+                .expect_pattern
+                .clone()
+                .map(|p| self.try_satisfy_expect(&p))
+                .unwrap_or(false),
+            PendingKind::Capture => self
+                .expect_pattern
+                .clone()
+                .map(|p| self.try_satisfy_capture(&p))
+                .unwrap_or(false),
+            PendingKind::ReadLine => self.try_satisfy_readline(),
+            _ => false,
+        };
+        if satisfied {
+            self.pending = PendingKind::None;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Fires when a `wait` timer expires or a pattern-wait times out.
+    pub fn on_timer(&mut self) {
+        if self.canceled || self.finished {
+            return;
+        }
+        match self.pending {
+            PendingKind::Wait => {
+                self.pc += 1;
+                self.pending = PendingKind::None;
+            }
+            PendingKind::Expect | PendingKind::Capture | PendingKind::ReadLine => {
+                let pattern = self.expect_pattern.clone().unwrap_or_default();
+                self.finish(Some(format!("Timeout waiting for: {pattern}")));
+            }
+            _ => {}
+        }
+    }
+
+    /// Delivers an `ask` dialog result.
+    pub fn on_ask_result(&mut self, value: Option<String>) {
+        if self.pending != PendingKind::Ask || self.finished {
+            return;
+        }
+        match value {
+            Some(value) => {
+                if let Some(var) = self.ask_var.take() {
+                    self.variables.insert(var, value);
+                }
+                self.pc += 1;
+                self.pending = PendingKind::None;
+            }
+            None => self.finish(Some("Ask dialog cancelled".to_string())),
+        }
+    }
+
+    /// Delivers a `run` command result.
+    pub fn on_run_result(&mut self, code: i32, stdout: String) {
+        if self.pending != PendingKind::Run || self.finished {
+            return;
+        }
+        if let Some(var) = self.run_out_var.take() {
+            self.variables.insert(var, stdout);
+        }
+        if let Some(var) = self.run_code_var.take() {
+            self.variables.insert(var, code.to_string());
+        }
+        self.pc += 1;
+        self.pending = PendingKind::None;
+    }
+
+    /// Delivers a `start`/`select` session result.
+    pub fn on_session_started(&mut self, uuid: Option<String>, tmp_uuid: Option<String>) {
+        if self.finished {
+            return;
+        }
+        match self.pending {
+            PendingKind::StartSession | PendingKind::SelectSession => {}
+            _ => return,
+        }
+        if let Some(var) = self.session_uuid_var.take()
+            && let Some(uuid) = uuid
+        {
+            self.variables.insert(var, uuid);
+        }
+        if let Some(var) = self.session_tmp_uuid_var.take()
+            && let Some(tmp_uuid) = tmp_uuid
+        {
+            self.variables.insert(var, tmp_uuid);
+        }
+        self.pc += 1;
+        self.pending = PendingKind::None;
+    }
+
+    /// Cancels the script.
+    pub fn cancel(&mut self) {
+        self.canceled = true;
+        self.finished = true;
+        self.pending = PendingKind::None;
+    }
+
+    /// Resolves a label to an instruction index.
+    fn jump(&self, label: &str) -> Option<usize> {
+        self.program.labels.get(label).copied()
+    }
+
+    /// Advances to the next instruction.
+    fn advance(&mut self) {
+        self.pc += 1;
+    }
+
+    /// Marks the script finished, optionally with an error.
+    pub fn finish(&mut self, error: Option<String>) {
+        self.finished = true;
+        self.pending = PendingKind::None;
+        self.error = error;
+    }
+
+    /// Reads a variable, falling back to the empty string.
+    fn variable_value(&self, name: &str) -> String {
+        self.variables.get(name).cloned().unwrap_or_default()
+    }
+
+    /// Substitutes `$name` / `${name}` references using the script's variables.
+    fn substitute(&self, text: &str) -> String {
+        let re = Regex::new(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))")
+            .expect("static regex");
+        re.replace_all(text, |caps: &regex::Captures<'_>| {
+            let name = caps.get(1).or_else(|| caps.get(2)).map(|m| m.as_str());
+            match name {
+                Some(name) => self
+                    .variables
+                    .get(name)
+                    .cloned()
+                    .unwrap_or_else(|| caps[0].to_string()),
+                None => caps[0].to_string(),
+            }
+        })
+        .into_owned()
+    }
+
+    /// Substitutes `${name}` key elements with script variables. Elements that
+    /// are not script variables are passed through for the host to resolve.
+    fn substitute_sequence(&self, sequence: &KeySequence) -> KeySequence {
+        let mut elements = Vec::with_capacity(sequence.len());
+        for element in &sequence.elements {
+            match element {
+                KeyElement::Variable(name) => {
+                    if let Some(value) = self.variables.get(name)
+                        && !value.is_empty()
+                    {
+                        elements.push(KeyElement::Text(value.clone()));
+                    }
+                }
+                other => elements.push(other.clone()),
+            }
+        }
+        KeySequence::from_elements(elements)
+    }
+
+    /// Tries to satisfy the current `expect` step against the buffer.
+    fn try_satisfy_expect(&mut self, pattern: &str) -> bool {
+        let Ok(regex) = Regex::new(pattern) else {
+            self.finish(Some(format!("Invalid regex: {pattern}")));
+            return true;
+        };
+        if let Some(m) = regex.captures(&self.buffer) {
+            if let Some(m) = m.get(0) {
+                self.buffer.drain(..m.end());
+            }
+            self.advance();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Tries to satisfy the current `capture` step against the buffer.
+    fn try_satisfy_capture(&mut self, pattern: &str) -> bool {
+        let Ok(regex) = Regex::new(pattern) else {
+            self.finish(Some(format!("Invalid regex: {pattern}")));
+            return true;
+        };
+        if let Some(captures) = regex.captures(&self.buffer) {
+            if let Some(group) = captures.get(1)
+                && let Some(variable) = self.capture_var.clone()
+            {
+                self.variables.insert(variable, group.as_str().to_string());
+            }
+            if let Some(m) = captures.get(0) {
+                self.buffer.drain(..m.end());
+            }
+            self.advance();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Tries to satisfy the current `readline` step against the buffer.
+    fn try_satisfy_readline(&mut self) -> bool {
+        if let Some(pos) = self.buffer.find('\n') {
+            let line = self.buffer[..pos].to_string();
+            self.buffer.drain(..=pos);
+            if let Some(variable) = self.readline_var.clone() {
+                self.variables.insert(variable, line);
+            }
+            self.advance();
+            true
+        } else {
+            false
+        }
+    }
+}
+
+/// Parses `.rsc` source text into a [`ScriptProgram`].
+///
+/// # Format
+///
+/// One instruction per line. Blank lines and `#`/`;` comments are ignored.
+/// `:name` defines a label. Arguments are whitespace-separated; an argument
+/// containing spaces must be quoted with `"` or `'`.
+///
+/// # Errors
+///
+/// Returns the first parse error encountered.
+pub fn parse_program(source: &str) -> Result<ScriptProgram, ScriptParseError> {
+    let mut steps = Vec::new();
+    let mut labels = HashMap::new();
+
+    // First pass: gather steps and label positions.
+    for (index, raw) in source.lines().enumerate() {
+        let line = index + 1;
+        let text = strip_comment(raw).trim();
+        if text.is_empty() || text.starts_with(';') {
+            continue;
+        }
+        if let Some(label) = text.strip_prefix(':') {
+            let label = label.trim();
+            if !valid_label(label) {
+                return Err(ScriptParseError::InvalidSyntax {
+                    line,
+                    message: format!("invalid label `{label}`"),
+                });
+            }
+            if labels.insert(label.to_string(), steps.len()).is_some() {
+                return Err(ScriptParseError::DuplicateLabel {
+                    line,
+                    label: label.to_string(),
+                });
+            }
+            continue;
+        }
+        let step = parse_line(text, line)?;
+        steps.push(step);
+    }
+
+    // Second pass: validate every referenced label exists.
+    for step in &steps {
+        match step {
+            ScriptStep::Goto { label } => {
+                if !labels.contains_key(label) {
+                    return Err(ScriptParseError::UndefinedLabel {
+                        label: label.clone(),
+                    });
+                }
+            }
+            ScriptStep::IfGoto {
+                then_label,
+                else_label,
+                ..
+            } => {
+                if !labels.contains_key(then_label) {
+                    return Err(ScriptParseError::UndefinedLabel {
+                        label: then_label.clone(),
+                    });
+                }
+                if let Some(label) = else_label
+                    && !labels.contains_key(label)
+                {
+                    return Err(ScriptParseError::UndefinedLabel {
+                        label: label.clone(),
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(ScriptProgram { steps, labels })
+}
+
+/// Strips a `#` comment and trailing whitespace.
+///
+/// A `#` only starts a comment at the beginning of the line or after
+/// whitespace, so `expect /#/` and `expect "#"` are patterns, not comments.
+fn strip_comment(line: &str) -> &str {
+    let mut previous_is_space = true;
+    for (i, c) in line.char_indices() {
+        if c == '#' && previous_is_space {
+            return &line[..i];
+        }
+        previous_is_space = c.is_whitespace();
+    }
+    line
+}
+
+/// Removes one pair of surrounding quotes, if the whole string is quoted.
+///
+/// `send`, `print`, `msg` and `log` take their argument as the rest of the
+/// line so that spaces need no escaping; that means the quotes themselves
+/// reach them and would otherwise be sent to the terminal or printed.
+fn unquote(text: &str) -> String {
+    let trimmed = text.trim();
+    let mut chars = trimmed.chars();
+    let Some(first) = chars.next() else {
+        return String::new();
+    };
+    if (first == '"' || first == '\'') && trimmed.len() >= 2 && trimmed.ends_with(first) {
+        return trimmed[first.len_utf8()..trimmed.len() - first.len_utf8()].to_string();
+    }
+    trimmed.to_string()
+}
+
+/// Whether a string is a valid label name.
+fn valid_label(label: &str) -> bool {
+    !label.is_empty()
+        && label
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+}
+
+/// Splits a line into whitespace-separated tokens, respecting quotes.
+fn tokenize(line: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut quoted: Option<char> = None;
+
+    for c in line.chars() {
+        match quoted {
+            Some(q) => {
+                if c == q {
+                    quoted = None;
+                } else {
+                    current.push(c);
+                }
+            }
+            None => {
+                if (c == '"' || c == '\'') && current.is_empty() {
+                    quoted = Some(c);
+                } else if c.is_whitespace() {
+                    if !current.is_empty() {
+                        tokens.push(std::mem::take(&mut current));
+                    }
+                } else {
+                    current.push(c);
+                }
+            }
+        }
+    }
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+    tokens
+}
+
+/// Parses a single instruction line.
+#[expect(
+    clippy::too_many_lines,
+    reason = "long match over the many DSL verbs; splitting per verb only relocates the boilerplate"
+)]
+fn parse_line(line: &str, line_no: usize) -> Result<ScriptStep, ScriptParseError> {
+    let tokens = tokenize(line);
+    let Some(command) = tokens.first() else {
+        return Err(ScriptParseError::InvalidSyntax {
+            line: line_no,
+            message: "empty instruction".to_string(),
+        });
+    };
+
+    let arg = |i: usize| -> Result<String, ScriptParseError> {
+        tokens
+            .get(i)
+            .cloned()
+            .ok_or_else(|| ScriptParseError::MissingArgument {
+                line: line_no,
+                message: format!("missing argument for `{command}`"),
+            })
+    };
+
+    let duration = |text: &str, what: &str| -> Result<Option<u32>, ScriptParseError> {
+        let Ok(seconds) = text.parse::<u32>() else {
+            return Err(ScriptParseError::InvalidDuration {
+                line: line_no,
+                message: format!("{what} must be a positive number of seconds, got `{text}`"),
+            });
+        };
+        Ok(Some(seconds.saturating_mul(1000)))
+    };
+
+    let pattern = |text: &str| -> String {
+        if text.len() >= 2 && text.starts_with('/') && text.ends_with('/') {
+            text[1..text.len() - 1].to_string()
+        } else {
+            text.to_string()
+        }
+    };
+
+    // Normalizes a variable-name argument: strips a leading `$` or `${…}`
+    // sigil so `stop $tmp` and `stop tmp` both name the variable `tmp`.
+    let var_name = |text: &str| -> String {
+        let t = text.trim();
+        if let Some(inner) = t.strip_prefix("${").and_then(|s| s.strip_suffix('}')) {
+            inner.to_string()
+        } else if let Some(s) = t.strip_prefix('$') {
+            s.to_string()
+        } else {
+            t.to_string()
+        }
+    };
+
+    match command.as_str() {
+        "send" => {
+            let rest = unquote(&line["send".len()..]);
+            let sequence =
+                KeySequence::parse(&rest).map_err(|e| ScriptParseError::InvalidKeySequence {
+                    line: line_no,
+                    message: e.to_string(),
+                })?;
+            Ok(ScriptStep::Send(sequence))
+        }
+        "wait" => {
+            let raw = arg(1)?;
+            let ms: u32 = raw.parse().map_err(|_| ScriptParseError::InvalidDuration {
+                line: line_no,
+                message: format!("wait duration must be milliseconds, got `{raw}`"),
+            })?;
+            Ok(ScriptStep::Wait(ms))
+        }
+        "expect" => {
+            let pattern = pattern(&arg(1)?);
+            let timeout_ms = match tokens.get(2) {
+                Some(t) => duration(t, "expect timeout")?,
+                None => None,
+            };
+            // Validate the pattern now so a typo fails at parse time.
+            Regex::new(&pattern).map_err(|e| ScriptParseError::InvalidRegex {
+                line: line_no,
+                message: e.to_string(),
+            })?;
+            Ok(ScriptStep::Expect {
+                pattern,
+                timeout_ms,
+            })
+        }
+        "capture" => {
+            let pattern = pattern(&arg(1)?);
+            let variable = var_name(&arg(2)?);
+            let timeout_ms = match tokens.get(3) {
+                Some(t) => duration(t, "capture timeout")?,
+                None => None,
+            };
+            Regex::new(&pattern).map_err(|e| ScriptParseError::InvalidRegex {
+                line: line_no,
+                message: e.to_string(),
+            })?;
+            Ok(ScriptStep::Capture {
+                pattern,
+                variable,
+                timeout_ms,
+            })
+        }
+        "readline" => {
+            let variable = var_name(&arg(1)?);
+            let timeout_ms = match tokens.get(2) {
+                Some(t) => duration(t, "readline timeout")?,
+                None => None,
+            };
+            Ok(ScriptStep::ReadLine {
+                variable,
+                timeout_ms,
+            })
+        }
+        "getprompt" => {
+            let variable = var_name(&arg(1)?);
+            Ok(ScriptStep::GetPrompt { variable })
+        }
+        "log" => {
+            let rest = unquote(&line["log".len()..]);
+            let path = if rest.is_empty() { None } else { Some(rest) };
+            Ok(ScriptStep::Log { path })
+        }
+        "print" => {
+            let rest = unquote(&line["print".len()..]);
+            Ok(ScriptStep::Print(rest))
+        }
+        "ask" => {
+            let prompt = arg(1)?;
+            let last = tokens
+                .last()
+                .cloned()
+                .ok_or_else(|| ScriptParseError::MissingArgument {
+                    line: line_no,
+                    message: "ask needs a variable".to_string(),
+                })?;
+            let echo = !tokens.iter().any(|t| t == "hide");
+            let variable = if echo && tokens.len() == 2 {
+                var_name(&prompt)
+            } else {
+                var_name(&last)
+            };
+            if variable.is_empty() {
+                return Err(ScriptParseError::MissingArgument {
+                    line: line_no,
+                    message: "ask needs a variable".to_string(),
+                });
+            }
+            Ok(ScriptStep::Ask {
+                prompt,
+                echo,
+                variable,
+            })
+        }
+        "msg" | "message" => {
+            let rest = line[command.len()..].trim();
+            let ok_button = tokens.iter().any(|t| t == "ok");
+            let text = if ok_button && rest.ends_with(" ok") {
+                unquote(rest[..rest.len() - 3].trim_end())
+            } else {
+                unquote(rest)
+            };
+            Ok(ScriptStep::Message { text, ok_button })
+        }
+        "start" => {
+            let selector = arg(1)?;
+            let manual_login = tokens.iter().any(|t| t == "manual");
+            let cluster = token_option(&tokens, "cluster");
+            let (uuid_var, tmp_uuid_var) = result_vars(&tokens)?;
+            Ok(ScriptStep::StartSession {
+                selector,
+                manual_login,
+                cluster,
+                uuid_var,
+                tmp_uuid_var,
+            })
+        }
+        "select" => {
+            let selector = arg(1)?;
+            let (uuid_var, tmp_uuid_var) = result_vars(&tokens)?;
+            Ok(ScriptStep::SelectSession {
+                selector,
+                uuid_var,
+                tmp_uuid_var,
+            })
+        }
+        "stop" => {
+            let session_var = var_name(&arg(1)?);
+            Ok(ScriptStep::StopSession { session_var })
+        }
+        "split" => {
+            let first_raw = arg(1)?;
+            let second_raw = arg(2)?;
+            let vertical = tokens.iter().any(|t| t == "vertical");
+            let (first, second) = split_pair(&first_raw, &second_raw);
+            let first = var_name(&first);
+            let second = var_name(&second);
+            Ok(ScriptStep::Split {
+                first_var: first,
+                second_var: second,
+                vertical,
+            })
+        }
+        "unsplit" => {
+            let session_var = var_name(&arg(1)?);
+            Ok(ScriptStep::Unsplit { session_var })
+        }
+        "towindow" => {
+            let session_var = var_name(&arg(1)?);
+            Ok(ScriptStep::ToWindow { session_var })
+        }
+        "totab" => {
+            let session_var = var_name(&arg(1)?);
+            Ok(ScriptStep::ToTab { session_var })
+        }
+        "run" => {
+            let command = arg(1)?;
+            let mut timeout_ms = None;
+            let mut out_var = None;
+            let mut code_var = None;
+            for token in tokens.iter().skip(2) {
+                if let Some(value) = token.strip_prefix("out=") {
+                    out_var = Some(var_name(value));
+                } else if let Some(value) = token.strip_prefix("code=") {
+                    code_var = Some(var_name(value));
+                } else {
+                    timeout_ms = duration(token, "run timeout")?;
+                }
+            }
+            Ok(ScriptStep::Run {
+                command,
+                timeout_ms,
+                out_var,
+                code_var,
+            })
+        }
+        "set" => {
+            let var = var_name(&arg(1)?);
+            let rest = line[line.find("set").map_or(0, |i| i + 3)..].trim();
+            let value = rest
+                .char_indices()
+                .find(|(_, c)| c.is_whitespace())
+                .map(|(i, _)| rest[i..].trim_start().to_string())
+                .unwrap_or_default();
+            Ok(ScriptStep::Set { var, value })
+        }
+        "goto" => {
+            let label = arg(1)?;
+            Ok(ScriptStep::Goto { label })
+        }
+        "if_goto" => {
+            let var = var_name(&arg(1)?);
+            let pattern = pattern(&arg(2)?);
+            let then_label = arg(3)?;
+            Regex::new(&pattern).map_err(|e| ScriptParseError::InvalidRegex {
+                line: line_no,
+                message: e.to_string(),
+            })?;
+            let else_label = match tokens.get(4) {
+                Some(t) if t == "else" => tokens.get(5).cloned(),
+                Some(t) => Some(t.clone()),
+                None => None,
+            };
+            Ok(ScriptStep::IfGoto {
+                var,
+                pattern,
+                then_label,
+                else_label,
+            })
+        }
+        other => Err(ScriptParseError::UnknownCommand {
+            line: line_no,
+            command: other.to_string(),
+        }),
+    }
+}
+
+/// Reads a `key=value` token option.
+fn token_option(tokens: &[String], key: &str) -> Option<String> {
+    tokens
+        .iter()
+        .find_map(|t| t.strip_prefix(&format!("{key}=")).map(str::to_string))
+}
+
+/// Reads an optional `-> v1,v2` result-variable pair.
+fn result_vars(tokens: &[String]) -> Result<(Option<String>, Option<String>), ScriptParseError> {
+    let pair = tokens.iter().position(|t| t == "->").map(|i| {
+        let mut rest = tokens[i + 1..].join(",");
+        if rest.is_empty() {
+            rest = tokens.get(i + 1).cloned().unwrap_or_default();
+        }
+        rest
+    });
+    match pair {
+        Some(pair) => {
+            let mut parts = pair.split(',');
+            let first = parts.next().filter(|s| !s.is_empty()).map(str::to_string);
+            let second = parts.next().filter(|s| !s.is_empty()).map(str::to_string);
+            Ok((
+                first.map(|v| v.trim_start_matches('$').to_string()),
+                second.map(|v| v.trim_start_matches('$').to_string()),
+            ))
+        }
+        None => Ok((None, None)),
+    }
+}
+
+/// Splits `first` (possibly `a,b`) and `second` into two session references.
+fn split_pair(first: &str, second: &str) -> (String, String) {
+    if let Some((a, b)) = first.split_once(',') {
+        (a.trim().to_string(), b.trim().to_string())
+    } else {
+        (first.to_string(), second.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Minimal recording host for engine tests.
+    #[derive(Debug, Default)]
+    struct FakeHost {
+        events: Vec<String>,
+        prompt: Option<String>,
+    }
+
+    impl ScriptHost for FakeHost {
+        fn send(&mut self, sequence: &KeySequence) {
+            self.events.push(format!("send:{sequence}"));
+        }
+        fn print_message(&mut self, text: &str) {
+            self.events.push(format!("print:{text}"));
+        }
+        fn set_log(&mut self, path: Option<&str>) {
+            self.events.push(format!("log:{}", path.unwrap_or("")));
+        }
+        fn get_prompt(&mut self) -> Option<String> {
+            self.prompt.clone()
+        }
+        fn ask(&mut self, prompt: &str, echo: bool) {
+            self.events.push(format!("ask:{prompt}:{echo}"));
+        }
+        fn message(&mut self, text: &str, ok_button: bool) {
+            self.events.push(format!("msg:{text}:{ok_button}"));
+        }
+        fn start_session(&mut self, selector: &str, manual_login: bool, cluster: Option<&str>) {
+            self.events.push(format!(
+                "start:{selector}:{manual_login}:{}",
+                cluster.unwrap_or("")
+            ));
+        }
+        fn select_session(&mut self, selector: &str) {
+            self.events.push(format!("select:{selector}"));
+        }
+        fn stop_session(&mut self, session: &str) {
+            self.events.push(format!("stop:{session}"));
+        }
+        fn split(&mut self, first: &str, second: &str, vertical: bool) {
+            self.events
+                .push(format!("split:{first}:{second}:{vertical}"));
+        }
+        fn unsplit(&mut self, session: &str) {
+            self.events.push(format!("unsplit:{session}"));
+        }
+        fn to_window(&mut self, session: &str) {
+            self.events.push(format!("towindow:{session}"));
+        }
+        fn to_tab(&mut self, session: &str) {
+            self.events.push(format!("totab:{session}"));
+        }
+        fn run_command(&mut self, command: &str, timeout_ms: Option<u32>) {
+            self.events.push(format!("run:{command}:{timeout_ms:?}"));
+        }
+    }
+
+    fn run_script(source: &str, host: &mut FakeHost) -> ScriptEngine {
+        let mut engine = ScriptEngine::parse(source).expect("script should parse");
+        engine.pump(host);
+        engine
+    }
+
+    #[test]
+    fn parses_simple_script() {
+        let program =
+            parse_program("send hello{ENTER}\nwait 500\nexpect \"password:\" 5\n").unwrap();
+        assert_eq!(program.len(), 3);
+        assert!(matches!(program.steps()[0], ScriptStep::Send(_)));
+        assert!(matches!(program.steps()[1], ScriptStep::Wait(500)));
+        assert!(matches!(
+            program.steps()[2],
+            ScriptStep::Expect { ref pattern, timeout_ms: Some(5000) } if pattern == "password:"
+        ));
+    }
+
+    #[test]
+    fn send_and_wait_run_synchronously() {
+        let mut host = FakeHost::default();
+        let mut engine = run_script("send hello{ENTER}\nwait 200\nsend done\n", &mut host);
+        // send, wait (pending), then send.
+        assert_eq!(engine.pending(), PendingKind::Wait);
+        engine.on_timer();
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(host.events, vec!["send:hello{ENTER}", "send:done"]);
+    }
+
+    #[test]
+    fn expect_consumes_buffer_and_advances() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse("expect \"password: \"\nsend ok{ENTER}\n").unwrap();
+        engine.pump(&mut host);
+        assert_eq!(engine.pending(), PendingKind::Expect);
+        assert!(!engine.on_output(b"login: user\r\n"));
+        assert!(engine.on_output(b"password: "));
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(host.events, vec!["send:ok{ENTER}"]);
+        // Output before the match is consumed along with it.
+        assert!(engine.buffer().is_empty());
+    }
+
+    #[test]
+    fn capture_stores_group_one() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse("capture /(\\d+)/ count\nprint $count\n").unwrap();
+        engine.pump(&mut host);
+        engine.on_output(b"bytes: 42");
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(engine.variable("count"), Some("42"));
+        assert_eq!(host.events, vec!["print:42"]);
+    }
+
+    #[test]
+    fn readline_stores_line() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse("readline line\nprint $line\n").unwrap();
+        engine.pump(&mut host);
+        assert_eq!(engine.pending(), PendingKind::ReadLine);
+        engine.on_output(b"first\r\n");
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(engine.variable("line"), Some("first\r"));
+    }
+
+    #[test]
+    fn expect_timeout_finishes_with_error() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse("expect \"never\" 1\n").unwrap();
+        engine.pump(&mut host);
+        assert_eq!(engine.pending(), PendingKind::Expect);
+        engine.on_timer();
+        assert!(engine.is_finished());
+        assert!(engine.error().is_some());
+    }
+
+    #[test]
+    fn goto_and_if_goto_control_flow() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse(
+            "set n 0\n:loop\nif_goto $n /^2$/ done\ngoto loop\n:done\nprint fin\n",
+        )
+        .unwrap();
+        engine.pump(&mut host);
+        // Never advances n, so the loop runs to the iteration cap.
+        assert!(engine.is_finished());
+        assert!(engine.error().is_some());
+        assert!(engine.error().unwrap().contains("limit"));
+    }
+
+    #[test]
+    fn goto_skips_intervening_steps() {
+        let mut host = FakeHost::default();
+        let mut engine =
+            ScriptEngine::parse("set x 1\ngoto done\nprint skipped\n:done\nprint fin\n").unwrap();
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(host.events, vec!["print:fin"]);
+    }
+
+    #[test]
+    fn if_goto_jumps_on_match_and_falls_through_otherwise() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse(
+            "set x foo\nif_goto $x /foo/ yes\nprint no\ngoto end\n:yes\nprint yes\n:end\n",
+        )
+        .unwrap();
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(host.events, vec!["print:yes"]);
+
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse(
+            "set x bar\nif_goto $x /foo/ yes\ngoto end\n:yes\nprint yes\n:end\nprint no\n",
+        )
+        .unwrap();
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(host.events, vec!["print:no"]);
+    }
+
+    #[test]
+    fn ask_suspends_and_resumes() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse("ask \"Value:\" hide val\nprint $val\n").unwrap();
+        engine.pump(&mut host);
+        assert_eq!(engine.pending(), PendingKind::Ask);
+        assert_eq!(host.events, vec!["ask:Value::false"]);
+        engine.on_ask_result(Some("hunter2".to_string()));
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(host.events, vec!["ask:Value::false", "print:hunter2"]);
+    }
+
+    #[test]
+    fn ask_cancel_finishes_with_error() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse("ask \"Value:\" val\n").unwrap();
+        engine.pump(&mut host);
+        engine.on_ask_result(None);
+        assert!(engine.is_finished());
+        assert!(engine.error().is_some());
+    }
+
+    #[test]
+    fn start_session_uses_result_vars() {
+        let mut host = FakeHost::default();
+        let mut engine =
+            ScriptEngine::parse("start \"My Server\" -> uuid,tmp\nstop $tmp\n").unwrap();
+        engine.pump(&mut host);
+        assert_eq!(engine.pending(), PendingKind::StartSession);
+        assert_eq!(host.events, vec!["start:My Server:false:"]);
+        engine.on_session_started(Some("u1".to_string()), Some("t1".to_string()));
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(engine.variable("uuid"), Some("u1"));
+        assert_eq!(engine.variable("tmp"), Some("t1"));
+        assert_eq!(host.events, vec!["start:My Server:false:", "stop:t1"]);
+    }
+
+    #[test]
+    fn pending_uses_verbatim_key_sequence() {
+        let mut host = FakeHost::default();
+        let engine = run_script("send ls -la {ENTER}\n", &mut host);
+        assert!(engine.is_finished());
+        assert!(host.events[0].starts_with("send:ls -la "));
+    }
+
+    #[test]
+    fn unknown_command_is_an_error() {
+        let err = ScriptEngine::parse("frobnicate x\n").unwrap_err();
+        assert!(matches!(err, ScriptParseError::UnknownCommand { .. }));
+    }
+
+    #[test]
+    fn duplicate_label_is_an_error() {
+        let err = ScriptEngine::parse(":a\n:a\n").unwrap_err();
+        assert!(matches!(err, ScriptParseError::DuplicateLabel { .. }));
+    }
+
+    #[test]
+    fn undefined_label_is_an_error() {
+        let err = ScriptEngine::parse("goto nowhere\n").unwrap_err();
+        assert!(matches!(err, ScriptParseError::UndefinedLabel { .. }));
+    }
+
+    #[test]
+    fn invalid_regex_is_an_error() {
+        let err = ScriptEngine::parse("expect \"([unclosed\"\n").unwrap_err();
+        assert!(matches!(err, ScriptParseError::InvalidRegex { .. }));
+    }
+
+    #[test]
+    fn comments_and_blank_lines_are_ignored() {
+        let program = parse_program("# heading\n; another comment\n\nsend hi\n   \n").unwrap();
+        assert_eq!(program.len(), 1);
+    }
+
+    #[test]
+    fn openwrt_uptime_example_captures_uptime() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse(
+            "expect \"#\" 15\nsend \"uptime{ENTER}\"\ncapture /up\\s+([^,]+)/ up 10\nprint \"Uptime: $up\"\n",
+        )
+        .expect("openwrt uptime example parses");
+
+        engine.pump(&mut host);
+        assert_eq!(engine.pending(), PendingKind::Expect);
+
+        // The OpenWrt root prompt, already on screen when the script starts.
+        assert!(engine.on_output(b"root@OpenWrt:~# "));
+        engine.pump(&mut host);
+        assert_eq!(host.events, vec!["send:uptime{ENTER}"]);
+        assert_eq!(engine.pending(), PendingKind::Capture);
+
+        engine.on_output(b" 14:30:00 up 2 days,  3:21,  load average: 0.00, 0.01, 0.05");
+        engine.pump(&mut host);
+
+        assert!(engine.is_finished());
+        assert_eq!(engine.variable("up"), Some("2 days"));
+        assert_eq!(host.events[1], "print:Uptime: 2 days");
+    }
+
+    #[test]
+    fn openwrt_uptime_ignores_echoed_command() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse(
+            "expect \"#\" 15\nsend \"uptime{ENTER}\"\ncapture /up\\s+([^,]+)/ up 10\nprint \"Uptime: $up\"\n",
+        )
+        .expect("openwrt uptime example parses");
+
+        engine.pump(&mut host);
+        engine.on_output(b"root@OpenWrtMx4300:~# ");
+        engine.pump(&mut host);
+
+        // The shell echoes the command before printing its result. `up\s`
+        // cannot match "uptime", so the capture still waits.
+        assert!(!engine.on_output(b"uptime\r\n"));
+        assert_eq!(engine.pending(), PendingKind::Capture);
+
+        assert!(engine.on_output(b" 14:30:00 up 2 days,  3:21,  load average: 0.01, 0.01, 0.00"));
+        engine.pump(&mut host);
+
+        assert!(engine.is_finished());
+        assert_eq!(engine.variable("up"), Some("2 days"));
+    }
+
+    #[test]
+    fn variable_substitution_in_run_and_print() {
+        let mut host = FakeHost::default();
+        let mut engine = ScriptEngine::parse(
+            "set user alice\nprint Hello $user\nrun \"echo $user\" 5 out=o code=c\n",
+        )
+        .unwrap();
+        engine.pump(&mut host);
+        assert_eq!(
+            host.events,
+            vec!["print:Hello alice", "run:echo alice:Some(5000)"]
+        );
+        engine.on_run_result(0, "alice\n".to_string());
+        engine.pump(&mut host);
+        assert!(engine.is_finished());
+        assert_eq!(engine.variable("o"), Some("alice\n"));
+        assert_eq!(engine.variable("c"), Some("0"));
+    }
+}

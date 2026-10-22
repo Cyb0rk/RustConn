@@ -3,6 +3,9 @@
 //! Contains the Expect Rules section (auto-respond to terminal patterns),
 //! a pattern tester, and pre-connect / post-disconnect task configuration.
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use adw::prelude::*;
 use gtk4::prelude::*;
 use gtk4::{Box as GtkBox, Button, Entry, Label, ListBox, Orientation, ScrolledWindow, SpinButton};
@@ -10,7 +13,7 @@ use libadwaita as adw;
 use rustconn_core::automation::builtin_templates;
 
 use super::widgets::EntryRowBuilder;
-use crate::i18n::i18n;
+use crate::i18n::{i18n, i18n_f};
 
 /// All widgets created by [`create_automation_combined_tab`].
 pub(super) struct AutomationTabWidgets {
@@ -26,6 +29,10 @@ pub(super) struct AutomationTabWidgets {
     pub(super) expect_rules_list: ListBox,
     /// Button to add a new expect rule.
     pub(super) add_expect_rule_button: Button,
+    /// Auto-run scripts list box.
+    pub(super) auto_scripts_list: ListBox,
+    /// Shared state for auto-run script ids.
+    pub(super) auto_scripts: Rc<RefCell<Vec<String>>>,
     /// Command macros list box.
     pub(super) command_macros_list: ListBox,
     /// Button to add a new command macro.
@@ -173,6 +180,40 @@ pub(super) fn create_automation_combined_tab() -> AutomationTabWidgets {
     rules_group.add(&rules_button_box);
     content.append(&rules_group);
 
+    // === Auto-run Scripts Section ===
+    let auto_scripts_group = adw::PreferencesGroup::builder()
+        .title(i18n("Auto-run Scripts"))
+        .description(i18n(
+            "Scripts from the script library to run after this connection's session starts",
+        ))
+        .build();
+
+    let auto_scripts: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
+    let auto_scripts_list = ListBox::builder()
+        .selection_mode(gtk4::SelectionMode::None)
+        .css_classes(["boxed-list"])
+        .build();
+    auto_scripts_list.set_placeholder(Some(&Label::new(Some(&i18n("No auto-run scripts")))));
+    auto_scripts_group.add(&auto_scripts_list);
+
+    let auto_button_box = GtkBox::new(Orientation::Horizontal, 8);
+    auto_button_box.set_halign(gtk4::Align::End);
+    auto_button_box.set_margin_top(12);
+    let add_auto_script_button = Button::builder().label(i18n("Add Script")).build();
+    auto_button_box.append(&add_auto_script_button);
+    auto_scripts_group.add(&auto_button_box);
+    content.append(&auto_scripts_group);
+
+    // Wire the Add button. Rows keep the shared vector in sync.
+    {
+        let list = auto_scripts_list.clone();
+        let scripts = auto_scripts.clone();
+        add_auto_script_button.connect_clicked(move |_| {
+            let row = add_auto_script_row(&list, &scripts, None);
+            row.grab_focus();
+        });
+    }
+
     // === Command Macros Section ===
     let macros_group = adw::PreferencesGroup::builder()
         .title(i18n("Command Macros"))
@@ -271,6 +312,8 @@ pub(super) fn create_automation_combined_tab() -> AutomationTabWidgets {
         login_timeout_spin,
         expect_rules_list,
         add_expect_rule_button: add_rule_button,
+        auto_scripts_list,
+        auto_scripts,
         command_macros_list,
         add_command_macro_button,
         template_list_box,
@@ -547,4 +590,136 @@ fn create_postpend_section() -> (adw::PreferencesGroup, adw::SwitchRow, Entry, E
     });
 
     (group, enabled_switch, command_entry, args_entry)
+}
+
+/// Adds a row for one auto-run script id to the list, keeping `scripts` in
+/// sync with what is on screen. The id is picked from a dropdown of the
+/// scripts currently in the library.
+///
+/// The row is a `ListBoxRow` holding a plain horizontal box rather than an
+/// `AdwActionRow`: an action row's suffix buttons were not drawn in this list,
+/// which left the delete control invisible.
+pub(super) fn add_auto_script_row(
+    list: &ListBox,
+    scripts: &Rc<RefCell<Vec<String>>>,
+    existing: Option<&str>,
+) -> gtk4::DropDown {
+    let ids = crate::dialogs::script::library_script_ids();
+    let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
+    let model = gtk4::StringList::new(&refs);
+    let dropdown = gtk4::DropDown::builder()
+        .model(&model)
+        .hexpand(true)
+        .build();
+    if let Some(idx) = existing.and_then(|e| ids.iter().position(|i| i.as_str() == e)) {
+        dropdown.set_selected(idx as u32);
+    }
+
+    // Two distinct actions: the trash button deletes the script from the
+    // library (it disappears everywhere), the unlink button only detaches it
+    // from this connection.
+    let delete_script = Button::from_icon_name("user-trash-symbolic");
+    delete_script.add_css_class("flat");
+    delete_script.set_valign(gtk4::Align::Center);
+    delete_script.set_tooltip_text(Some(&i18n("Delete script from the library")));
+    delete_script.update_property(&[gtk4::accessible::Property::Label(&i18n(
+        "Delete script from the library",
+    ))]);
+
+    let remove = Button::from_icon_name("list-remove-symbolic");
+    remove.add_css_class("flat");
+    remove.set_valign(gtk4::Align::Center);
+    remove.set_tooltip_text(Some(&i18n("Remove from this list")));
+    remove.update_property(&[gtk4::accessible::Property::Label(&i18n(
+        "Remove from this list",
+    ))]);
+
+    let row_box = GtkBox::new(Orientation::Horizontal, 8);
+    row_box.append(&dropdown);
+    row_box.append(&delete_script);
+    row_box.append(&remove);
+
+    let row = gtk4::ListBoxRow::builder().child(&row_box).build();
+    list.append(&row);
+
+    // The row was appended, so its index is the last one.
+    scripts
+        .borrow_mut()
+        .push(script_id_at(&ids, dropdown.selected()));
+
+    let ids_change = ids.clone();
+    let scripts_for_change = scripts.clone();
+    let row_for_change = row.clone();
+    dropdown.connect_selected_notify(move |d| {
+        let idx = row_for_change.index();
+        if idx < 0 {
+            return;
+        }
+        let mut store = scripts_for_change.borrow_mut();
+        let idx = idx as usize;
+        if idx < store.len() {
+            store[idx] = script_id_at(&ids_change, d.selected());
+        }
+    });
+
+    // Delete from the library: removes the file and this row.
+    let manager = Rc::new(crate::dialogs::script::library_script_manager());
+    let list_delete = list.clone();
+    let scripts_delete = scripts.clone();
+    let row_delete = row.clone();
+    delete_script.connect_clicked(move |_| {
+        let idx = row_delete.index();
+        if idx < 0 {
+            return;
+        }
+        let idx = idx as usize;
+        let id = scripts_delete
+            .borrow()
+            .get(idx)
+            .cloned()
+            .unwrap_or_default();
+        if id.is_empty() {
+            return;
+        }
+        match manager.delete_script(&id) {
+            Ok(()) => crate::toast::show_info_toast_on_active_window(&i18n_f(
+                "Deleted script \u{201c}{}\u{201d}",
+                &[&id],
+            )),
+            Err(e) => crate::toast::show_error_toast_on_active_window(&format!(
+                "{}: {e}",
+                i18n("Could not delete script")
+            )),
+        }
+        list_delete.remove(&row_delete);
+        let mut store = scripts_delete.borrow_mut();
+        if idx < store.len() {
+            store.remove(idx);
+        }
+    });
+
+    // Remove from this connection only: the script stays in the library.
+    let list_remove = list.clone();
+    let scripts_remove = scripts.clone();
+    let row_remove = row.clone();
+    remove.connect_clicked(move |_| {
+        let idx = row_remove.index();
+        list_remove.remove(&row_remove);
+        if idx < 0 {
+            return;
+        }
+        let mut store = scripts_remove.borrow_mut();
+        let idx = idx as usize;
+        if idx < store.len() {
+            store.remove(idx);
+        }
+    });
+
+    dropdown
+}
+
+/// Returns the script id at a dropdown selection index, or "" when out of
+/// range (e.g. an empty library).
+fn script_id_at(ids: &[String], selected: u32) -> String {
+    ids.get(selected as usize).cloned().unwrap_or_default()
 }

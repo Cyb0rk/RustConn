@@ -350,6 +350,9 @@ pub struct ConnectionDialog {
     expect_rules: Rc<RefCell<Vec<ExpectRule>>>,
     /// Button to add new expect rules - wired up in `wire_add_expect_rule_button()`
     add_expect_rule_button: Button,
+    // Auto-run scripts fields
+    auto_scripts_list: ListBox,
+    auto_scripts: Rc<RefCell<Vec<String>>>,
     // Command macros fields
     command_macros_list: ListBox,
     command_macros: Rc<RefCell<Vec<CommandMacro>>>,

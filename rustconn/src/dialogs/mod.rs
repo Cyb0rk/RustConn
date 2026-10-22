@@ -38,6 +38,8 @@ pub mod portable_migration;
 pub mod portable_passphrase_change;
 mod portable_unlock;
 pub mod recording;
+pub mod script;
+pub mod script_reference;
 pub(crate) mod settings;
 mod shortcuts;
 mod smart_folder;
